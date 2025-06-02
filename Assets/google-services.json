@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "982448249723",
+    "project_id": "acts-d7c7f",
+    "storage_bucket": "acts-d7c7f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982448249723:android:b863caca030b8b1532fbde",
+        "android_client_info": {
+          "package_name": "com.FrogCOO.Acts"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTeDLB7vQT-8k8nQuTVqtyL6OoqYmPLAk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
