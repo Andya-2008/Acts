@@ -4,6 +4,7 @@ using TMPro;
 using Firebase;
 using Firebase.Auth;
 using System;
+using UnityEngine.SceneManagement;
 public class FirebaseAuthManager : MonoBehaviour
 {
     // Firebase variable
@@ -35,6 +36,7 @@ public class FirebaseAuthManager : MonoBehaviour
 
     private void Start()
     {
+        DontDestroyOnLoad(this);
         debugText.text = "Debug:\n";
         StartCoroutine(CheckAndFixDependenciesAsync());
         //FirebaseApp.Create();
@@ -89,9 +91,6 @@ public class FirebaseAuthManager : MonoBehaviour
             registerScreen.SetActive(true);
         }
     }
-    private void Update()
-    {
-    }
     private void AutoLogin()
     {
         if(user != null)
@@ -101,6 +100,10 @@ public class FirebaseAuthManager : MonoBehaviour
             loadingScreen.SetActive(false);
             loginScreen.SetActive(false);
             loggedInScreen.SetActive(true);
+            //if(userConfig == true)
+            //SceneManager.LoadScene("MainAppScene");
+            //else
+            //SceneManager.LoadScene("UserConfigScene");
         }
         else
         {
@@ -333,5 +336,9 @@ public class FirebaseAuthManager : MonoBehaviour
     private void OnLoginCompleted(object sender, EventArgs e)
     {
         Debug.Log(message: "Sign In Done");
+    }
+    private void ConfigurationComplete()
+    {
+        //Set bool in database of userConfig to complete
     }
 }

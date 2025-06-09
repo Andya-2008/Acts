@@ -15,7 +15,8 @@ public class GoogleSignInHandler : MonoBehaviour
         {
             WebClientId = "982448249723-c2vjbtng9uv02f7dgg8s14iv3ija1aev.apps.googleusercontent.com",
             RequestIdToken = true,
-            RequestEmail = true
+            RequestEmail = true,
+            UseGameSignIn = false
         };
 
         GoogleSignIn.Configuration = config;
