@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "982448249723",
+    "firebase_url": "https://acts-d7c7f-default-rtdb.firebaseio.com",
+    "project_id": "acts-d7c7f",
+    "storage_bucket": "acts-d7c7f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982448249723:android:b863caca030b8b1532fbde",
+        "android_client_info": {
+          "package_name": "com.FrogCOO.Acts"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "982448249723-c2vjbtng9uv02f7dgg8s14iv3ija1aev.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTeDLB7vQT-8k8nQuTVqtyL6OoqYmPLAk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "982448249723-c2vjbtng9uv02f7dgg8s14iv3ija1aev.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "982448249723-nms96f7o99613c2j17pbvo2t7sambi3o.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.FrogCOO.Acts"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,13 +1,182 @@
 {
-    "m_SelectedDeviceId": "",
+    "m_SelectedDeviceId": "RFCN2053XJP",
     "m_SelectedProcess": {
-        "deviceId": "",
-        "name": "",
-        "processId": 0,
+        "deviceId": "RFCN2053XJP",
+        "name": "com.FrogCOO.Acts",
+        "processId": 10422,
         "exited": false
     },
     "m_SelectedPriority": 0,
-    "m_KnownProcessesForSerialization": [],
+    "m_KnownProcessesForSerialization": [
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 27776,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 1950,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 4146,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 5729,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 6312,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 7865,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 8952,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 13793,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 17990,
+            "exited": false
+        },
+        {
+            "deviceId": "R58MB2VLRVM",
+            "name": "com.FrogCOO.Acts",
+            "processId": 19522,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 6587,
+            "exited": true
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 7238,
+            "exited": true
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 8087,
+            "exited": true
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.sec.android.app.launcher",
+            "processId": 3291,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.estmob.android.sendanywhere",
+            "processId": 16164,
+            "exited": true
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 28576,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 29701,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 30537,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 31072,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 31628,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 2485,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 4104,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 4771,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 6244,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 6703,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 7554,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 8569,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 10422,
+            "exited": false
+        }
+    ],
     "m_Tags": {
         "m_Entries": [
             {
@@ -45,8 +214,19 @@
         "Height": 0.0
     },
     "m_MemoryViewerState": {
-        "MemoryWindowWidth": 0.0,
-        "MemoryTypeEnabled": [],
+        "MemoryWindowWidth": 170.0,
+        "MemoryTypeEnabled": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+        ],
         "MemoryGroup": 2,
         "AutoCapture": true
     },

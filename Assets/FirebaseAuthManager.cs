@@ -9,6 +9,7 @@ using System;
 using System.Threading.Tasks;
 using i5.Toolkit.Core.ServiceCore;
 using i5.Toolkit.Core.OpenIDConnectClient;
+using Firebase.Extensions;
 
 public class FirebaseAuthManager : MonoBehaviour
 {
@@ -35,39 +36,47 @@ public class FirebaseAuthManager : MonoBehaviour
     [SerializeField] GameObject loadingScreen;
     [SerializeField] GameObject loginScreen;
     [SerializeField] GameObject loggedInScreen;
+    [SerializeField] GameObject registerScreen;
+
+    [SerializeField] TextMeshProUGUI debugText;
 
     private void Start()
     {
+        debugText.text = "Debug:\n";
         StartCoroutine(CheckAndFixDependenciesAsync());
+        //FirebaseApp.Create();
     }
 
     private IEnumerator CheckAndFixDependenciesAsync()
     {
-        var dependencyTask = FirebaseApp.CheckAndFixDependenciesAsync();
-
-        yield return new WaitUntil(() => dependencyTask.IsCompleted);
-
-        dependencyStatus = dependencyTask.Result;
-
         if (dependencyStatus == DependencyStatus.Available)
         {
+            debugText.text += "3\n";
             InitializeFirebase();
-            yield return new WaitForEndOfFrame();
-            StartCoroutine(CheckForAutoLogin());
+            debugText.text += "4\n";
+            yield return StartCoroutine(CheckForAutoLogin());
+            debugText.text += "5\n";
         }
         else
         {
-            Debug.LogError("Could not resolve all firebase dependencies: " + dependencyStatus);
+            debugText.text += "Could not resolve all Firebase dependencies: " + dependencyStatus + "\n";
         }
     }
 
     void InitializeFirebase()
     {
         //Set the default instance object
+
+        debugText.text += "4\n";
         auth = FirebaseAuth.DefaultInstance;
 
+        debugText.text += "5\n";
         auth.StateChanged += AuthStateChanged;
+        debugText.text += "6\n";
         AuthStateChanged(this, null);
+        debugText.text += "7\n";
+        debugText.text += "Firebase initialized\n";
+        debugText.text += "8\n";
     }
 
     private IEnumerator CheckForAutoLogin()
@@ -82,8 +91,9 @@ public class FirebaseAuthManager : MonoBehaviour
         }
         else
         {
+            debugText.text += "Not logged in: redirecting to register screen\n";
             loadingScreen.SetActive(false);
-            loginScreen.SetActive(true);
+            registerScreen.SetActive(true);
         }
     }
     private void AutoLogin()
@@ -91,14 +101,15 @@ public class FirebaseAuthManager : MonoBehaviour
         if(user != null)
         {
             References.userName = user.DisplayName;
-            Debug.Log("Auto logged in:" + user.DisplayName);
+            debugText.text += "Auto logged in:" + user.DisplayName+"\n";
             loadingScreen.SetActive(false);
             loginScreen.SetActive(false);
             loggedInScreen.SetActive(true);
         }
         else
         {
-            loginScreen.SetActive(true);
+            debugText.text += "Not logged in: redirecting to register screen\n";
+            registerScreen.SetActive(true);
             loadingScreen.SetActive(false);
         }
     }
@@ -301,6 +312,20 @@ public class FirebaseAuthManager : MonoBehaviour
             loginScreen.SetActive(true);
             loggedInScreen.SetActive(false);
             loadingScreen.SetActive(false);
+        }
+    }
+    public void SwitchScreens(int num)
+    {
+        if(num == 0)
+        {
+            registerScreen.SetActive(false);
+            loginScreen.SetActive(true);
+        }
+
+        if (num == 1)
+        {
+            registerScreen.SetActive(true);
+            loginScreen.SetActive(false);
         }
     }
 
