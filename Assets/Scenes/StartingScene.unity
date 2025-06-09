@@ -1689,7 +1689,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 422288207}
-  - component: {fileID: 422288208}
+  - component: {fileID: 422288210}
   m_Layer: 0
   m_Name: GoogleOAuth
   m_TagString: Untagged
@@ -1712,7 +1712,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &422288208
+--- !u!114 &422288210
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1721,11 +1721,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 422288205}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4881f6245761dc5448df8137a11f5377, type: 3}
+  m_Script: {fileID: 11500000, guid: 718b8e6af8260514cbf0ff893860541d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  infoText: {fileID: 391529555}
-  webClientId: 982448249723-c2vjbtng9uv02f7dgg8s14iv3ija1aev.apps.googleusercontent.com
+  authManager: {fileID: 1630205081}
 --- !u!1 &459949913
 GameObject:
   m_ObjectHideFlags: 0
@@ -2129,7 +2128,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -1300.03}
-  m_SizeDelta: {x: 160, y: 30}
+  m_SizeDelta: {x: 160, y: 38.19}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &609504527
 MonoBehaviour:
@@ -2175,8 +2174,8 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 422288208}
-        m_TargetAssemblyTypeName: GoogleSignInDemo, Assembly-CSharp
+      - m_Target: {fileID: 422288210}
+        m_TargetAssemblyTypeName: GoogleSignInHandler, Assembly-CSharp
         m_MethodName: SignInWithGoogle
         m_Mode: 1
         m_Arguments:
@@ -2207,8 +2206,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 705600617360757303, guid: 7424e4ed721785b44b208b2af2bd226d, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -4670,7 +4669,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1674462004}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
   m_Name: 

@@ -96,6 +96,9 @@ public class FirebaseAuthManager : MonoBehaviour
             registerScreen.SetActive(true);
         }
     }
+    private void Update()
+    {
+    }
     private void AutoLogin()
     {
         if(user != null)
@@ -326,6 +329,12 @@ public class FirebaseAuthManager : MonoBehaviour
         {
             registerScreen.SetActive(true);
             loginScreen.SetActive(false);
+        }
+        if (num == 2)
+        {
+            registerScreen.SetActive(false);
+            loginScreen.SetActive(false);
+            loggedInScreen.SetActive(true);
         }
     }
 
