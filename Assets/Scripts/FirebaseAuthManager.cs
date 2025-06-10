@@ -22,7 +22,6 @@ public class FirebaseAuthManager : MonoBehaviour
     // Registration Variables
     [Space]
     [Header("Registration")]
-    public TMP_InputField nameRegisterField;
     public TMP_InputField emailRegisterField;
     public TMP_InputField passwordRegisterField;
     public TMP_InputField confirmPasswordRegisterField;
@@ -39,6 +38,7 @@ public class FirebaseAuthManager : MonoBehaviour
         //DontDestroyOnLoad(this);
         debugText.text = "Debug:\n";
         StartCoroutine(CheckAndFixDependenciesAsync());
+        DontDestroyOnLoad(this);
         //FirebaseApp.Create();
     }
 
@@ -103,7 +103,7 @@ public class FirebaseAuthManager : MonoBehaviour
             //if(userConfig == true)
             //SceneManager.LoadScene("MainAppScene");
             //else
-            //SceneManager.LoadScene("UserConfigScene");
+            SceneManager.LoadScene("UserConfigScene");
         }
         else
         {
@@ -192,6 +192,7 @@ public class FirebaseAuthManager : MonoBehaviour
             loginScreen.SetActive(false);
             registerScreen.SetActive(false);
             loggedInScreen.SetActive(true);
+            SceneManager.LoadScene("UserConfigScene");
 
             References.userName = user.DisplayName;
             //UnityEngine.SceneManagement.SceneManager.LoadScene("GameScene");
@@ -200,10 +201,10 @@ public class FirebaseAuthManager : MonoBehaviour
 
     public void Register()
     {
-        StartCoroutine(RegisterAsync(nameRegisterField.text, emailRegisterField.text, passwordRegisterField.text, confirmPasswordRegisterField.text));
+        StartCoroutine(RegisterAsync(emailRegisterField.text, passwordRegisterField.text, confirmPasswordRegisterField.text));
     }
 
-    private IEnumerator RegisterAsync(string name, string email, string password, string confirmPassword)
+    private IEnumerator RegisterAsync(string email, string password, string confirmPassword)
     {
         if (name == "")
         {
@@ -299,12 +300,13 @@ public class FirebaseAuthManager : MonoBehaviour
                 else
                 {
                     Debug.Log("Registration Sucessful Welcome " + user.DisplayName);
-                    GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateUserAuthData(email,name,user);
+                    GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateUserAuthData(email,user);
                     //UIManager.Instance.OpenLoginPanel();loadingScreen.SetActive(false);
                     loadingScreen.SetActive(false);
                     registerScreen.SetActive(false);
                     loginScreen.SetActive(false);
                     loggedInScreen.SetActive(true);
+                    SceneManager.LoadScene("UserConfigScene");
                 }
             }
         }

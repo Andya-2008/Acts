@@ -52,7 +52,7 @@ public class GoogleSignInHandler : MonoBehaviour
                     string email = user.Email;
 
                     // Save user info to Firestore
-                    GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateGoogleUserAuthData(email, user);
+                    GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateUserAuthData(email, user);
                     //Debug.LogError("Firebase sign-in successful: " + authTask.Result.DisplayName);
                     registerScreen.SetActive(false);
                     loginScreen.SetActive(false);
