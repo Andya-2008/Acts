@@ -7,7 +7,9 @@ using UnityEngine;
 public class GoogleSignInHandler : MonoBehaviour
 {
     private GoogleSignInConfiguration config;
-    [SerializeField] FirebaseAuthManager authManager;
+    [SerializeField] GameObject loginScreen;
+    [SerializeField] GameObject loggedInScreen;
+    [SerializeField] GameObject registerScreen;
 
     void Start()
     {
@@ -45,8 +47,16 @@ public class GoogleSignInHandler : MonoBehaviour
                 }
                 else
                 {
+                    FirebaseUser user = authTask.Result;
+
+                    string email = user.Email;
+
+                    // Save user info to Firestore
+                    GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateGoogleUserAuthData(email, user);
                     //Debug.LogError("Firebase sign-in successful: " + authTask.Result.DisplayName);
-                    authManager.SwitchScreens(2);
+                    registerScreen.SetActive(false);
+                    loginScreen.SetActive(false);
+                    loggedInScreen.SetActive(true);
                 }
             });
         }

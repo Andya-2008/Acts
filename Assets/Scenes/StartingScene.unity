@@ -1724,7 +1724,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 718b8e6af8260514cbf0ff893860541d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  authManager: {fileID: 1630205081}
+  loginScreen: {fileID: 1691701144}
+  loggedInScreen: {fileID: 939593386}
+  registerScreen: {fileID: 526933286}
 --- !u!1 &459949913
 GameObject:
   m_ObjectHideFlags: 0

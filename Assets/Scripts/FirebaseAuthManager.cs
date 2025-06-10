@@ -36,7 +36,7 @@ public class FirebaseAuthManager : MonoBehaviour
 
     private void Start()
     {
-        DontDestroyOnLoad(this);
+        //DontDestroyOnLoad(this);
         debugText.text = "Debug:\n";
         StartCoroutine(CheckAndFixDependenciesAsync());
         //FirebaseApp.Create();
@@ -190,6 +190,7 @@ public class FirebaseAuthManager : MonoBehaviour
             Debug.LogFormat("{0} You Are Successfully Logged In", user.DisplayName);
             loadingScreen.SetActive(false);
             loginScreen.SetActive(false);
+            registerScreen.SetActive(false);
             loggedInScreen.SetActive(true);
 
             References.userName = user.DisplayName;
@@ -298,7 +299,12 @@ public class FirebaseAuthManager : MonoBehaviour
                 else
                 {
                     Debug.Log("Registration Sucessful Welcome " + user.DisplayName);
-                    //UIManager.Instance.OpenLoginPanel();
+                    GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateUserAuthData(email,name,user);
+                    //UIManager.Instance.OpenLoginPanel();loadingScreen.SetActive(false);
+                    loadingScreen.SetActive(false);
+                    registerScreen.SetActive(false);
+                    loginScreen.SetActive(false);
+                    loggedInScreen.SetActive(true);
                 }
             }
         }
