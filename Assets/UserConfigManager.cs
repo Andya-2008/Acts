@@ -18,6 +18,8 @@ public class UserConfigManager : MonoBehaviour
     [SerializeField] TMP_InputField dobD;
     [SerializeField] TMP_InputField dobM;
     [SerializeField] TMP_InputField dobY;
+    [SerializeField] List<GameObject> screens = new List<GameObject>();
+    [SerializeField] List<PersonalityButtonPress> personalityButtons = new List<PersonalityButtonPress>();
     void Start()
     {
         // Get the Firestore instance
@@ -36,5 +38,23 @@ public class UserConfigManager : MonoBehaviour
             {"DOB", dobM.text + "/" + dobD.text + "/" + dobY.text}
         }, SetOptions.MergeAll);
         Debug.Log("Added first, last, and date of birth");
+        screens[0].SetActive(false);
+        screens[1].SetActive(true);
+    }
+    public void AddUserInfoPersonalities()
+    {
+        List<string> traits = new List<string>();
+        foreach(PersonalityButtonPress button in personalityButtons)
+        {
+            if(button.selected)
+            traits.Add(button.name);
+        }
+        DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
+        docRef.SetAsync(new Dictionary<string, object> {
+            { "Traits", traits}
+        }, SetOptions.MergeAll);
+        Debug.Log("Added first, last, and date of birth");
+        screens[0].SetActive(false);
+        screens[1].SetActive(true);
     }
 }

@@ -466,7 +466,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scroll Flow/Prefabs
+    - Assets
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -485,7 +485,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 59}
     m_SelectedIDs: c6d10100
     m_LastClickedID: 119238
-    m_ExpandedIDs: 000000000ec3000010c3000012c30000
+    m_ExpandedIDs: 00000000d8c20000dac20000dcc20000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -514,7 +514,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 000000000ec3000010c3000012c30000
+    m_ExpandedIDs: 00000000d8c20000dac20000dcc20000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1315,7 +1315,7 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 179.03859, y: 324.63953, z: -4.159316}
+    m_Target: {x: -94.47184, y: 341.10434, z: 1.5177537}
     speed: 2
     m_Value: {x: 179.03859, y: 324.63953, z: -4.159316}
   m_RenderMode: 0
@@ -1367,7 +1367,7 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 494.21533
+    m_Target: 433.9936
     speed: 2
     m_Value: 494.21533
   m_Ortho:

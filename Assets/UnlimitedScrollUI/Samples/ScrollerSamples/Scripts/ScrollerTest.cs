@@ -20,12 +20,11 @@ namespace UnlimitedScrollUI.Example {
             unlimitedScroller = GetComponent<IUnlimitedScroller>();
             // Wait until the scroller size was set by other layout controllers.
             if (autoGenerate) {
-                StartCoroutine(DelayGenerate());
+                DelayGenerate();
             }
         }
 
-        private IEnumerator DelayGenerate() {
-            yield return new WaitForEndOfFrame();
+        private void DelayGenerate() {
             unlimitedScroller.Generate(cell, totalCount, (index, iCell) => {
                 var regularCell = iCell as RegularCell;
                 if (regularCell != null) regularCell.onGenerated?.Invoke(index);

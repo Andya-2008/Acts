@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class PersonalityButtonPress : MonoBehaviour
 {
-    bool shaded = false;
+    public bool selected = false;
     [SerializeField] GameObject shader;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -18,18 +18,18 @@ public class PersonalityButtonPress : MonoBehaviour
     }
     public void ShadeButton()
     {
-        if (!shaded)
+        if (!selected)
         {
-            //shader.GetComponent<Image>().enabled = true;
+            shader.GetComponent<Image>().enabled = true;
             Debug.Log("Shaded");
-            shaded = true;
+            selected = true;
         }
 
-        else if (shaded)
+        else if (selected)
         {
-            //shader.GetComponent<Image>().enabled = false;
+            shader.GetComponent<Image>().enabled = false;
             Debug.Log("Not shaded");
-            shaded = false;
+            selected = false;
         }
     }
 }
