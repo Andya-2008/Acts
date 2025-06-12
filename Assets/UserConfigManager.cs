@@ -47,14 +47,16 @@ public class UserConfigManager : MonoBehaviour
         foreach(PersonalityButtonPress button in personalityButtons)
         {
             if(button.selected)
-            traits.Add(button.name);
+            traits.Add(button.name + ": " + button.descriptionText.text);
         }
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
         docRef.SetAsync(new Dictionary<string, object> {
             { "Traits", traits}
         }, SetOptions.MergeAll);
         Debug.Log("Added first, last, and date of birth");
-        screens[0].SetActive(false);
-        screens[1].SetActive(true);
+        screens[1].SetActive(false);
+        screens[2].SetActive(true);
+        GameObject.Find("PermissionManager").GetComponent<CameraPermissionManager>().RequestCameraPermission();
+        GameObject.Find("PermissionManager").GetComponent<PushNotificationManager>().RequestPushPermission();
     }
 }

@@ -1,9 +1,9 @@
 {
     "m_SelectedDeviceId": "RFCN2053XJP",
     "m_SelectedProcess": {
-        "deviceId": "RFCN2053XJP",
-        "name": "com.FrogCOO.Acts",
-        "processId": 20368,
+        "deviceId": "",
+        "name": "",
+        "processId": 0,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -70,231 +70,33 @@
         },
         {
             "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 6587,
-            "exited": true
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 7238,
-            "exited": true
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 8087,
-            "exited": true
-        },
-        {
-            "deviceId": "RFCN2053XJP",
             "name": "com.sec.android.app.launcher",
             "processId": 3291,
             "exited": false
         },
         {
             "deviceId": "RFCN2053XJP",
-            "name": "com.estmob.android.sendanywhere",
-            "processId": 16164,
+            "name": "com.FrogCOO.Acts",
+            "processId": 29367,
             "exited": true
         },
         {
             "deviceId": "RFCN2053XJP",
             "name": "com.FrogCOO.Acts",
-            "processId": 28576,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 29701,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 30537,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 31072,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 31628,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 2485,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 4104,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 4771,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 6244,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 6703,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 7554,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 8569,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 10422,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 16252,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 21353,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 22590,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 25044,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 26561,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 29169,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 31924,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 3617,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 6892,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 8661,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 10192,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 12815,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 13699,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 14367,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 18597,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 7569,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
-            "processId": 29367,
-            "exited": false
-        },
-        {
-            "deviceId": "RFCN2053XJP",
-            "name": "com.FrogCOO.Acts",
             "processId": 31474,
-            "exited": false
+            "exited": true
         },
         {
             "deviceId": "RFCN2053XJP",
             "name": "com.FrogCOO.Acts",
             "processId": 3535,
-            "exited": false
+            "exited": true
         },
         {
             "deviceId": "RFCN2053XJP",
             "name": "com.FrogCOO.Acts",
             "processId": 20368,
-            "exited": false
+            "exited": true
         }
     ],
     "m_Tags": {

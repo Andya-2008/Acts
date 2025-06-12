@@ -143,8 +143,8 @@ PlayerSettings:
   bundleVersion: 1.0.2
   preloadedAssets:
   - {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
-  - {fileID: 11400000, guid: a6044c1b001dfe34cb79daba9a7b3e7b, type: 2}
   - {fileID: -1363981896561862833, guid: 5bdfeca9d7bc9f243887f901ea2a7400, type: 2}
+  - {fileID: 11400000, guid: a6044c1b001dfe34cb79daba9a7b3e7b, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -261,7 +261,7 @@ PlayerSettings:
   clonedFromGUID: f918f204a65eb664ba9e5b39d533ff8e
   templatePackageId: com.unity.template.mobile2d@6.0.0
   templateDefaultScene: Assets/Scenes/SampleScene.unity
-  useCustomMainManifest: 0
+  useCustomMainManifest: 1
   useCustomLauncherManifest: 0
   useCustomMainGradleTemplate: 1
   useCustomLauncherGradleManifest: 1
@@ -911,11 +911,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: ac18812b-90e3-4a35-a47f-b8cf144e0cf1
+  cloudProjectId: de60eb1a-4e7f-400b-9c19-2305aaf3c89d
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: Serve 2025-05-18_19-32-16
-  organizationId: dynamic-duo-developers
+  projectName: Acts
+  organizationId: andrewhyun
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
