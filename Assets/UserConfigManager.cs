@@ -5,6 +5,7 @@ using Firebase.Extensions; // Needed for ContinueWithOnMainThread
 using Firebase.Auth;
 using System;
 using TMPro;
+using UnityEngine.Android;
 
 public class UserConfigManager : MonoBehaviour
 {
@@ -58,5 +59,30 @@ public class UserConfigManager : MonoBehaviour
         screens[2].SetActive(true);
         GameObject.Find("PermissionManager").GetComponent<CameraPermissionManager>().RequestCameraPermission();
         GameObject.Find("PermissionManager").GetComponent<PushNotificationManager>().RequestPushPermission();
+    }
+    public void PermissionCheck()
+    {
+#if UNITY_ANDROID
+        if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
+        {
+            Debug.LogError("Doesn't have camera permission");
+            return;
+        }
+        if (!Permission.HasUserAuthorizedPermission("android.permission.POST_NOTIFICATIONS"))
+        {
+            Debug.LogError("Doesn't have notification permission");
+            return;
+        }
+
+#elif UNITY_IOS
+        // iOS automatically prompts the first time camera is accessed.
+        // You just need to provide a usage description (see next step).
+        Debug.Log("iOS will request camera permission automatically when used.");
+#endif
+
+
+        Debug.Log("Added Permissions");
+        screens[2].SetActive(false);
+        screens[3].SetActive(true);
     }
 }

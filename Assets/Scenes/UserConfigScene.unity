@@ -2148,7 +2148,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1813334302}
         m_TargetAssemblyTypeName: UserConfigManager, Assembly-CSharp
-        m_MethodName: AddUserInfoPersonalities
+        m_MethodName: PermissionCheck
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -9280,6 +9280,7 @@ MonoBehaviour:
   screens:
   - {fileID: 242549078}
   - {fileID: 1298335779}
+  - {fileID: 452141362}
   - {fileID: 1392602984}
   personalityButtons:
   - {fileID: 545855915}

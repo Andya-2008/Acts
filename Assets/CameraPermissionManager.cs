@@ -12,6 +12,7 @@ public class CameraPermissionManager : MonoBehaviour
 
     public void RequestCameraPermission()
     {
+        Debug.Log("Requesting camera permission");
 #if UNITY_ANDROID
         if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
         {

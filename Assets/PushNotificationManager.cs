@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using Firebase;
 using Firebase.Messaging;
+using UnityEngine.Android;
 
 public class PushNotificationManager : MonoBehaviour
 {
@@ -21,15 +22,20 @@ public class PushNotificationManager : MonoBehaviour
                 var authStatus = Firebase.Messaging.FirebaseMessaging.AuthorizationStatus;
                 Debug.Log("iOS Permission status: " + authStatus);
             });
+#elif UNITY_ANDROID
+        if (!Permission.HasUserAuthorizedPermission("android.permission.POST_NOTIFICATIONS"))
+        {
+            Permission.RequestUserPermission("android.permission.POST_NOTIFICATIONS");
+        }
 #endif
 
-            Debug.Log("Firebase Initialized and Push Notifications Ready.");
+        Debug.Log("Firebase Initialized and Push Notifications Ready.");
     }
 
     // Called when device receives a new FCM registration token
     private void OnTokenReceived(object sender, TokenReceivedEventArgs token)
     {
-        Debug.Log("FCM Token: " + token.Token);
+        Debug.LogError("FCM Token: " + token.Token);
         // You can send this token to your backend if needed
     }
 
