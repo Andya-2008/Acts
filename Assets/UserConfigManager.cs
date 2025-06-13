@@ -65,6 +65,7 @@ public class UserConfigManager : MonoBehaviour
 #if UNITY_ANDROID
         if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
         {
+            Permission.RequestUserPermission(Permission.Camera);
             Debug.LogError("Doesn't have camera permission");
             return;
         }

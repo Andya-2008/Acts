@@ -13,8 +13,8 @@ public class PushNotificationManager : MonoBehaviour
 
     public void RequestPushPermission()
     {
-            FirebaseMessaging.TokenReceived += OnTokenReceived;
-            FirebaseMessaging.MessageReceived += OnMessageReceived;
+            //FirebaseMessaging.TokenReceived += OnTokenReceived;
+            //FirebaseMessaging.MessageReceived += OnMessageReceived;
 
 #if UNITY_IOS
             // Request permission on iOS (necessary for notifications to show)
@@ -35,7 +35,7 @@ public class PushNotificationManager : MonoBehaviour
     // Called when device receives a new FCM registration token
     private void OnTokenReceived(object sender, TokenReceivedEventArgs token)
     {
-        Debug.LogError("FCM Token: " + token.Token);
+        Debug.Log("FCM Token: " + token.Token);
         // You can send this token to your backend if needed
     }
 

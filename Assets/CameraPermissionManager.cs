@@ -1,10 +1,18 @@
+
 using UnityEngine;
 #if UNITY_ANDROID
 using UnityEngine.Android;
 #endif
+#if UNITY_IOS
+using UnityEngine.iOS;
+#endif
 
 public class CameraPermissionManager : MonoBehaviour
 {
+    // You can use these booleans to check the permission status
+    public bool cameraPermissionGranted = false;
+    public bool permissionCheckComplete = false;
+
     void Start()
     {
 
@@ -12,16 +20,89 @@ public class CameraPermissionManager : MonoBehaviour
 
     public void RequestCameraPermission()
     {
-        Debug.Log("Requesting camera permission");
+        permissionCheckComplete = false;
+
 #if UNITY_ANDROID
+        // Android specific permission request
         if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
         {
-            Permission.RequestUserPermission(Permission.Camera);
+            PermissionCallbacks callbacks = new PermissionCallbacks();
+            callbacks.PermissionGranted += PermissionCallbacks_PermissionGranted;
+            callbacks.PermissionDenied += PermissionCallbacks_PermissionDenied;
+            callbacks.PermissionDeniedAndDontAskAgain += PermissionCallbacks_PermissionDeniedAndDontAskAgain;
+
+            Permission.RequestUserPermission(Permission.Camera, callbacks);
+        }
+        else
+        {
+            // Permission already granted
+            cameraPermissionGranted = true;
+            permissionCheckComplete = true;
+            Debug.Log("Camera permission already granted.");
         }
 #elif UNITY_IOS
-        // iOS automatically prompts the first time camera is accessed.
-        // You just need to provide a usage description (see next step).
-        Debug.Log("iOS will request camera permission automatically when used.");
+        // iOS and WebGL specific permission request
+        if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        {
+            Application.RequestUserAuthorization(UserAuthorization.WebCam);
+            // On iOS/WebGL, you might need to check in Update or with a coroutine
+            // if permission has been granted after the request
+            StartCoroutine(CheckiOSWebGLCameraPermission());
+        }
+        else
+        {
+            // Permission already granted
+            cameraPermissionGranted = true;
+            permissionCheckComplete = true;
+            Debug.Log("Camera permission already granted.");
+        }
+#else
+        // Other platforms - assuming camera access is available or not applicable
+        cameraPermissionGranted = true;
+        permissionCheckComplete = true;
+        Debug.Log("Camera permission granted (assumed on this platform).");
 #endif
     }
+
+    // Android permission callback methods
+#if UNITY_ANDROID
+    internal void PermissionCallbacks_PermissionGranted(string permissionName)
+    {
+        Debug.Log($"{permissionName} Permission Granted");
+        cameraPermissionGranted = true;
+        permissionCheckComplete = true;
+    }
+
+    internal void PermissionCallbacks_PermissionDenied(string permissionName)
+    {
+        Debug.Log($"{permissionName} Permission Denied");
+        cameraPermissionGranted = false;
+        permissionCheckComplete = true;
+        // Handle permission denial, e.g., display a message to the user
+    }
+
+    internal void PermissionCallbacks_PermissionDeniedAndDontAskAgain(string permissionName)
+    {
+        Debug.Log($"{permissionName} Permission Denied and Don't Ask Again");
+        cameraPermissionGranted = false;
+        permissionCheckComplete = true;
+        // Handle scenario where the user has permanently denied permission
+        // You might need to instruct the user to change settings manually
+    }
+#endif
+
+    // Coroutine to check iOS/WebGL permission
+#if UNITY_IOS || UNITY_WEBGL
+    private System.Collections.IEnumerator CheckiOSWebGLCameraPermission()
+    {
+        // Wait for permission to be granted
+        while (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+        {
+            yield return null;
+        }
+        cameraPermissionGranted = true;
+        permissionCheckComplete = true;
+        Debug.Log("Camera permission granted (iOS/WebGL).");
+    }
+#endif
 }
