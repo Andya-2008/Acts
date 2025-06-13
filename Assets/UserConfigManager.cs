@@ -89,13 +89,13 @@ public class UserConfigManager : MonoBehaviour
     }
     public void AddUserInfoUsernameAndPFP()
     {
-        GameObject.Find("ProfilePictureManager").GetComponent<ProfilePictureManager>().LoadProfilePicture();
+        //GameObject.Find("ProfilePictureManager").GetComponent<ProfilePictureManager>().LoadProfilePicture();
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
         docRef.SetAsync(new Dictionary<string, object> {
             { "Username", username.text}
         }, SetOptions.MergeAll);
         Debug.Log("Added first, last, and date of birth");
-        screens[2].SetActive(false);
-        screens[3].SetActive(true);
+        screens[3].SetActive(false);
+        screens[4].SetActive(true);
     }
 }
