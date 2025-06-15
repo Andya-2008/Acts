@@ -24,7 +24,9 @@ public class FirebaseDBManager : MonoBehaviour
         Dictionary<string, object> user = new Dictionary<string, object>
 {
     { "Email", email },
-    { "Date Joined", DateTime.Now}
+    { "Date Joined", DateTime.Now},
+    { "UserConfig", false}
+
 };
         docRef.SetAsync(user).ContinueWithOnMainThread(task =>
         {

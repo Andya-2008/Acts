@@ -6,6 +6,7 @@ using Firebase.Auth;
 using System;
 using TMPro;
 using UnityEngine.Android;
+using UnityEngine.SceneManagement;
 
 public class UserConfigManager : MonoBehaviour
 {
@@ -101,5 +102,16 @@ public class UserConfigManager : MonoBehaviour
         Debug.Log("Added username and pfp");
         screens[3].SetActive(false);
         screens[4].SetActive(true);
+        UserConfigFinished();
+        
+    }
+
+    public void UserConfigFinished()
+    {
+        DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
+        docRef.SetAsync(new Dictionary<string, object> {
+            { "UserConfig", true}
+        }, SetOptions.MergeAll);
+        SceneManager.LoadScene("MainAppScene");
     }
 }

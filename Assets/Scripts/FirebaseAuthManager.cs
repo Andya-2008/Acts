@@ -5,6 +5,9 @@ using Firebase;
 using Firebase.Auth;
 using System;
 using UnityEngine.SceneManagement;
+using Firebase.Firestore;
+using System.Threading.Tasks;
+using Firebase.Extensions;
 public class FirebaseAuthManager : MonoBehaviour
 {
     // Firebase variable
@@ -32,6 +35,7 @@ public class FirebaseAuthManager : MonoBehaviour
     [SerializeField] GameObject registerScreen;
 
     [SerializeField] TextMeshProUGUI debugText;
+    private FirebaseFirestore db;
 
     private void Start()
     {
@@ -40,6 +44,7 @@ public class FirebaseAuthManager : MonoBehaviour
         StartCoroutine(CheckAndFixDependenciesAsync());
         DontDestroyOnLoad(this);
         //FirebaseApp.Create();
+        db = FirebaseFirestore.DefaultInstance;
     }
 
     private IEnumerator CheckAndFixDependenciesAsync()
@@ -100,10 +105,12 @@ public class FirebaseAuthManager : MonoBehaviour
             loadingScreen.SetActive(false);
             loginScreen.SetActive(false);
             loggedInScreen.SetActive(true);
-            //if(userConfig == true)
-            //SceneManager.LoadScene("MainAppScene");
-            //else
-            SceneManager.LoadScene("UserConfigScene");
+            CheckUserConfig(isFinished => {
+                if (isFinished)
+                    SceneManager.LoadScene("MainAppScene");
+                else
+                    SceneManager.LoadScene("UserConfigScene");
+            });
         }
         else
         {
@@ -192,8 +199,12 @@ public class FirebaseAuthManager : MonoBehaviour
             loginScreen.SetActive(false);
             registerScreen.SetActive(false);
             loggedInScreen.SetActive(true);
-            SceneManager.LoadScene("UserConfigScene");
-
+            CheckUserConfig(isFinished => {
+                if (isFinished)
+                    SceneManager.LoadScene("MainAppScene");
+                else
+                    SceneManager.LoadScene("UserConfigScene");
+            });
             References.userName = user.DisplayName;
             //UnityEngine.SceneManagement.SceneManager.LoadScene("GameScene");
         }
@@ -231,7 +242,7 @@ public class FirebaseAuthManager : MonoBehaviour
                 FirebaseException firebaseException = registerTask.Exception.GetBaseException() as FirebaseException;
                 AuthError authError = (AuthError)firebaseException.ErrorCode;
 
-                string failedMessage = "Registration Failed! Becuase ";
+                string failedMessage = "Registration Failed!";
                 switch (authError)
                 {
                     case AuthError.InvalidEmail:
@@ -306,7 +317,12 @@ public class FirebaseAuthManager : MonoBehaviour
                     registerScreen.SetActive(false);
                     loginScreen.SetActive(false);
                     loggedInScreen.SetActive(true);
-                    SceneManager.LoadScene("UserConfigScene");
+                    CheckUserConfig(isFinished => {
+                        if (isFinished)
+                            SceneManager.LoadScene("MainAppScene");
+                        else 
+                            SceneManager.LoadScene("UserConfigScene");
+                    });
                 }
             }
         }
@@ -345,8 +361,22 @@ public class FirebaseAuthManager : MonoBehaviour
     {
         Debug.Log(message: "Sign In Done");
     }
-    private void ConfigurationComplete()
+    public void CheckUserConfig(Action<bool> callback)
     {
-        //Set bool in database of userConfig to complete
+        DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
+        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            bool result = false;
+            if (task.IsCompleted && !task.IsFaulted)
+            {
+                var snapshot = task.Result;
+                if (snapshot.Exists && snapshot.ContainsField("UserConfig"))
+                {
+                    result = snapshot.GetValue<bool>("UserConfig");
+                }
+            }
+            callback?.Invoke(result);
+        });
     }
+
 }
