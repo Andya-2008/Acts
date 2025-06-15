@@ -16,6 +16,7 @@ public class UserConfigManager : MonoBehaviour
     [Header("Screen1")]
     [SerializeField] TMP_InputField first;
     [SerializeField] TMP_InputField last;
+    [SerializeField] TMP_InputField phone;
     [SerializeField] TMP_InputField dobD;
     [SerializeField] TMP_InputField dobM;
     [SerializeField] TMP_InputField dobY;
@@ -34,12 +35,15 @@ public class UserConfigManager : MonoBehaviour
     public void AddUserInfoScreen1()
     {
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
+        string phoneNum = System.Text.RegularExpressions.Regex.Replace(phone.text, @"[^0-9]", string.Empty) ?? string.Empty;
         docRef.SetAsync(new Dictionary<string, object> {
             { "First", first.text },
             { "Last", last.text },
-            {"DOB", dobM.text + "/" + dobD.text + "/" + dobY.text}
+            {"DOB", dobM.text + "/" + dobD.text + "/" + dobY.text},
+            {"Phone", phoneNum}
+
         }, SetOptions.MergeAll);
-        Debug.Log("Added first, last, and date of birth");
+        Debug.Log("Added first, last, phone and date of birth");
         screens[0].SetActive(false);
         screens[1].SetActive(true);
     }
@@ -55,7 +59,7 @@ public class UserConfigManager : MonoBehaviour
         docRef.SetAsync(new Dictionary<string, object> {
             { "Traits", traits}
         }, SetOptions.MergeAll);
-        Debug.Log("Added first, last, and date of birth");
+        Debug.Log("Added traits");
         screens[1].SetActive(false);
         screens[2].SetActive(true);
         GameObject.Find("PermissionManager").GetComponent<CameraPermissionManager>().RequestCameraPermission();
@@ -94,7 +98,7 @@ public class UserConfigManager : MonoBehaviour
         docRef.SetAsync(new Dictionary<string, object> {
             { "Username", username.text}
         }, SetOptions.MergeAll);
-        Debug.Log("Added first, last, and date of birth");
+        Debug.Log("Added username and pfp");
         screens[3].SetActive(false);
         screens[4].SetActive(true);
     }

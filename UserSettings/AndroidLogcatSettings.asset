@@ -3,7 +3,7 @@
     "m_SelectedProcess": {
         "deviceId": "RFCN2053XJP",
         "name": "com.FrogCOO.Acts",
-        "processId": 25946,
+        "processId": 29670,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -198,6 +198,12 @@
             "deviceId": "RFCN2053XJP",
             "name": "com.FrogCOO.Acts",
             "processId": 25946,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCN2053XJP",
+            "name": "com.FrogCOO.Acts",
+            "processId": 29670,
             "exited": false
         }
     ],
