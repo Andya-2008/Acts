@@ -4,7 +4,7 @@ using UnityEditor.SceneManagement;
 
 [InitializeOnLoadAttribute]
 public static class DefaultSceneLoader
-{/*
+{
     static DefaultSceneLoader()
     {
         EditorApplication.playModeStateChanged += LoadDefaultScene;
@@ -21,6 +21,6 @@ public static class DefaultSceneLoader
         {
             EditorSceneManager.LoadScene(0);
         }
-    }*/
+    }
 }
 #endif

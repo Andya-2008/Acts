@@ -13,6 +13,7 @@ public class GoogleSignInHandler : MonoBehaviour
 
     void Start()
     {
+#if UNITY_ANDROID && !UNITY_EDITOR
         config = new GoogleSignInConfiguration
         {
             WebClientId = "982448249723-c2vjbtng9uv02f7dgg8s14iv3ija1aev.apps.googleusercontent.com",
@@ -23,6 +24,9 @@ public class GoogleSignInHandler : MonoBehaviour
 
         GoogleSignIn.Configuration = config;
         GoogleSignIn.DefaultInstance.SignOut();  // optional
+#else
+        Debug.Log("Google Sign-In only works on Android device.");
+#endif
     }
 
     public void SignInWithGoogle()

@@ -17,7 +17,7 @@ public class FirebaseINIT : MonoBehaviour
             if (dependencyStatus == DependencyStatus.Available)
             {
                 FirebaseApp app = FirebaseApp.DefaultInstance;
-                SceneManager.LoadScene("StartingScene");
+                SceneManager.LoadScene("AuthScene");
                 Debug.Log("Firebase is ready for use.");
             }
             else

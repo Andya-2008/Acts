@@ -1,69 +1,24 @@
-using Firebase.AI; // Use this directive now
-using System.Threading.Tasks;
-using Firebase.Extensions;
-using TMPro; // Example for UI
+using Firebase.AI;
 using UnityEngine;
-using Unity.VisualScripting;
-
+using System.Threading.Tasks;
+using static UnityEngine.ParticleSystem;
 
 public class GeminiTest : MonoBehaviour
 {
-
-    private FirebaseAI firebaseAI;
-    private GenerativeModel generativeModel;
-    [SerializeField] string prompt;
-    public string outputText;
-
-    private void Start()
+    async void Start()
     {
-        firebaseAI = FirebaseAI.DefaultInstance;
+        // Initialize the Vertex AI Gemini API backend service
+        var ai = FirebaseAI.GetInstance(FirebaseAI.Backend.VertexAI());
 
-        if(firebaseAI != null)
-        {
-            generativeModel = firebaseAI.GetGenerativeModel("gemini-pro");
+        // Create a GenerativeModel instance
+        var model = ai.GetGenerativeModel(modelName: "gemini-2.0-flash");
 
-            if(generativeModel != null)
-            {
-                Debug.Log("Gemini-Pro model reference obtained.");
-            }
-            else
-            {
-                Debug.LogError("Failed to get GenerativeModel instance.");
-            }
-        }
-        OnSendPromptButtonClicked(prompt);
-    }
-    public void OnSendPromptButtonClicked(string promptInput)
-    {
-        if (generativeModel == null)
-        {
-            Debug.LogError("Generative Model is not initialized.");
-            return;
-        }
+        // Provide a prompt
+        var prompt = $"Generate 10 different really really easy acts of service that anybody can do anywhere that correlates with one of the following personality traits: Environmentalist, Introvert" +
+                        "Only return the task. Keep it under 30 words. No explanation. Don't include the personality trait. Be specific. Things that take less than 10 minutes.";
 
-        Debug.Log($"Sending prompt: {promptInput}");
-
-        // Send the prompt and handle the response asynchronously
-        generativeModel.GenerateContentAsync(promptInput).ContinueWithOnMainThread(task => {
-            if (task.IsFaulted)
-            {
-                Debug.LogError("AI Logic call failed: " + task.Exception);
-                outputText = "Error: " + task.Exception.Message;
-            }
-            else if (task.IsCanceled)
-            {
-                Debug.LogWarning("AI Logic call was cancelled.");
-                outputText = "Operation cancelled.";
-            }
-            else
-            {
-                GenerateContentResponse response = task.Result; // Placeholder type
-                string generatedText = response.Text; // Access the generated text
-
-                Debug.Log("Generated Text: " + generatedText);
-                outputText = generatedText; // Update UI
-            }
-        });
-        Debug.Log("Outputted text:" + outputText);
+        // Generate content
+        var response = await model.GenerateContentAsync(prompt);
+        Debug.Log(response.Text ?? "No text in response.");
     }
 }

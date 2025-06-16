@@ -54,7 +54,7 @@ public class UserConfigManager : MonoBehaviour
         foreach(PersonalityButtonPress button in personalityButtons)
         {
             if(button.selected)
-            traits.Add(button.name + ": " + button.descriptionText.text);
+            traits.Add(button.name/* + ": " + button.descriptionText.text*/);
         }
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
         docRef.SetAsync(new Dictionary<string, object> {

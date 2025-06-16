@@ -29,7 +29,6 @@ public class CameraPermissionManager : MonoBehaviour
             PermissionCallbacks callbacks = new PermissionCallbacks();
             callbacks.PermissionGranted += PermissionCallbacks_PermissionGranted;
             callbacks.PermissionDenied += PermissionCallbacks_PermissionDenied;
-            callbacks.PermissionDeniedAndDontAskAgain += PermissionCallbacks_PermissionDeniedAndDontAskAgain;
 
             Permission.RequestUserPermission(Permission.Camera, callbacks);
         }
