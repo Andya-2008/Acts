@@ -10,70 +10,66 @@ using System.Threading.Tasks;
 public class FriendSearchUI : MonoBehaviour
 {
     public TMP_InputField inputField; // Can be email or username
-    public Button searchButton;
+    public Button searchAndSendButton;
     public TMP_Text resultText;
-    public Button sendRequestButton;
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-    private string foundUserId = null;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
-        searchButton.onClick.AddListener(OnSearchClicked);
-        sendRequestButton.onClick.AddListener(OnSendRequestClicked);
-        sendRequestButton.interactable = false;
+        searchAndSendButton.onClick.AddListener(OnSearchAndSendClicked);
     }
 
-    private async void OnSearchClicked()
+    private async void OnSearchAndSendClicked()
     {
         string query = inputField.text.Trim().ToLower();
         if (string.IsNullOrEmpty(query)) return;
 
         QuerySnapshot snapshot = await db.Collection("userInfo")
-            .WhereEqualTo("email", query)
+            .WhereEqualTo("Email", query)
             .GetSnapshotAsync();
 
         // If no match on email, try username
         if (snapshot.Count == 0)
         {
             snapshot = await db.Collection("userInfo")
-                .WhereEqualTo("username", query)
+                .WhereEqualTo("Username", query)
                 .GetSnapshotAsync();
         }
 
         if (snapshot.Count == 0)
         {
             resultText.text = "User not found.";
-            foundUserId = null;
-            sendRequestButton.interactable = false;
+            return;
         }
-        else
+
+        foreach (DocumentSnapshot doc in snapshot.Documents)
         {
-            foreach (DocumentSnapshot doc in snapshot.Documents)
+            string foundUserId = doc.Id;
+            string currentUserId = auth.CurrentUser.UserId;
+            if (foundUserId == currentUserId)
             {
-                foundUserId = doc.Id;
-                string name = doc.Contains("first") ? doc.GetValue<string>("first") : "Unknown";
-                resultText.text = $"Found: {name}";
-                sendRequestButton.interactable = true;
-                break; // Take the first match
+                resultText.text = "You cannot add yourself as a friend.";
+                return;
             }
-        }
-    }
 
-    private async void OnSendRequestClicked()
-    {
-        if (foundUserId == null) return;
+            string name = doc.TryGetValue<string>("first", out var firstName) ? firstName : "Unknown";
 
-        var friendManager = FindObjectOfType<FriendManager>();
-        if (friendManager != null)
-        {
-            await friendManager.SendFriendRequest(foundUserId);
-            resultText.text = "✅ Friend request sent!";
-            sendRequestButton.interactable = false;
+            var friendManager = FindFirstObjectByType<FriendManager>();
+            if (friendManager != null)
+            {
+                await friendManager.SendFriendRequest(foundUserId);
+                resultText.text = $"Friend request sent to {name}";
+            }
+            else
+            {
+                resultText.text = "Friend manager not found.";
+            }
+            break;
         }
     }
 }
