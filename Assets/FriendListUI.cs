@@ -7,6 +7,9 @@ using Firebase.Auth;
 using System.Threading.Tasks;
 using System.Collections;
 using UnityEngine.Networking;
+using System.IO;
+using System;
+using System.Linq;
 
 public class FriendListUI : MonoBehaviour
 {
@@ -15,11 +18,16 @@ public class FriendListUI : MonoBehaviour
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private Dictionary<string, Texture2D> imageCache = new Dictionary<string, Texture2D>();
+
+    private string cacheDir;
 
     void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
+        cacheDir = Path.Combine(Application.persistentDataPath, "ProfileImageCache");
+        if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
 
         LoadFriends();
     }
@@ -41,7 +49,6 @@ public class FriendListUI : MonoBehaviour
             string friendId = doc.Id;
             GameObject go = Instantiate(friendItemPrefab, friendListContainer);
 
-            // Load friend info
             var userDoc = await db.Collection("userInfo").Document(friendId).GetSnapshotAsync();
 
             string first = userDoc.TryGetValue<string>("First", out var f) ? f : "";
@@ -70,6 +77,26 @@ public class FriendListUI : MonoBehaviour
 
     private IEnumerator LoadProfileImage(string url, RawImage image)
     {
+        if (imageCache.ContainsKey(url))
+        {
+            image.texture = imageCache[url];
+            yield break;
+        }
+
+        string safeFileName = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(url))
+            .Replace("=", "").Replace("/", "_").Replace("+", "-");
+        string filePath = Path.Combine(cacheDir, safeFileName + ".png");
+
+        if (File.Exists(filePath))
+        {
+            byte[] bytes = File.ReadAllBytes(filePath);
+            Texture2D cachedTex = new Texture2D(2, 2);
+            cachedTex.LoadImage(bytes);
+            image.texture = cachedTex;
+            imageCache[url] = cachedTex;
+            yield break;
+        }
+
         using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(url))
         {
             yield return request.SendWebRequest();
@@ -77,6 +104,16 @@ public class FriendListUI : MonoBehaviour
             {
                 Texture2D texture = ((DownloadHandlerTexture)request.downloadHandler).texture;
                 image.texture = texture;
+                imageCache[url] = texture;
+
+                try
+                {
+                    File.WriteAllBytes(filePath, texture.EncodeToPNG());
+                }
+                catch (IOException e)
+                {
+                    Debug.LogWarning("Failed to save profile image to cache: " + e.Message);
+                }
             }
             else
             {
