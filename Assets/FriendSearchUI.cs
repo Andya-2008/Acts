@@ -57,7 +57,7 @@ public class FriendSearchUI : MonoBehaviour
                 return;
             }
 
-            string name = doc.TryGetValue<string>("first", out var firstName) ? firstName : "Unknown";
+            string name = doc.TryGetValue<string>("First", out var firstName) ? firstName : "Unknown";
 
             var friendManager = FindFirstObjectByType<FriendManager>();
             if (friendManager != null)

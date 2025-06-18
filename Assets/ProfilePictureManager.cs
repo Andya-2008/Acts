@@ -1,10 +1,13 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using Firebase;
 using Firebase.Auth;
 using Firebase.Storage;
 using System.Threading.Tasks;
 using System.IO;
+using Firebase.Firestore;
+using System.Collections.Generic;
+using System;
 
 public class ProfilePictureManager : MonoBehaviour
 {
@@ -64,20 +67,37 @@ public class ProfilePictureManager : MonoBehaviour
         }, "Select a Profile Picture", "image/*");
     }
 
-    public void UploadProfilePicture(Texture2D texture)
+    public async void UploadProfilePicture(Texture2D texture)
     {
         byte[] imageBytes = texture.EncodeToPNG();
         string userId = auth.CurrentUser.UserId;
         string storagePath = $"profile_pictures/{userId}.png";
         StorageReference storageRef = storage.GetReference(storagePath);
 
-        storageRef.PutBytesAsync(imageBytes).ContinueWith(task =>
+        try
         {
-            if (task.IsFaulted || task.IsCanceled)
-                Debug.LogError("Upload failed: " + task.Exception);
-            else
-                Debug.Log("Upload successful");
+            // Upload image bytes
+            await storageRef.PutBytesAsync(imageBytes);
+            Debug.Log("✅ Upload successful");
+
+            // Get download URL
+            Uri uri = await storageRef.GetDownloadUrlAsync();
+            string downloadUrl = uri.ToString();
+            Debug.Log("✅ Download URL: " + downloadUrl);
+
+            // Save URL to Firestore
+            FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
+            await db.Collection("userInfo").Document(userId).UpdateAsync(new Dictionary<string, object>
+        {
+            { "profilePicUrl", downloadUrl }
         });
+
+            Debug.Log("✅ Firestore updated with profilePicUrl");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("❌ Upload failed: " + ex.Message);
+        }
     }
 
     public void LoadProfilePicture()
