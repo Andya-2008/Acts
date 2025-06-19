@@ -4,34 +4,34 @@ using UnityEngine.UI;
 using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
+using Firebase.Storage;
 using System.Threading.Tasks;
+using System.Collections;
+using UnityEngine.Networking;
+using System.IO;
 
 public class TaskListUI : MonoBehaviour
 {
     public GameObject taskItemPrefab;
     public Transform taskContainer;
-    public TaskAssigner taskManager;
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private FirebaseStorage storage;
 
-    async void Start()
+    void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
+        storage = FirebaseStorage.DefaultInstance;
 
-        bool shouldAssign = await taskManager.ShouldReassignTasksToday();
-        if (shouldAssign)
-        {
-            await taskManager.AssignTaskForToday();
-        }
-
-        await LoadTasks();
+        LoadTasks();
     }
 
-    public async Task LoadTasks()
+    public async void LoadTasks()
     {
-        foreach (Transform child in taskContainer) Destroy(child.gameObject);
+        foreach (Transform child in taskContainer)
+            Destroy(child.gameObject);
 
         string userId = auth.CurrentUser.UserId;
         var docRef = db.Collection("userInfo").Document(userId).Collection("dailyTask").Document("today");
@@ -47,9 +47,9 @@ public class TaskListUI : MonoBehaviour
             if (data == null) continue;
 
             string taskId = data["taskId"].ToString();
-            string text = data.ContainsKey("textShort") ? data["textShort"].ToString() : "(No Text)";
+            string text = data["textShort"].ToString();
             string difficulty = data.ContainsKey("difficulty") ? data["difficulty"].ToString() : "?";
-            bool completed = data.ContainsKey("completed") && (bool)data["completed"];
+            bool completed = (bool)data["completed"];
 
             GameObject taskGO = Instantiate(taskItemPrefab, taskContainer);
             taskGO.transform.Find("TaskText").GetComponent<TMP_Text>().text = text;
@@ -59,16 +59,22 @@ public class TaskListUI : MonoBehaviour
             var buttonText = taskGO.transform.Find("ToggleButton/ToggleButtonText").GetComponent<TMP_Text>();
             buttonText.text = completed ? "Complete" : "Incomplete";
 
-            toggleButton.interactable = true;
-            toggleButton.onClick.AddListener(async () =>
+            toggleButton.onClick.AddListener(() => ToggleTaskCompletion(taskId));
+
+            var photoButton = taskGO.transform.Find("PhotoButton").GetComponent<Button>();
+            photoButton.interactable = completed;
+            if (completed)
             {
-                await ToggleTaskCompletion(taskId);
-                await LoadTasks();
-            });
+                photoButton.onClick.AddListener(() => PickAndUploadTaskPhoto(taskId));
+            }
+
+            // Load existing task photo (if any)
+            RawImage image = taskGO.transform.Find("TaskImage").GetComponent<RawImage>();
+            LoadTaskPhotoIfExists(taskId, image);
         }
     }
 
-    public async Task ToggleTaskCompletion(string taskId)
+    public async void ToggleTaskCompletion(string taskId)
     {
         string userId = auth.CurrentUser.UserId;
         var docRef = db.Collection("userInfo").Document(userId).Collection("dailyTask").Document("today");
@@ -82,8 +88,6 @@ public class TaskListUI : MonoBehaviour
         foreach (var raw in rawTasks)
         {
             var task = raw as Dictionary<string, object>;
-            if (task == null || !task.ContainsKey("taskId")) continue;
-
             if (task["taskId"].ToString() == taskId)
             {
                 bool completed = (bool)task["completed"];
@@ -93,8 +97,7 @@ public class TaskListUI : MonoBehaviour
 
                 if (!completed)
                 {
-                    await historyRef.SetAsync(new Dictionary<string, object>
-                    {
+                    await historyRef.SetAsync(new Dictionary<string, object> {
                         { "completedAt", Timestamp.GetCurrentTimestamp() }
                     });
                 }
@@ -103,13 +106,95 @@ public class TaskListUI : MonoBehaviour
                     await historyRef.DeleteAsync();
                 }
             }
-
             updatedTasks.Add(task);
         }
 
-        await docRef.UpdateAsync(new Dictionary<string, object>
+        await docRef.UpdateAsync(new Dictionary<string, object> { { "tasks", updatedTasks } });
+        LoadTasks();
+    }
+
+    public void PickAndUploadTaskPhoto(string taskId)
+    {
+        NativeGallery.GetImageFromGallery(path =>
         {
-            { "tasks", updatedTasks }
-        });
+            if (path != null)
+            {
+                Texture2D texture = NativeGallery.LoadImageAtPath(path, 1024, false);
+                if (texture != null)
+                {
+                    StartCoroutine(UploadTaskPhoto(taskId, texture));
+                }
+            }
+        }, "Select a photo for your task", "image/*");
+    }
+
+    private IEnumerator UploadTaskPhoto(string taskId, Texture2D texture)
+    {
+        string userId = auth.CurrentUser.UserId;
+        string storagePath = $"task_photos/{userId}/{taskId}.png";
+        StorageReference storageRef = storage.GetReference(storagePath);
+
+        byte[] pngData = texture.EncodeToPNG();
+        var uploadTask = storageRef.PutBytesAsync(pngData);
+        yield return new WaitUntil(() => uploadTask.IsCompleted);
+
+        if (uploadTask.IsFaulted || uploadTask.IsCanceled)
+        {
+            Debug.LogError("Failed to upload task photo.");
+            yield break;
+        }
+
+        var getUrlTask = storageRef.GetDownloadUrlAsync();
+        yield return new WaitUntil(() => getUrlTask.IsCompleted);
+
+        if (!getUrlTask.IsFaulted && !getUrlTask.IsCanceled)
+        {
+            string downloadUrl = getUrlTask.Result.ToString();
+            Task saveTask = db.Collection("userInfo").Document(userId)
+                .Collection("taskPhotos").Document(taskId)
+                .SetAsync(new Dictionary<string, object> {
+                    { "url", downloadUrl },
+                    { "uploadedAt", Timestamp.GetCurrentTimestamp() }
+                });
+            yield return new WaitUntil(() => saveTask.IsCompleted);
+
+            if (saveTask.IsFaulted || saveTask.IsCanceled)
+            {
+                Debug.LogError("Failed to save task photo URL to Firestore.");
+            }
+            else
+            {
+                Debug.Log("✅ Task photo uploaded and URL saved.");
+                LoadTasks(); // Refresh to show new image
+            }
+        }
+    }
+
+    private async void LoadTaskPhotoIfExists(string taskId, RawImage image)
+    {
+        string userId = auth.CurrentUser.UserId;
+        var photoDoc = await db.Collection("userInfo").Document(userId)
+            .Collection("taskPhotos").Document(taskId).GetSnapshotAsync();
+
+        if (photoDoc.Exists && photoDoc.ContainsField("url"))
+        {
+            string url = photoDoc.GetValue<string>("url");
+            UnityWebRequest req = UnityWebRequestTexture.GetTexture(url);
+            await req.SendWebRequest();
+
+            if (req.result == UnityWebRequest.Result.Success)
+            {
+                image.texture = ((DownloadHandlerTexture)req.downloadHandler).texture;
+                image.gameObject.SetActive(true);
+            }
+            else
+            {
+                image.gameObject.SetActive(false);
+            }
+        }
+        else
+        {
+            image.gameObject.SetActive(false);
+        }
     }
 }
