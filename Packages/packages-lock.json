@@ -93,7 +93,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.adaptiveperformance": {
-      "version": "5.1.2",
+      "version": "5.1.4",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -110,6 +110,15 @@
         "com.unity.modules.androidjni": "1.0.0",
         "com.unity.modules.subsystems": "1.0.0",
         "com.unity.adaptiveperformance": "5.1.0"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.adaptiveperformance.samsung.android": {
+      "version": "5.0.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.adaptiveperformance": "5.0.0"
       },
       "url": "https://packages.unity.com"
     },
@@ -170,7 +179,7 @@
       "source": "builtin",
       "dependencies": {
         "com.unity.mobile.android-logcat": "1.4.4",
-        "com.unity.adaptiveperformance": "5.1.2",
+        "com.unity.adaptiveperformance": "5.1.4",
         "com.unity.mobile.notifications": "2.4.0"
       }
     },
