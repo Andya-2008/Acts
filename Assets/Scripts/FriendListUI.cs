@@ -34,6 +34,9 @@ public class FriendListUI : MonoBehaviour
 
     public async void LoadFriends()
     {
+        if (this == null || gameObject == null || !gameObject.activeInHierarchy)
+            return;
+
         foreach (Transform child in friendListContainer)
         {
             Destroy(child.gameObject);
@@ -44,12 +47,21 @@ public class FriendListUI : MonoBehaviour
             .Collection("friends")
             .GetSnapshotAsync();
 
+        if (this == null || gameObject == null || !gameObject.activeInHierarchy)
+            return;
+
         foreach (var doc in friendsSnap.Documents)
         {
+            if (this == null || gameObject == null || !gameObject.activeInHierarchy)
+                break;
+
             string friendId = doc.Id;
             GameObject go = Instantiate(friendItemPrefab, friendListContainer);
 
             var userDoc = await db.Collection("userInfo").Document(friendId).GetSnapshotAsync();
+
+            if (this == null || gameObject == null || !gameObject.activeInHierarchy)
+                break;
 
             string first = userDoc.TryGetValue<string>("First", out var f) ? f : "";
             string last = userDoc.TryGetValue<string>("Last", out var l) ? l : "";
@@ -70,7 +82,7 @@ public class FriendListUI : MonoBehaviour
             Button unfriendBtn = go.transform.Find("UnfriendButton").GetComponent<Button>();
             unfriendBtn.onClick.AddListener(async () => {
                 await UnfriendUser(friendId);
-                LoadFriends();
+                LoadFriends(); // reload
             });
         }
     }

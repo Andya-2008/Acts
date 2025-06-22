@@ -34,6 +34,15 @@ public class DeedFeedUI : MonoBehaviour
             Destroy(child.gameObject);
 
         string userId = auth.CurrentUser.UserId;
+
+        // Get current user's friends
+        QuerySnapshot friendsSnap = await db.Collection("userInfo").Document(userId).Collection("friends").GetSnapshotAsync();
+        HashSet<string> friendsSet = new HashSet<string>();
+        foreach (DocumentSnapshot doc in friendsSnap.Documents)
+        {
+            friendsSet.Add(doc.Id);
+        }
+
         Query query = db.Collection("deeds").OrderByDescending("timestamp");
         QuerySnapshot snapshot = await query.GetSnapshotAsync();
 
@@ -43,7 +52,7 @@ public class DeedFeedUI : MonoBehaviour
                 break;
 
             Dictionary<string, object> data = doc.ToDictionary();
-            if (!data.ContainsKey("userId") || data["userId"].ToString() != userId) continue;
+            if (!data.ContainsKey("userId") || !friendsSet.Contains(data["userId"].ToString())) continue;
 
             GameObject deedGO = Instantiate(deedItemPrefab, deedContainer);
             deedGO.transform.Find("UsernameText").GetComponent<TMP_Text>().text = data.ContainsKey("username") ? data["username"].ToString() : "Unknown";
@@ -123,25 +132,40 @@ public class DeedFeedUI : MonoBehaviour
             {
                 var data = task.Result.ToDictionary();
 
-                Dictionary<string, object> userReactions = data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> ur ? ur : new Dictionary<string, object>();
-                string prevReaction = userReactions.ContainsKey(userId) ? userReactions[userId].ToString() : null;
+                Dictionary<string, object> userReactions = data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> ur
+                    ? ur
+                    : new Dictionary<string, object>();
 
+                string prevReaction = userReactions.ContainsKey(userId) ? userReactions[userId].ToString() : null;
                 var updates = new Dictionary<string, object>();
 
-                if (prevReaction == reactionType) return; // no-op if same
+                if (prevReaction == reactionType)
+                {
+                    // Remove the reaction
+                    updates[$"reactions.{reactionType}"] = FieldValue.Increment(-1);
+                    updates[$"userReactions.{userId}"] = FieldValue.Delete;
+                    Debug.Log($"🔄 Removed user reaction: {reactionType}");
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(prevReaction))
+                        updates[$"reactions.{prevReaction}"] = FieldValue.Increment(-1);
 
-                if (!string.IsNullOrEmpty(prevReaction))
-                    updates[$"reactions.{prevReaction}"] = FieldValue.Increment(-1);
-
-                updates[$"reactions.{reactionType}"] = FieldValue.Increment(1);
-                updates[$"userReactions.{userId}"] = reactionType;
+                    updates[$"reactions.{reactionType}"] = FieldValue.Increment(1);
+                    updates[$"userReactions.{userId}"] = reactionType;
+                    Debug.Log($"🔁 Changed reaction from {prevReaction ?? "none"} to {reactionType}");
+                }
 
                 deedRef.UpdateAsync(updates).ContinueWithOnMainThread(updateTask =>
                 {
                     if (updateTask.IsCompleted)
                     {
-                        Debug.Log("✅ Reaction updated to: " + reactionType);
+                        Debug.Log("✅ Reaction update completed");
                         LoadDeeds();
+                    }
+                    else
+                    {
+                        Debug.LogError("❌ Reaction update failed");
                     }
                 });
             }

@@ -10,10 +10,29 @@ public class TaskAssigner : MonoBehaviour
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
-    void Start()
+    private async void Start()
     {
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
+
+        // Wait until user is authenticated
+        while (auth.CurrentUser == null)
+        {
+            await Task.Delay(100); // wait 100ms and try again
+        }
+
+        Debug.Log("✅ Authenticated user found: " + auth.CurrentUser.UserId);
+
+        bool shouldReassign = await ShouldReassignTasksToday();
+        if (shouldReassign)
+        {
+            Debug.Log("📌 Assigning tasks for today...");
+            await AssignTaskForToday();
+        }
+        else
+        {
+            Debug.Log("📅 Tasks already assigned today.");
+        }
     }
 
     public async Task<bool> ShouldReassignTasksToday()
