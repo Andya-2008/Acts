@@ -177,7 +177,6 @@ public class TaskListUI : MonoBehaviour
             }
             else
             {
-                Debug.Log("✅ Task photo uploaded and URL saved.");
                 LoadTasks();
             }
         }
@@ -260,10 +259,6 @@ public class TaskListUI : MonoBehaviour
         if (deedUploadTask.Exception != null)
         {
             Debug.LogError("❌ Failed to upload to Deed Feed: " + deedUploadTask.Exception);
-        }
-        else
-        {
-            Debug.Log("✅ Deed uploaded to feed!");
         }
     }
 }

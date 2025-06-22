@@ -23,14 +23,12 @@ public class PersonalityButtonPress : MonoBehaviour
         if (!selected)
         {
             shader.GetComponent<Image>().enabled = true;
-            Debug.Log("Shaded");
             selected = true;
         }
 
         else if (selected)
         {
             shader.GetComponent<Image>().enabled = false;
-            Debug.Log("Not shaded");
             selected = false;
         }
     }

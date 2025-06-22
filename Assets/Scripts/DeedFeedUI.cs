@@ -13,9 +13,13 @@ public class DeedFeedUI : MonoBehaviour
 {
     public GameObject deedItemPrefab;
     public Transform deedContainer;
+    public ScrollRect scrollRect;
+    public float pullThreshold = 100f;
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+    private bool isPulling = false;
+    private float pullStartY = 0f;
 
     void Start()
     {
@@ -24,6 +28,50 @@ public class DeedFeedUI : MonoBehaviour
 
         LoadDeeds();
     }
+
+    void Update()
+    {
+        if (scrollRect == null || scrollRect.verticalNormalizedPosition < 0.98f)
+            return;
+
+#if UNITY_EDITOR || UNITY_STANDALONE || UNITY_WEBGL
+        if (Input.GetMouseButtonDown(0))
+        {
+            isPulling = true;
+            pullStartY = Input.mousePosition.y;
+        }
+        else if (Input.GetMouseButtonUp(0) && isPulling)
+        {
+            float pullDelta = Input.mousePosition.y - pullStartY;
+            if (pullDelta < -pullThreshold)
+            {
+                LoadDeeds();
+            }
+            isPulling = false;
+        }
+#elif UNITY_IOS || UNITY_ANDROID
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Began)
+            {
+                isPulling = true;
+                pullStartY = touch.position.y;
+            }
+            else if (touch.phase == TouchPhase.Ended && isPulling)
+            {
+                float pullDelta = touch.position.y - pullStartY;
+                if (pullDelta < -pullThreshold)
+                {
+                    LoadDeeds();
+                }
+                isPulling = false;
+            }
+        }
+#endif
+    }
+
 
     public async void LoadDeeds()
     {
@@ -35,7 +83,6 @@ public class DeedFeedUI : MonoBehaviour
 
         string userId = auth.CurrentUser.UserId;
 
-        // Get current user's friends
         QuerySnapshot friendsSnap = await db.Collection("userInfo").Document(userId).Collection("friends").GetSnapshotAsync();
         HashSet<string> friendsSet = new HashSet<string>();
         foreach (DocumentSnapshot doc in friendsSnap.Documents)
@@ -67,16 +114,9 @@ public class DeedFeedUI : MonoBehaviour
                 StartCoroutine(LoadImage(profilePicUrl, deedGO.transform.Find("ProfileImage")?.GetComponent<RawImage>()));
 
             var deedRef = db.Collection("deeds").Document(doc.Id);
-            Dictionary<string, object> reactions = new Dictionary<string, object>();
-            Dictionary<string, object> userReactions = new Dictionary<string, object>();
+            Dictionary<string, object> reactions = data.ContainsKey("reactions") && data["reactions"] is Dictionary<string, object> rawReactions ? new Dictionary<string, object>(rawReactions) : new Dictionary<string, object>();
+            Dictionary<string, object> userReactions = data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> rawUserReactions ? new Dictionary<string, object>(rawUserReactions) : new Dictionary<string, object>();
 
-            if (data.ContainsKey("reactions") && data["reactions"] is Dictionary<string, object> rawReactions)
-                reactions = new Dictionary<string, object>(rawReactions);
-
-            if (data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> rawUserReactions)
-                userReactions = new Dictionary<string, object>(rawUserReactions);
-
-            Debug.Log("📥 Loaded reactions: " + string.Join(", ", reactions));
 
             AddReactionListeners(deedGO, deedRef, reactions, userReactions);
         }
@@ -93,8 +133,6 @@ public class DeedFeedUI : MonoBehaviour
         Button heartBtn = deedGO.transform.Find("HeartButton")?.GetComponent<Button>();
         Button hugBtn = deedGO.transform.Find("HugButton")?.GetComponent<Button>();
         Button wowBtn = deedGO.transform.Find("WowButton")?.GetComponent<Button>();
-
-        Debug.Log("💬 Setting counts. Like: " + GetReactionCount(reactions, "like") + ", Heart: " + GetReactionCount(reactions, "heart") + ", Hug: " + GetReactionCount(reactions, "hug") + ", Wow: " + GetReactionCount(reactions, "wow"));
 
         if (likeText != null) likeText.text = GetReactionCount(reactions, "like");
         if (heartText != null) heartText.text = GetReactionCount(reactions, "heart");
@@ -132,19 +170,15 @@ public class DeedFeedUI : MonoBehaviour
             {
                 var data = task.Result.ToDictionary();
 
-                Dictionary<string, object> userReactions = data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> ur
-                    ? ur
-                    : new Dictionary<string, object>();
-
+                Dictionary<string, object> userReactions = data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> ur ? ur : new Dictionary<string, object>();
                 string prevReaction = userReactions.ContainsKey(userId) ? userReactions[userId].ToString() : null;
+
                 var updates = new Dictionary<string, object>();
 
                 if (prevReaction == reactionType)
                 {
-                    // Remove the reaction
-                    updates[$"reactions.{reactionType}"] = FieldValue.Increment(-1);
+                    updates[$"reactions.{prevReaction}"] = FieldValue.Increment(-1);
                     updates[$"userReactions.{userId}"] = FieldValue.Delete;
-                    Debug.Log($"🔄 Removed user reaction: {reactionType}");
                 }
                 else
                 {
@@ -153,19 +187,13 @@ public class DeedFeedUI : MonoBehaviour
 
                     updates[$"reactions.{reactionType}"] = FieldValue.Increment(1);
                     updates[$"userReactions.{userId}"] = reactionType;
-                    Debug.Log($"🔁 Changed reaction from {prevReaction ?? "none"} to {reactionType}");
                 }
 
                 deedRef.UpdateAsync(updates).ContinueWithOnMainThread(updateTask =>
                 {
                     if (updateTask.IsCompleted)
                     {
-                        Debug.Log("✅ Reaction update completed");
                         LoadDeeds();
-                    }
-                    else
-                    {
-                        Debug.LogError("❌ Reaction update failed");
                     }
                 });
             }
@@ -178,7 +206,6 @@ public class DeedFeedUI : MonoBehaviour
         {
             if (reactions != null && reactions.TryGetValue(key, out object value))
             {
-                Debug.Log($"🔍 {key} value raw: {value}, type: {value?.GetType()}");
                 if (value is long longVal) return longVal.ToString();
                 if (value is int intVal) return intVal.ToString();
                 if (int.TryParse(value.ToString(), out int parsed)) return parsed.ToString();

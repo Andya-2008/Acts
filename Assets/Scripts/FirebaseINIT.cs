@@ -18,7 +18,6 @@ public class FirebaseINIT : MonoBehaviour
             {
                 FirebaseApp app = FirebaseApp.DefaultInstance;
                 SceneManager.LoadScene("AuthScene");
-                Debug.Log("Firebase is ready for use.");
             }
             else
             {

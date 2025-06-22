@@ -78,12 +78,10 @@ public class ProfilePictureManager : MonoBehaviour
         {
             // Upload image bytes
             await storageRef.PutBytesAsync(imageBytes);
-            Debug.Log("✅ Upload successful");
 
             // Get download URL
             Uri uri = await storageRef.GetDownloadUrlAsync();
             string downloadUrl = uri.ToString();
-            Debug.Log("✅ Download URL: " + downloadUrl);
 
             // Save URL to Firestore
             FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
@@ -92,7 +90,6 @@ public class ProfilePictureManager : MonoBehaviour
             { "profilePicUrl", downloadUrl }
         });
 
-            Debug.Log("✅ Firestore updated with profilePicUrl");
         }
         catch (System.Exception ex)
         {

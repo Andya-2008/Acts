@@ -20,7 +20,6 @@ public class PushNotificationManager : MonoBehaviour
             // Request permission on iOS (necessary for notifications to show)
             Firebase.Messaging.FirebaseMessaging.RequestPermissionAsync().ContinueWith(permissionTask => {
                 var authStatus = Firebase.Messaging.FirebaseMessaging.AuthorizationStatus;
-                Debug.Log("iOS Permission status: " + authStatus);
             });
 #elif UNITY_ANDROID
         if (!Permission.HasUserAuthorizedPermission("android.permission.POST_NOTIFICATIONS"))
@@ -28,8 +27,6 @@ public class PushNotificationManager : MonoBehaviour
             Permission.RequestUserPermission("android.permission.POST_NOTIFICATIONS");
         }
 #endif
-
-        Debug.Log("Firebase Initialized and Push Notifications Ready.");
     }
 
     // Called when device receives a new FCM registration token

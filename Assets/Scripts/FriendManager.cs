@@ -31,8 +31,6 @@ public class FriendManager : MonoBehaviour
 
         await sentRef.SetAsync(request);
         await receivedRef.SetAsync(request);
-
-        Debug.Log($"✅ Friend request sent to {targetUserId}");
     }
 
     public async Task AcceptFriendRequest(string senderUserId)
@@ -50,8 +48,6 @@ public class FriendManager : MonoBehaviour
         // Delete requests
         await db.Collection("userInfo").Document(myUserId).Collection("friendRequestsReceived").Document(senderUserId).DeleteAsync();
         await db.Collection("userInfo").Document(senderUserId).Collection("friendRequestsSent").Document(myUserId).DeleteAsync();
-
-        Debug.Log($"🤝 Friend request accepted from {senderUserId}");
     }
 
     public async Task RejectFriendRequest(string senderUserId)
@@ -60,8 +56,6 @@ public class FriendManager : MonoBehaviour
 
         await db.Collection("userInfo").Document(myUserId).Collection("friendRequestsReceived").Document(senderUserId).UpdateAsync(new Dictionary<string, object> { { "status", "rejected" } });
         await db.Collection("userInfo").Document(senderUserId).Collection("friendRequestsSent").Document(myUserId).UpdateAsync(new Dictionary<string, object> { { "status", "rejected" } });
-
-        Debug.Log($"❌ Friend request rejected from {senderUserId}");
     }
 
     public async Task<List<string>> GetAcceptedFriends()

@@ -67,7 +67,7 @@ public class TaskCSVUploader : MonoBehaviour
                 .ContinueWith(task =>
                 {
                     if (task.IsCompleted && !task.IsFaulted)
-                        Debug.Log($"[✔] Synced task: {taskId}");
+                    { }
                     else
                         Debug.LogError($"[✘] Failed to sync task {taskId}: {task.Exception}");
                 });

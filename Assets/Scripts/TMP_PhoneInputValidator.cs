@@ -9,7 +9,6 @@ public class TMP_InputFieldPhoneNumberValidator : MonoBehaviour
     }
     private void phoneValueChanged(string svalue)
     {
-        Debug.Log("phoneValueChanged " + svalue);
         //first strip all non-numeric values. Here I use a regex to strip out any non-numeric values. This could be done multiple different ways, I just chose regex for brevity.
         string snum = System.Text.RegularExpressions.Regex.Replace(svalue, @"[^0-9]", string.Empty) ?? string.Empty;
         //now ensure is less than max number count in a US phone number. In this example it's 10 as we don't allow the US country code (leading 1)

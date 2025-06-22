@@ -129,16 +129,11 @@ public class FirebaseAuthManager : MonoBehaviour
 
             if (!signedIn && user != null)
             {
-                Debug.Log("Signed out " + user.UserId);
                 ClearLoginInputFieldText();
             }
 
             user = auth.CurrentUser;
 
-            if (signedIn)
-            {
-                Debug.Log("Signed in " + user.UserId);
-            }
         }
     }
 
@@ -194,7 +189,6 @@ public class FirebaseAuthManager : MonoBehaviour
         {
             user = loginTask.Result.User;
 
-            Debug.LogFormat("{0} You Are Successfully Logged In", user.DisplayName);
             loadingScreen.SetActive(false);
             loginScreen.SetActive(false);
             registerScreen.SetActive(false);
@@ -310,7 +304,6 @@ public class FirebaseAuthManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log("Registration Sucessful Welcome " + user.DisplayName);
                     GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateUserAuthData(email,user);
                     //UIManager.Instance.OpenLoginPanel();loadingScreen.SetActive(false);
                     loadingScreen.SetActive(false);
@@ -359,7 +352,7 @@ public class FirebaseAuthManager : MonoBehaviour
     }
     private void OnLoginCompleted(object sender, EventArgs e)
     {
-        Debug.Log(message: "Sign In Done");
+
     }
     public void CheckUserConfig(Action<bool> callback)
     {

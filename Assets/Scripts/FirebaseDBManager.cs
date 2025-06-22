@@ -32,7 +32,7 @@ public class FirebaseDBManager : MonoBehaviour
         {
             if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
             {
-                Debug.Log("Added data to the user document in the users collection.");
+
             }
             else
             {

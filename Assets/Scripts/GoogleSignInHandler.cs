@@ -24,8 +24,6 @@ public class GoogleSignInHandler : MonoBehaviour
 
         GoogleSignIn.Configuration = config;
         GoogleSignIn.DefaultInstance.SignOut();  // optional
-#else
-        Debug.Log("Google Sign-In only works on Android device.");
 #endif
     }
 

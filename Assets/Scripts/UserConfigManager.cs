@@ -44,7 +44,6 @@ public class UserConfigManager : MonoBehaviour
             {"Phone", phoneNum}
 
         }, SetOptions.MergeAll);
-        Debug.Log("Added first, last, phone and date of birth");
         screens[0].SetActive(false);
         screens[1].SetActive(true);
     }
@@ -60,7 +59,6 @@ public class UserConfigManager : MonoBehaviour
         docRef.SetAsync(new Dictionary<string, object> {
             { "Traits", traits}
         }, SetOptions.MergeAll);
-        Debug.Log("Added traits");
         screens[1].SetActive(false);
         screens[2].SetActive(true);
         GameObject.Find("PermissionManager").GetComponent<CameraPermissionManager>().RequestCameraPermission();
@@ -80,15 +78,9 @@ public class UserConfigManager : MonoBehaviour
             Debug.LogError("Doesn't have notification permission");
             return;
         }
-
-#elif UNITY_IOS
-        // iOS automatically prompts the first time camera is accessed.
-        // You just need to provide a usage description (see next step).
-        Debug.Log("iOS will request camera permission automatically when used.");
 #endif
 
 
-        Debug.Log("Added Permissions");
         screens[2].SetActive(false);
         screens[3].SetActive(true);
     }
@@ -99,7 +91,6 @@ public class UserConfigManager : MonoBehaviour
         docRef.SetAsync(new Dictionary<string, object> {
             { "Username", username.text}
         }, SetOptions.MergeAll);
-        Debug.Log("Added username and pfp");
         screens[3].SetActive(false);
         screens[4].SetActive(true);
         UserConfigFinished();

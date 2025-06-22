@@ -21,17 +21,11 @@ public class TaskAssigner : MonoBehaviour
             await Task.Delay(100); // wait 100ms and try again
         }
 
-        Debug.Log("✅ Authenticated user found: " + auth.CurrentUser.UserId);
 
         bool shouldReassign = await ShouldReassignTasksToday();
         if (shouldReassign)
         {
-            Debug.Log("📌 Assigning tasks for today...");
             await AssignTaskForToday();
-        }
-        else
-        {
-            Debug.Log("📅 Tasks already assigned today.");
         }
     }
 
