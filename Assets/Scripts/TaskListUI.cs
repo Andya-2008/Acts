@@ -18,6 +18,7 @@ public class TaskListUI : MonoBehaviour
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseStorage storage;
+    private HashSet<string> uploadedTaskIds = new HashSet<string>();
 
     void Start()
     {
@@ -30,6 +31,8 @@ public class TaskListUI : MonoBehaviour
 
     public async void LoadTasks()
     {
+        uploadedTaskIds.Clear();
+
         foreach (Transform child in taskContainer)
             Destroy(child.gameObject);
 
@@ -68,9 +71,19 @@ public class TaskListUI : MonoBehaviour
                 photoButton.onClick.AddListener(() => PickAndUploadTaskPhoto(taskId));
             }
 
-            // Load existing task photo (if any)
             RawImage image = taskGO.transform.Find("TaskImage").GetComponent<RawImage>();
             LoadTaskPhotoIfExists(taskId, image);
+
+            Button deedButton = taskGO.transform.Find("UploadButton").GetComponent<Button>();
+            deedButton.interactable = completed && !uploadedTaskIds.Contains(taskId);
+            deedButton.onClick.AddListener(() =>
+            {
+                if (!uploadedTaskIds.Contains(taskId))
+                {
+                    uploadedTaskIds.Add(taskId);
+                    StartCoroutine(UploadToDeedFeed(taskId, text));
+                }
+            });
         }
     }
 
@@ -165,7 +178,7 @@ public class TaskListUI : MonoBehaviour
             else
             {
                 Debug.Log("✅ Task photo uploaded and URL saved.");
-                LoadTasks(); // Refresh to show new image
+                LoadTasks();
             }
         }
     }
@@ -199,6 +212,58 @@ public class TaskListUI : MonoBehaviour
         else if (image != null && image.gameObject != null)
         {
             image.gameObject.SetActive(false);
+        }
+    }
+
+    private IEnumerator UploadToDeedFeed(string taskId, string prompt)
+    {
+        string userId = auth.CurrentUser.UserId;
+
+        var photoDocTask = db.Collection("userInfo").Document(userId)
+            .Collection("taskPhotos").Document(taskId).GetSnapshotAsync();
+        yield return new WaitUntil(() => photoDocTask.IsCompleted);
+
+        DocumentSnapshot photoDoc = photoDocTask.Result;
+        if (!photoDoc.Exists || !photoDoc.ContainsField("url"))
+        {
+            Debug.LogWarning("No photo to upload to deed feed.");
+            yield break;
+        }
+
+        string photoUrl = photoDoc.GetValue<string>("url");
+
+        var userDocTask = db.Collection("userInfo").Document(userId).GetSnapshotAsync();
+        yield return new WaitUntil(() => userDocTask.IsCompleted);
+
+        DocumentSnapshot userDoc = userDocTask.Result;
+        string username = userDoc.ContainsField("Username") ? userDoc.GetValue<string>("Username") : "Unknown";
+        string profilePicUrl = userDoc.ContainsField("profilePicUrl") ? userDoc.GetValue<string>("profilePicUrl") : "";
+        List<string> traits = userDoc.ContainsField("Traits") ? new List<string>(userDoc.GetValue<List<string>>("Traits")) : new List<string>();
+
+        Dictionary<string, object> deedData = new Dictionary<string, object>
+        {
+            { "userId", userId },
+            { "username", username },
+            { "profilePicUrl", profilePicUrl },
+            { "prompt", prompt },
+            { "photoUrl", photoUrl },
+            { "timestamp", Timestamp.GetCurrentTimestamp() },
+            { "traits", traits },
+            { "reactions", new Dictionary<string, object> {
+                { "like", 0 }, { "heart", 0 }, { "hug", 0 }, { "wow", 0 }
+            }}
+        };
+
+        var deedUploadTask = db.Collection("deeds").AddAsync(deedData);
+        yield return new WaitUntil(() => deedUploadTask.IsCompleted);
+
+        if (deedUploadTask.Exception != null)
+        {
+            Debug.LogError("❌ Failed to upload to Deed Feed: " + deedUploadTask.Exception);
+        }
+        else
+        {
+            Debug.Log("✅ Deed uploaded to feed!");
         }
     }
 }
