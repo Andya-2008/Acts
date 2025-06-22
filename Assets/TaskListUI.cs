@@ -182,17 +182,21 @@ public class TaskListUI : MonoBehaviour
             UnityWebRequest req = UnityWebRequestTexture.GetTexture(url);
             await req.SendWebRequest();
 
-            if (req.result == UnityWebRequest.Result.Success)
+            if (req.result == UnityWebRequest.Result.Success && image != null)
             {
-                image.texture = ((DownloadHandlerTexture)req.downloadHandler).texture;
-                image.gameObject.SetActive(true);
+                if (image != null)
+                {
+                    image.texture = ((DownloadHandlerTexture)req.downloadHandler).texture;
+                    if (image.gameObject != null)
+                        image.gameObject.SetActive(true);
+                }
             }
-            else
+            else if (image != null && image.gameObject != null)
             {
                 image.gameObject.SetActive(false);
             }
         }
-        else
+        else if (image != null && image.gameObject != null)
         {
             image.gameObject.SetActive(false);
         }
