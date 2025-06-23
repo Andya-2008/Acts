@@ -17,7 +17,6 @@ public class DeedFeedUI : MonoBehaviour
     public Transform deedContainer;
     public Transform popupParent;
     public ScrollRect scrollRect;
-    public GameObject popupScreen;
     public float pullThreshold = 100f;
 
     private FirebaseFirestore db;
@@ -47,7 +46,7 @@ public class DeedFeedUI : MonoBehaviour
         else if (Input.GetMouseButtonUp(0) && isPulling)
         {
             float pullDelta = Input.mousePosition.y - pullStartY;
-            if (pullDelta > pullThreshold)
+            if (pullDelta < -pullThreshold)
             {
                 Debug.Log("🔄 Pull-to-refresh triggered!");
                 LoadDeeds();

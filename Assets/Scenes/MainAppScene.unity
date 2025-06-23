@@ -5178,7 +5178,6 @@ MonoBehaviour:
   deedContainer: {fileID: 443787448}
   popupParent: {fileID: 1522367840}
   scrollRect: {fileID: 405179588}
-  popupScreen: {fileID: 0}
   pullThreshold: 250
 --- !u!4 &1271996035
 Transform:
@@ -6185,6 +6184,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   taskItemPrefab: {fileID: 6788167122698288436, guid: 45172a9881b466748ae119baa23273ea, type: 3}
   taskContainer: {fileID: 948726224}
+  scrollRect: {fileID: 1086127817}
+  pullThreshold: 250
 --- !u!4 &1461521727
 Transform:
   m_ObjectHideFlags: 0

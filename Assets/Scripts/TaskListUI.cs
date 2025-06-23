@@ -19,6 +19,10 @@ public class TaskListUI : MonoBehaviour
     private FirebaseAuth auth;
     private FirebaseStorage storage;
     private HashSet<string> uploadedTaskIds = new HashSet<string>();
+    public ScrollRect scrollRect;
+    public float pullThreshold = 100f;
+    private bool isPulling = false;
+    private float pullStartY = 0f;
 
     void Start()
     {
@@ -28,7 +32,49 @@ public class TaskListUI : MonoBehaviour
 
         LoadTasks();
     }
+    private void Update()
+    {
+        if (scrollRect == null || scrollRect.verticalNormalizedPosition < 0.98f)
+            return;
 
+#if UNITY_EDITOR || UNITY_STANDALONE || UNITY_WEBGL
+        if (Input.GetMouseButtonDown(0))
+        {
+            isPulling = true;
+            pullStartY = Input.mousePosition.y;
+        }
+        else if (Input.GetMouseButtonUp(0) && isPulling)
+        {
+            float pullDelta = Input.mousePosition.y - pullStartY;
+            if (pullDelta < -pullThreshold)
+            {
+                Debug.Log("🔄 Pull-to-refresh triggered!");LoadTasks();
+            }
+            isPulling = false;
+        }
+#elif UNITY_IOS || UNITY_ANDROID
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Began)
+            {
+                isPulling = true;
+                pullStartY = touch.position.y;
+            }
+            else if (touch.phase == TouchPhase.Ended && isPulling)
+            {
+                float pullDelta = touch.position.y - pullStartY;
+                if (pullDelta > pullThreshold)
+                {
+                    Debug.Log("🔄 Mobile pull-to-refresh triggered!");
+                    LoadDeeds();
+                }
+                isPulling = false;
+            }
+        }
+#endif
+    }
     public async void LoadTasks()
     {
         uploadedTaskIds.Clear();
@@ -111,8 +157,11 @@ public class TaskListUI : MonoBehaviour
                 if (!completed)
                 {
                     await historyRef.SetAsync(new Dictionary<string, object> {
-                        { "completedAt", Timestamp.GetCurrentTimestamp() }
-                    });
+    { "completedAt", Timestamp.GetCurrentTimestamp() },
+    { "textShort", task["textShort"] },
+    { "difficulty", task.ContainsKey("difficulty") ? task["difficulty"] : "?" },
+    { "photoUrl", "" } // Optional placeholder, filled in later after photo upload
+});
                 }
                 else
                 {
@@ -170,7 +219,11 @@ public class TaskListUI : MonoBehaviour
                     { "uploadedAt", Timestamp.GetCurrentTimestamp() }
                 });
             yield return new WaitUntil(() => saveTask.IsCompleted);
+            var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory").Document(taskId);
 
+            Task saveHistoryUrlTask = historyRef.UpdateAsync(new Dictionary<string, object> {
+    { "photoUrl", downloadUrl }
+});
             if (saveTask.IsFaulted || saveTask.IsCanceled)
             {
                 Debug.LogError("Failed to save task photo URL to Firestore.");
@@ -180,6 +233,7 @@ public class TaskListUI : MonoBehaviour
                 LoadTasks();
             }
         }
+
     }
 
     private async void LoadTaskPhotoIfExists(string taskId, RawImage image)
