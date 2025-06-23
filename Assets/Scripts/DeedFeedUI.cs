@@ -12,8 +12,12 @@ using System.Collections;
 public class DeedFeedUI : MonoBehaviour
 {
     public GameObject deedItemPrefab;
+    public GameObject reactionsPopupPrefab;
+    public GameObject reactionItemPrefab;
     public Transform deedContainer;
+    public Transform popupParent;
     public ScrollRect scrollRect;
+    public GameObject popupScreen;
     public float pullThreshold = 100f;
 
     private FirebaseFirestore db;
@@ -43,8 +47,9 @@ public class DeedFeedUI : MonoBehaviour
         else if (Input.GetMouseButtonUp(0) && isPulling)
         {
             float pullDelta = Input.mousePosition.y - pullStartY;
-            if (pullDelta < -pullThreshold)
+            if (pullDelta > pullThreshold)
             {
+                Debug.Log("🔄 Pull-to-refresh triggered!");
                 LoadDeeds();
             }
             isPulling = false;
@@ -62,8 +67,9 @@ public class DeedFeedUI : MonoBehaviour
             else if (touch.phase == TouchPhase.Ended && isPulling)
             {
                 float pullDelta = touch.position.y - pullStartY;
-                if (pullDelta < -pullThreshold)
+                if (pullDelta > pullThreshold)
                 {
+                    Debug.Log("🔄 Mobile pull-to-refresh triggered!");
                     LoadDeeds();
                 }
                 isPulling = false;
@@ -71,7 +77,6 @@ public class DeedFeedUI : MonoBehaviour
         }
 #endif
     }
-
 
     public async void LoadDeeds()
     {
@@ -117,10 +122,128 @@ public class DeedFeedUI : MonoBehaviour
             Dictionary<string, object> reactions = data.ContainsKey("reactions") && data["reactions"] is Dictionary<string, object> rawReactions ? new Dictionary<string, object>(rawReactions) : new Dictionary<string, object>();
             Dictionary<string, object> userReactions = data.ContainsKey("userReactions") && data["userReactions"] is Dictionary<string, object> rawUserReactions ? new Dictionary<string, object>(rawUserReactions) : new Dictionary<string, object>();
 
+            Debug.Log("📥 Loaded reactions: " + string.Join(", ", reactions));
 
             AddReactionListeners(deedGO, deedRef, reactions, userReactions);
+
+            // If current user is the owner, enable view reactions
+            Button viewReactionsBtn = deedGO.transform.Find("ViewReactionsButton")?.GetComponent<Button>();
+            if (viewReactionsBtn != null)
+            {
+                viewReactionsBtn.gameObject.SetActive(true);
+                viewReactionsBtn.onClick.AddListener(() => ShowReactionsPopup(userReactions));
+            }
         }
     }
+
+    private void ShowReactionsPopup(Dictionary<string, object> userReactions)
+    {
+        Debug.Log("🟢 ShowReactionsPopup called.");
+
+        GameObject popup = Instantiate(reactionsPopupPrefab, popupParent);
+        Debug.Log("🟢 Instantiated popup prefab.");
+
+        Transform contentParent = popup.transform.Find("TaskScrollView/Viewport/ContentParent");
+        if (contentParent == null)
+        {
+            Debug.LogError("❌ ContentParent not found in popup prefab.");
+            return;
+        }
+        Debug.Log("✅ Found ContentParent.");
+
+        // Clear old children
+        foreach (Transform child in contentParent)
+        {
+            Debug.Log($"🗑️ Destroying old child: {child.name}");
+            Destroy(child.gameObject);
+        }
+
+        foreach (var kvp in userReactions)
+        {
+            string userId = kvp.Key;
+            string reaction = kvp.Value.ToString();
+
+            Debug.Log($"🔍 Fetching username for userId: {userId} with reaction: {reaction}");
+
+            db.Collection("userInfo").Document(userId).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+            {
+                string username = userId;
+
+                if (!task.IsCompleted)
+                {
+                    Debug.LogWarning($"⚠️ Task for userId {userId} not completed.");
+                    return;
+                }
+
+                if (task.Result.Exists)
+                {
+                    if (task.Result.ContainsField("Username"))
+                    {
+                        username = task.Result.GetValue<string>("Username");
+                        Debug.Log($"✅ Got username for {userId}: {username}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"⚠️ Username field missing for userId: {userId}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"⚠️ No user document found for {userId}");
+                }
+
+                GameObject item = Instantiate(reactionItemPrefab, contentParent);
+                Debug.Log($"🧩 Instantiated reactionItemPrefab for {username}: {reaction}");
+
+                TMP_Text txt = item.transform.Find("ContentText")?.GetComponent<TMP_Text>();
+                RawImage profileImg = item.transform.Find("ProfileImage")?.GetComponent<RawImage>();
+
+                if (txt != null)
+                {
+                    txt.text = $"{username}: {reaction}";
+                    Debug.Log($"✍️ Set reaction text: {txt.text}");
+                }
+                else
+                {
+                    Debug.LogError("❌ TMP_Text 'ContentText' not found in reactionItemPrefab.");
+                }
+
+                if (profileImg != null)
+                {
+                    if (task.Result.ContainsField("profilePicUrl"))
+                    {
+                        string profileUrl = task.Result.GetValue<string>("profilePicUrl");
+                        Debug.Log($"🖼️ Loading profile image for {username} from {profileUrl}");
+                        StartCoroutine(LoadImage(profileUrl, profileImg));
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"⚠️ profilePicUrl missing for {username}");
+                        profileImg.gameObject.SetActive(false); // optional fallback
+                    }
+                }
+                else
+                {
+                    Debug.LogError("❌ RawImage 'ProfileImage' not found in reactionItemPrefab.");
+                }
+            });
+        }
+
+        Button closeBtn = popup.transform.Find("CloseButton")?.GetComponent<Button>();
+        if (closeBtn != null)
+        {
+            closeBtn.onClick.AddListener(() =>
+            {
+                Debug.Log("❎ Close button clicked. Destroying popup and hiding screen.");
+                Destroy(popup);
+            });
+        }
+        else
+        {
+            Debug.LogError("❌ CloseButton not found inside popup prefab.");
+        }
+    }
+
 
     private void AddReactionListeners(GameObject deedGO, DocumentReference deedRef, Dictionary<string, object> reactions, Dictionary<string, object> userReactions)
     {
@@ -193,6 +316,7 @@ public class DeedFeedUI : MonoBehaviour
                 {
                     if (updateTask.IsCompleted)
                     {
+                        Debug.Log("✅ Reaction updated to: " + reactionType);
                         LoadDeeds();
                     }
                 });
