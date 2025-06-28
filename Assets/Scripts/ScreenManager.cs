@@ -21,5 +21,6 @@ public class ScreenManager : MonoBehaviour
             screen.interactable = isActive;
             screen.blocksRaycasts = isActive;
         }
+        GameObject.Find("ProfilePageManager").GetComponent<ProfilePageUI>().LoadProfile();
     }
 }

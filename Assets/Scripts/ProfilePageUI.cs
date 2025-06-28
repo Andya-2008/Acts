@@ -88,7 +88,6 @@ public class ProfilePageUI : MonoBehaviour
             if (doc.ContainsField("completedAt"))
             {
                 Timestamp ts = doc.GetValue<Timestamp>("completedAt");
-                // Normalize to local date only
                 DateTime localDate = ts.ToDateTime().ToLocalTime().Date;
                 uniqueDates.Add(localDate);
             }
@@ -98,9 +97,14 @@ public class ProfilePageUI : MonoBehaviour
             return 0;
 
         int streak = 0;
-        DateTime checkDate = DateTime.Now.Date; // Local today
+        DateTime checkDate = DateTime.Now.Date;
 
-        // Check today, then yesterday, etc.
+        // If today is not completed, we still check yesterday, etc.
+        if (!uniqueDates.Contains(checkDate))
+        {
+            checkDate = checkDate.AddDays(-1);
+        }
+
         while (uniqueDates.Contains(checkDate))
         {
             streak++;
