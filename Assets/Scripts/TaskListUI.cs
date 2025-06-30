@@ -14,28 +14,73 @@ public class TaskListUI : MonoBehaviour
 {
     public GameObject taskItemPrefab;
     public Transform taskContainer;
+    public TMP_Dropdown taskTypeDropdown;
+    public ScrollRect scrollRect;
+    public float pullThreshold = 100f;
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseStorage storage;
     private HashSet<string> uploadedTaskIds = new HashSet<string>();
-    public ScrollRect scrollRect;
-    public float pullThreshold = 100f;
     private bool isPulling = false;
     private float pullStartY = 0f;
 
+    private string currentTaskType = "dailyTask";
+    private string currentDocName = "today";
+
+    private readonly Color dailyColor = new Color(0.75f, 0.9f, 1f);      // Light blue
+    private readonly Color weeklyColor = new Color(0.8f, 1f, 0.8f);      // Light green
+    private readonly Color monthlyColor = new Color(1f, 0.9f, 0.8f);     // Light orange
+
+    public TMP_Dropdown completionFilterDropdown;
+
+    private enum CompletionFilter { All, Incomplete, Complete }
+    private CompletionFilter currentFilter = CompletionFilter.All;
+
     void Start()
     {
+
+        completionFilterDropdown.onValueChanged.AddListener(OnCompletionFilterChanged);
+
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         storage = FirebaseStorage.DefaultInstance;
 
+        taskTypeDropdown.onValueChanged.AddListener(OnTaskTypeChanged);
         LoadTasks();
     }
+    void OnCompletionFilterChanged(int index)
+    {
+        currentFilter = (CompletionFilter)index;
+        LoadTasks();
+    }
+    public void OnTaskTypeChanged(int index)
+    {
+        switch (index)
+        {
+            case 0:
+                currentTaskType = "dailyTask";
+                currentDocName = "today";
+                break;
+            case 1:
+                currentTaskType = "weeklyTask";
+                currentDocName = "thisWeek";
+                break;
+            case 2:
+                currentTaskType = "monthlyTask";
+                currentDocName = "thisMonth";
+                break;
+            case 3: // "All"
+                currentTaskType = "all";
+                break;
+        }
+
+        LoadTasks();
+    }
+
     private void Update()
     {
-        if (scrollRect == null || scrollRect.verticalNormalizedPosition < 0.98f)
-            return;
+        if (scrollRect == null || scrollRect.verticalNormalizedPosition < 0.98f) return;
 
 #if UNITY_EDITOR || UNITY_STANDALONE || UNITY_WEBGL
         if (Input.GetMouseButtonDown(0))
@@ -48,7 +93,8 @@ public class TaskListUI : MonoBehaviour
             float pullDelta = Input.mousePosition.y - pullStartY;
             if (pullDelta < -pullThreshold)
             {
-                Debug.Log("🔄 Pull-to-refresh triggered!");LoadTasks();
+                Debug.Log("🔄 Pull-to-refresh triggered!");
+                LoadTasks();
             }
             isPulling = false;
         }
@@ -56,7 +102,6 @@ public class TaskListUI : MonoBehaviour
         if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
-
             if (touch.phase == TouchPhase.Began)
             {
                 isPulling = true;
@@ -68,26 +113,40 @@ public class TaskListUI : MonoBehaviour
                 if (pullDelta > pullThreshold)
                 {
                     Debug.Log("🔄 Mobile pull-to-refresh triggered!");
-                    LoadDeeds();
+                    LoadTasks();
                 }
                 isPulling = false;
             }
         }
 #endif
     }
+
     public async void LoadTasks()
     {
         uploadedTaskIds.Clear();
-
         foreach (Transform child in taskContainer)
             Destroy(child.gameObject);
 
         string userId = auth.CurrentUser.UserId;
-        var docRef = db.Collection("userInfo").Document(userId).Collection("dailyTask").Document("today");
+
+        if (currentTaskType == "all")
+        {
+            await LoadTasksFromDoc(userId, "dailyTask", "today");
+            await LoadTasksFromDoc(userId, "weeklyTask", "thisWeek");
+            await LoadTasksFromDoc(userId, "monthlyTask", "thisMonth");
+        }
+        else
+        {
+            await LoadTasksFromDoc(userId, currentTaskType, currentDocName);
+        }
+    }
+
+    private async Task LoadTasksFromDoc(string userId, string taskType, string docName)
+    {
+        var docRef = db.Collection("userInfo").Document(userId).Collection(taskType).Document(docName);
         var docSnap = await docRef.GetSnapshotAsync();
 
         if (!docSnap.Exists || !docSnap.ContainsField("tasks")) return;
-
         var tasks = docSnap.GetValue<List<object>>("tasks");
 
         foreach (var raw in tasks)
@@ -99,8 +158,29 @@ public class TaskListUI : MonoBehaviour
             string text = data["textShort"].ToString();
             string difficulty = data.ContainsKey("difficulty") ? data["difficulty"].ToString() : "?";
             bool completed = (bool)data["completed"];
+            if (currentFilter == CompletionFilter.Complete && !completed) continue;
+            if (currentFilter == CompletionFilter.Incomplete && completed) continue;
 
             GameObject taskGO = Instantiate(taskItemPrefab, taskContainer);
+            // Set task type label
+            TMP_Text typeText = taskGO.transform.Find("Background/TaskTypeText")?.GetComponent<TMP_Text>();
+
+
+            if (typeText != null)
+            {
+                if (taskType == "dailyTask") typeText.text = "Daily";
+                else if (taskType == "weeklyTask") typeText.text = "Weekly";
+                else if (taskType == "monthlyTask") typeText.text = "Monthly";
+                else typeText.text = "";
+            }
+            // Set background color
+            Image background = taskGO.transform.Find("Background")?.GetComponent<Image>();
+            if (background != null)
+            {
+                if (taskType == "dailyTask") background.color = dailyColor;
+                else if (taskType == "weeklyTask") background.color = weeklyColor;
+                else if (taskType == "monthlyTask") background.color = monthlyColor;
+            }
             taskGO.transform.Find("TaskText").GetComponent<TMP_Text>().text = text;
             taskGO.transform.Find("DifficultyText").GetComponent<TMP_Text>().text = $"Difficulty: {difficulty}";
 
@@ -108,7 +188,7 @@ public class TaskListUI : MonoBehaviour
             var buttonText = taskGO.transform.Find("ToggleButton/ToggleButtonText").GetComponent<TMP_Text>();
             buttonText.text = completed ? "Complete" : "Incomplete";
 
-            toggleButton.onClick.AddListener(() => ToggleTaskCompletion(taskId));
+            toggleButton.onClick.AddListener(() => ToggleTaskCompletion(taskType, docName, taskId));
 
             var photoButton = taskGO.transform.Find("PhotoButton").GetComponent<Button>();
             photoButton.interactable = completed;
@@ -133,10 +213,10 @@ public class TaskListUI : MonoBehaviour
         }
     }
 
-    public async void ToggleTaskCompletion(string taskId)
+    public async void ToggleTaskCompletion(string taskType, string docName, string taskId)
     {
         string userId = auth.CurrentUser.UserId;
-        var docRef = db.Collection("userInfo").Document(userId).Collection("dailyTask").Document("today");
+        var docRef = db.Collection("userInfo").Document(userId).Collection(taskType).Document(docName);
         var docSnap = await docRef.GetSnapshotAsync();
 
         if (!docSnap.Exists || !docSnap.ContainsField("tasks")) return;
@@ -157,11 +237,11 @@ public class TaskListUI : MonoBehaviour
                 if (!completed)
                 {
                     await historyRef.SetAsync(new Dictionary<string, object> {
-    { "completedAt", Timestamp.GetCurrentTimestamp() },
-    { "textShort", task["textShort"] },
-    { "difficulty", task.ContainsKey("difficulty") ? task["difficulty"] : "?" },
-    { "photoUrl", "" } // Optional placeholder, filled in later after photo upload
-});
+                        { "completedAt", Timestamp.GetCurrentTimestamp() },
+                        { "textShort", task["textShort"] },
+                        { "difficulty", task.ContainsKey("difficulty") ? task["difficulty"] : "?" },
+                        { "photoUrl", "" }
+                    });
                 }
                 else
                 {
@@ -222,18 +302,14 @@ public class TaskListUI : MonoBehaviour
             var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory").Document(taskId);
 
             Task saveHistoryUrlTask = historyRef.UpdateAsync(new Dictionary<string, object> {
-    { "photoUrl", downloadUrl }
-});
-            if (saveTask.IsFaulted || saveTask.IsCanceled)
-            {
-                Debug.LogError("Failed to save task photo URL to Firestore.");
-            }
-            else
+                { "photoUrl", downloadUrl }
+            });
+
+            if (!saveTask.IsFaulted && !saveTask.IsCanceled)
             {
                 LoadTasks();
             }
         }
-
     }
 
     private async void LoadTaskPhotoIfExists(string taskId, RawImage image)
@@ -250,12 +326,8 @@ public class TaskListUI : MonoBehaviour
 
             if (req.result == UnityWebRequest.Result.Success && image != null)
             {
-                if (image != null)
-                {
-                    image.texture = ((DownloadHandlerTexture)req.downloadHandler).texture;
-                    if (image.gameObject != null)
-                        image.gameObject.SetActive(true);
-                }
+                image.texture = ((DownloadHandlerTexture)req.downloadHandler).texture;
+                image.gameObject.SetActive(true);
             }
             else if (image != null && image.gameObject != null)
             {

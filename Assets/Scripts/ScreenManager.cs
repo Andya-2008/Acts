@@ -31,5 +31,13 @@ public class ScreenManager : MonoBehaviour
                 profileManager.GetComponent<ProfilePageUI>()?.LoadProfile();
             }
         }
+        if (screenIndex == 6) // replace with your actual profile screen index
+        {
+            var taskHistoryManager = GameObject.Find("TaskHistoryManager");
+            if (taskHistoryManager != null)
+            {
+                taskHistoryManager.GetComponent<TaskHistoryUI>()?.LoadTaskHistory();
+            }
+        }
     }
 }

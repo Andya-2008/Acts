@@ -15,43 +15,42 @@ public class TaskAssigner : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
 
-        // Wait until user is authenticated
         while (auth.CurrentUser == null)
-        {
-            await Task.Delay(100); // wait 100ms and try again
-        }
+            await Task.Delay(100);
 
+        string userId = auth.CurrentUser.UserId;
 
-        bool shouldReassign = await ShouldReassignTasksToday();
-        if (shouldReassign)
-        {
-            await AssignTaskForToday();
-        }
+        if (await ShouldReassign("dailyTask", "today"))
+            await AssignTasks("dailyTask", "today", 3);
+
+        if (await ShouldReassign("weeklyTask", "thisWeek"))
+            await AssignTasks("weeklyTask", "thisWeek", 3);
+
+        if (await ShouldReassign("monthlyTask", "thisMonth"))
+            await AssignTasks("monthlyTask", "thisMonth", 3);
     }
-
-    public async Task<bool> ShouldReassignTasksToday()
+    public async Task<bool> ShouldReassign(string category, string docName)
     {
         string userId = auth.CurrentUser.UserId;
-        var todayRef = db.Collection("userInfo").Document(userId).Collection("dailyTask").Document("today");
-        var todaySnap = await todayRef.GetSnapshotAsync();
+        var refDoc = db.Collection("userInfo").Document(userId).Collection(category).Document(docName);
+        var snap = await refDoc.GetSnapshotAsync();
 
-        if (!todaySnap.Exists || !todaySnap.ContainsField("assignedDate"))
-        {
+        if (!snap.Exists || !snap.ContainsField("assignedDate"))
             return true;
-        }
 
-        Timestamp assignedTimestamp = todaySnap.GetValue<Timestamp>("assignedDate");
-        DateTime assignedDate = assignedTimestamp.ToDateTime().ToLocalTime();
+        DateTime assignedDate = snap.GetValue<Timestamp>("assignedDate").ToDateTime().ToLocalTime();
         DateTime now = DateTime.Now;
 
-        return assignedDate.Date != now.Date;
+        if (category == "dailyTask") return assignedDate.Date != now.Date;
+        if (category == "weeklyTask") return assignedDate.Date < now.Date.AddDays(-7);
+        if (category == "monthlyTask") return assignedDate.Month != now.Month || assignedDate.Year != now.Year;
+
+        return false;
     }
 
-    public async Task AssignTaskForToday()
+    public async Task AssignTasks(string taskType, string userDocName, int count)
     {
         string userId = auth.CurrentUser.UserId;
-        var todayRef = db.Collection("userInfo").Document(userId).Collection("dailyTask").Document("today");
-
         var userSnap = await db.Collection("userInfo").Document(userId).GetSnapshotAsync();
         var traits = userSnap.GetValue<List<string>>("Traits");
         string dob = userSnap.GetValue<string>("DOB");
@@ -61,8 +60,12 @@ public class TaskAssigner : MonoBehaviour
         var completed = new HashSet<string>();
         foreach (var doc in historySnap.Documents) completed.Add(doc.Id);
 
-        var allTasks = await db.Collection("tasks").WhereEqualTo("active", true).GetSnapshotAsync();
-        List<DocumentSnapshot> eligibleTasks = new List<DocumentSnapshot>();
+        var allTasks = await db.Collection("tasks").Document(taskType).Collection(taskType)
+            .WhereEqualTo("active", true).GetSnapshotAsync();
+
+        List<Dictionary<string, object>> selectedTasks = new List<Dictionary<string, object>>();
+        List<DocumentSnapshot> eligible = new List<DocumentSnapshot>();
+        System.Random rng = new System.Random();
 
         foreach (var doc in allTasks.Documents)
         {
@@ -71,49 +74,42 @@ public class TaskAssigner : MonoBehaviour
             int maxAge = Convert.ToInt32(data["maxAge"]);
             if (age < minAge || age > maxAge || completed.Contains(doc.Id)) continue;
 
-            List<object> rawTraits = data["traits"] as List<object>;
+            var rawTraits = data["traits"] as List<object>;
             List<string> taskTraits = rawTraits.ConvertAll(t => t.ToString());
 
             if (taskTraits.Contains("Any") || traits.Exists(t => taskTraits.Contains(t)))
-            {
-                eligibleTasks.Add(doc);
-            }
+                eligible.Add(doc);
         }
 
-        if (eligibleTasks.Count == 0) return;
-
-        int taskCount = Mathf.Min(3, eligibleTasks.Count);
-        List<Dictionary<string, object>> selectedTasks = new List<Dictionary<string, object>>();
-        HashSet<int> usedIndexes = new HashSet<int>();
-        System.Random rng = new System.Random();
-
-        while (selectedTasks.Count < taskCount)
+        HashSet<int> used = new HashSet<int>();
+        while (selectedTasks.Count < Mathf.Min(count, eligible.Count))
         {
-            int index = rng.Next(eligibleTasks.Count);
-            if (usedIndexes.Contains(index)) continue;
-            usedIndexes.Add(index);
+            int index = rng.Next(eligible.Count);
+            if (used.Contains(index)) continue;
+            used.Add(index);
 
-            var doc = eligibleTasks[index];
+            var doc = eligible[index];
             var data = doc.ToDictionary();
 
             selectedTasks.Add(new Dictionary<string, object>
-            {
-                { "taskId", doc.Id },
-                { "text", data["text"] },
-                { "textShort", data["textShort"] },
-                { "difficulty", data["difficulty"] },
-                { "completed", false }
-            });
+        {
+            { "taskId", doc.Id },
+            { "text", data["text"] },
+            { "textShort", data["textShort"] },
+            { "difficulty", data["difficulty"] },
+            { "completed", false }
+        });
         }
 
-        var taskBundle = new Dictionary<string, object>
-        {
-            { "tasks", selectedTasks },
-            { "assignedDate", Timestamp.GetCurrentTimestamp() }
-        };
+        var bundle = new Dictionary<string, object>
+    {
+        { "tasks", selectedTasks },
+        { "assignedDate", Timestamp.GetCurrentTimestamp() }
+    };
 
-        await todayRef.SetAsync(taskBundle);
+        await db.Collection("userInfo").Document(userId).Collection(taskType).Document(userDocName).SetAsync(bundle);
     }
+
 
     private int CalculateAge(string dob)
     {
