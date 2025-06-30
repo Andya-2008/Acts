@@ -9022,6 +9022,8 @@ MonoBehaviour:
   scrollRect: {fileID: 1086127817}
   pullThreshold: 250
   completionFilterDropdown: {fileID: 1637885898}
+  taskDetailPopupPrefab: {fileID: 2429131974100243700, guid: 9f24631c3a596ee419ed198f717e6641, type: 3}
+  popupParent: {fileID: 1522367840}
 --- !u!4 &1461521727
 Transform:
   m_ObjectHideFlags: 0

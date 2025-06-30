@@ -37,6 +37,9 @@ public class TaskListUI : MonoBehaviour
     private enum CompletionFilter { All, Incomplete, Complete }
     private CompletionFilter currentFilter = CompletionFilter.All;
 
+    public GameObject taskDetailPopupPrefab;
+    public Transform popupParent;
+
     void Start()
     {
 
@@ -140,7 +143,7 @@ public class TaskListUI : MonoBehaviour
             await LoadTasksFromDoc(userId, currentTaskType, currentDocName);
         }
     }
-
+    
     private async Task LoadTasksFromDoc(string userId, string taskType, string docName)
     {
         var docRef = db.Collection("userInfo").Document(userId).Collection(taskType).Document(docName);
@@ -163,9 +166,15 @@ public class TaskListUI : MonoBehaviour
 
             GameObject taskGO = Instantiate(taskItemPrefab, taskContainer);
             // Set task type label
-            TMP_Text typeText = taskGO.transform.Find("Background/TaskTypeText")?.GetComponent<TMP_Text>();
-
-
+            TMP_Text typeText = taskGO.transform.Find("LengthBackground/TaskTypeText")?.GetComponent<TMP_Text>();
+            Transform bg = taskGO.transform.Find("Background");
+            if (bg != null)
+            {
+                Button bgButton = bg.GetComponent<Button>();
+                if (bgButton == null) bgButton = bg.gameObject.AddComponent<Button>();
+                bgButton.onClick.AddListener(() => ShowTaskDetailPopup(data));
+            }
+                
             if (typeText != null)
             {
                 if (taskType == "dailyTask") typeText.text = "Daily";
@@ -174,7 +183,7 @@ public class TaskListUI : MonoBehaviour
                 else typeText.text = "";
             }
             // Set background color
-            Image background = taskGO.transform.Find("Background")?.GetComponent<Image>();
+            Image background = taskGO.transform.Find("LengthBackground")?.GetComponent<Image>();
             if (background != null)
             {
                 if (taskType == "dailyTask") background.color = dailyColor;
@@ -212,7 +221,45 @@ public class TaskListUI : MonoBehaviour
             });
         }
     }
+    private void ShowTaskDetailPopup(Dictionary<string, object> data)
+    {
+        GameObject popup = Instantiate(taskDetailPopupPrefab, popupParent);
+        popup.SetActive(true);
 
+        string textShort = data.ContainsKey("textShort") ? data["textShort"].ToString() : "";
+        string textLong = data.ContainsKey("text") ? data["text"].ToString() : "";
+        string category = data.ContainsKey("category") ? data["category"].ToString() : "";
+        string difficulty = data.ContainsKey("difficulty") ? data["difficulty"].ToString() : "?";
+        string minAge = data.ContainsKey("minAge") ? data["minAge"].ToString() : "";
+        string maxAge = data.ContainsKey("maxAge") ? data["maxAge"].ToString() : "";
+        string length = data.ContainsKey("length") ? data["length"].ToString() : "";
+        bool picture = data.ContainsKey("picture") && (bool)data["picture"];
+
+        List<object> rawTraits = data.ContainsKey("traits") ? (List<object>)data["traits"] : new List<object>();
+        List<object> rawMaterials = data.ContainsKey("materials") ? (List<object>)data["materials"] : new List<object>();
+
+        List<string> traits = rawTraits.ConvertAll(t => t.ToString());
+        List<string> materials = rawMaterials.ConvertAll(m => m.ToString());
+
+        popup.transform.Find("HeaderBackground/HeaderText")?.GetComponent<TMP_Text>()?.SetText(textShort);
+        popup.transform.Find("DescriptionText")?.GetComponent<TMP_Text>()?.SetText(textLong);
+        popup.transform.Find("CategoryText")?.GetComponent<TMP_Text>()?.SetText($"Category: {ToTitleCase(category)}");
+        popup.transform.Find("DifficultyText")?.GetComponent<TMP_Text>()?.SetText($"Difficulty: {difficulty}");
+        string ageDisplay = int.TryParse(minAge, out int min) && int.TryParse(maxAge, out int max)
+    ? (max > 90 ? $"{min}+" : $"{min}–{max}")
+    : $"{minAge}–{maxAge}";
+
+        popup.transform.Find("AgeText")?.GetComponent<TMP_Text>()?.SetText($"Target Age Range: {ageDisplay}");
+
+        popup.transform.Find("TraitsText")?.GetComponent<TMP_Text>()?.SetText($"Traits: {CapitalizeList(traits)}");
+        popup.transform.Find("MaterialsText")?.GetComponent<TMP_Text>()?.SetText($"Materials: {CapitalizeList(materials)}");
+        popup.transform.Find("PictureText")?.GetComponent<TMP_Text>()?.SetText($"Photo Required: {(picture ? "Yes" : "No")}");
+        popup.transform.Find("LengthText")?.GetComponent<TMP_Text>()?.SetText($"Type: {ToTitleCase(length)}");
+
+        Button closeBtn = popup.transform.Find("CloseButton")?.GetComponent<Button>();
+        if (closeBtn != null)
+            closeBtn.onClick.AddListener(() => Destroy(popup));
+    }
     public async void ToggleTaskCompletion(string taskType, string docName, string taskId)
     {
         string userId = auth.CurrentUser.UserId;
@@ -386,5 +433,24 @@ public class TaskListUI : MonoBehaviour
         {
             Debug.LogError("❌ Failed to upload to Deed Feed: " + deedUploadTask.Exception);
         }
+    }
+
+    string ToTitleCase(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return "";
+        var words = input.Split(' ');
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (words[i].Length > 0)
+                words[i] = char.ToUpper(words[i][0]) + words[i].Substring(1);
+        }
+        return string.Join(" ", words);
+    }
+
+    string CapitalizeList(List<string> items)
+    {
+        return string.Join(", ", items.ConvertAll(item =>
+            string.IsNullOrWhiteSpace(item) ? "" :
+            char.ToUpper(item[0]) + item.Substring(1).ToLower()));
     }
 }

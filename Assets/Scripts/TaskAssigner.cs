@@ -92,13 +92,20 @@ public class TaskAssigner : MonoBehaviour
             var data = doc.ToDictionary();
 
             selectedTasks.Add(new Dictionary<string, object>
-        {
-            { "taskId", doc.Id },
-            { "text", data["text"] },
-            { "textShort", data["textShort"] },
-            { "difficulty", data["difficulty"] },
-            { "completed", false }
-        });
+{
+    { "taskId", doc.Id },
+    { "text", data["text"] },
+    { "textShort", data["textShort"] },
+    { "difficulty", data["difficulty"] },
+    { "category", data.ContainsKey("category") ? data["category"] : "" },
+    { "minAge", data.ContainsKey("minAge") ? data["minAge"] : 0 },
+    { "maxAge", data.ContainsKey("maxAge") ? data["maxAge"] : 100 },
+    { "traits", data.ContainsKey("traits") ? data["traits"] : new List<object>() },
+    { "materials", data.ContainsKey("materials") ? data["materials"] : new List<object>() },
+    { "picture", data.ContainsKey("picture") ? data["picture"] : false },
+    { "length", data.ContainsKey("length") ? data["length"] : "" },
+    { "completed", false }
+});
         }
 
         var bundle = new Dictionary<string, object>
