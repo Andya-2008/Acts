@@ -6,6 +6,7 @@ using Firebase.Auth;
 using UnityEngine.Networking;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 public class TaskHistoryUI : MonoBehaviour
 {
@@ -32,6 +33,9 @@ public class TaskHistoryUI : MonoBehaviour
         var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory");
         var snapshot = await historyRef.GetSnapshotAsync();
 
+        // Prevent continuation if this MonoBehaviour was destroyed
+        if (this == null) return;
+
         foreach (var doc in snapshot.Documents)
         {
             var data = doc.ToDictionary();
@@ -55,13 +59,21 @@ public class TaskHistoryUI : MonoBehaviour
             {
                 string url = data["photoUrl"].ToString();
                 RawImage img = item.transform.Find("TaskImage").GetComponent<RawImage>();
-                StartCoroutine(LoadImage(url, img));
+                if (img != null && this != null) // extra safety
+                    StartCoroutine(LoadImage(url, img));
             }
         }
     }
 
     private IEnumerator LoadImage(string url, RawImage image)
     {
+        if (string.IsNullOrEmpty(url) || !Uri.IsWellFormedUriString(url, UriKind.Absolute))
+        {
+            Debug.LogWarning("Invalid or missing image URL: " + url);
+            image.gameObject.SetActive(false);
+            yield break;
+        }
+
         UnityWebRequest req = UnityWebRequestTexture.GetTexture(url);
         yield return req.SendWebRequest();
 
@@ -72,6 +84,7 @@ public class TaskHistoryUI : MonoBehaviour
         }
         else
         {
+            Debug.LogWarning("Image load failed: " + req.error);
             image.gameObject.SetActive(false);
         }
     }

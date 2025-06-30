@@ -21,6 +21,15 @@ public class ScreenManager : MonoBehaviour
             screen.interactable = isActive;
             screen.blocksRaycasts = isActive;
         }
-        GameObject.Find("ProfilePageManager").GetComponent<ProfilePageUI>().LoadProfile();
+
+        // Now that screen is visible, call LoadProfile only if it's the profile screen
+        if (screenIndex == 5) // replace with your actual profile screen index
+        {
+            var profileManager = GameObject.Find("ProfilePageManager");
+            if (profileManager != null)
+            {
+                profileManager.GetComponent<ProfilePageUI>()?.LoadProfile();
+            }
+        }
     }
 }
