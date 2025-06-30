@@ -2,6 +2,7 @@
 using Firebase.Firestore;
 using System.Collections.Generic;
 using System.IO;
+using static UnityEngine.Rendering.DebugUI.Table;
 
 public class TaskCSVUploader : MonoBehaviour
 {
@@ -29,7 +30,7 @@ public class TaskCSVUploader : MonoBehaviour
 
             string[] values = ParseCSVLine(line);
 
-            if (values.Length < 9)
+            if (values.Length < 12)
             {
                 Debug.LogWarning($"Skipping incomplete line {lineNum}: {line}");
                 lineNum++;
@@ -48,6 +49,13 @@ public class TaskCSVUploader : MonoBehaviour
             string traitsRaw = values[8].Trim();
             List<string> traits = ParseJsonArray(traitsRaw);
 
+            string materialsRaw = values[9].Trim();
+            List<string> materials = ParseJsonArray(materialsRaw);
+
+            bool picture = values[10].Trim().ToLower() == "true";
+
+            string length = values[11].Trim().ToLower(); // "daily", "weekly", "monthly"
+
             Dictionary<string, object> taskData = new Dictionary<string, object>
         {
             { "text", textLong },
@@ -57,19 +65,44 @@ public class TaskCSVUploader : MonoBehaviour
             { "difficulty", difficulty },
             { "minAge", minAge },
             { "maxAge", maxAge },
-            { "traits", traits }
+            { "traits", traits },
+            { "materials", materials },
+            { "picture", picture },
+            { "length", length }
         };
+
+            // Determine subcollection
+            string subCollection = length switch
+            {
+                "daily" => "dailyTask",
+                "weekly" => "weeklyTask",
+                "monthly" => "monthlyTask",
+                _ => null
+            };
+
+            if (subCollection == null)
+            {
+                Debug.LogWarning($"Unknown task length '{length}' on line {lineNum}, skipping.");
+                lineNum++;
+                continue;
+            }
 
             FirebaseFirestore.DefaultInstance
                 .Collection("tasks")
+                .Document(subCollection)
+                .Collection(subCollection)
                 .Document(taskId)
                 .SetAsync(taskData)
                 .ContinueWith(task =>
                 {
                     if (task.IsCompleted && !task.IsFaulted)
-                    { }
+                    {
+                        Debug.Log($"[✔] Uploaded {taskId} to /tasks/{subCollection}/{taskId}");
+                    }
                     else
+                    {
                         Debug.LogError($"[✘] Failed to sync task {taskId}: {task.Exception}");
+                    }
                 });
 
             lineNum++;
