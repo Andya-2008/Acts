@@ -8,7 +8,7 @@ using Firebase.Storage;
 using System.Threading.Tasks;
 using System.Collections;
 using UnityEngine.Networking;
-using System.IO;
+using System;
 
 public class TaskListUI : MonoBehaviour
 {
@@ -39,6 +39,8 @@ public class TaskListUI : MonoBehaviour
 
     public GameObject taskDetailPopupPrefab;
     public Transform popupParent;
+
+    public GameObject customTaskPopupPrefab;
 
     void Start()
     {
@@ -316,7 +318,156 @@ public class TaskListUI : MonoBehaviour
             }
         }, "Select a photo for your task", "image/*");
     }
+    public void OpenCustomTaskPopup()
+    {
+        GameObject popup = Instantiate(customTaskPopupPrefab, popupParent);
+        popup.SetActive(true);
 
+        TMP_InputField shortText = popup.transform.Find("HeaderBackground/ShortTextInput")?.GetComponent<TMP_InputField>();
+        TMP_InputField longText = popup.transform.Find("LongTextInput")?.GetComponent<TMP_InputField>();
+        TMP_Dropdown difficultyDropdown = popup.transform.Find("DifficultyDropdown")?.GetComponent<TMP_Dropdown>();
+        TMP_Dropdown categoryDropdown = popup.transform.Find("CategoryDropdown")?.GetComponent<TMP_Dropdown>();
+        RawImage preview = popup.transform.Find("PhotoPreview")?.GetComponent<RawImage>();
+        Toggle deedFeedToggle = popup.transform.Find("DeedFeedToggle")?.GetComponent<Toggle>();
+
+        string imagePath = null;
+
+        Button uploadBtn = popup.transform.Find("UploadButton")?.GetComponent<Button>();
+        if (uploadBtn != null)
+        {
+            uploadBtn.onClick.AddListener(() =>
+            {
+                NativeGallery.GetImageFromGallery(path =>
+                {
+                    if (path != null)
+                    {
+                        imagePath = path;
+                        Texture2D tex = NativeGallery.LoadImageAtPath(path, 1024);
+                        if (preview != null) preview.texture = tex;
+                    }
+                }, "Pick a photo", "image/*");
+            });
+        }
+
+        Button submitBtn = popup.transform.Find("SubmitButton")?.GetComponent<Button>();
+        if (submitBtn != null)
+        {
+            submitBtn.onClick.AddListener(() => StartCoroutine(SubmitCustomTask(
+    shortText.text,
+    longText.text,
+    categoryDropdown.options[categoryDropdown.value].text,
+    difficultyDropdown.options[difficultyDropdown.value].text,
+    imagePath,
+    deedFeedToggle.isOn,
+    popup
+)));
+        }
+
+        popup.transform.Find("CloseButton")?.GetComponent<Button>()?.onClick.AddListener(() => Destroy(popup));
+    }
+
+    private IEnumerator SubmitCustomTask(string shortText, string longText, string category, string difficulty, string imagePath, bool postToDeedFeed, GameObject popup)
+    {
+        string userId = auth.CurrentUser.UserId;
+        string taskId = Guid.NewGuid().ToString();
+        string photoUrl = "";
+
+        // 🔼 Upload image to Firebase Storage
+        if (!string.IsNullOrWhiteSpace(imagePath))
+        {
+            Texture2D texture = NativeGallery.LoadImageAtPath(imagePath, 1024, false);
+            if (texture == null)
+            {
+                Debug.LogError("❌ Failed to load readable image from gallery.");
+                yield break;
+            }
+
+            byte[] data = texture.EncodeToPNG();
+            var storageRef = storage.GetReference($"task_photos/{userId}/{taskId}.png");
+            var uploadTask = storageRef.PutBytesAsync(data);
+            yield return new WaitUntil(() => uploadTask.IsCompleted);
+
+            var urlTask = storageRef.GetDownloadUrlAsync();
+            yield return new WaitUntil(() => urlTask.IsCompleted);
+
+            if (urlTask.Exception != null)
+            {
+                Debug.LogError("❌ Failed to get image URL.");
+                yield break;
+            }
+
+            photoUrl = urlTask.Result.ToString();
+        }
+
+        // 🧾 Save to taskHistory
+        var taskData = new Dictionary<string, object>
+    {
+        { "textShort", shortText },
+        { "text", longText },
+        { "category", category },
+        { "difficulty", difficulty },
+        { "photoUrl", photoUrl },
+        { "completedAt", Timestamp.GetCurrentTimestamp() }
+    };
+
+        var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory").Document(taskId);
+        var photoRef = db.Collection("userInfo").Document(userId).Collection("taskPhotos").Document(taskId);
+
+        var setTask = historyRef.SetAsync(taskData);
+        yield return new WaitUntil(() => setTask.IsCompleted);
+
+        if (!string.IsNullOrEmpty(photoUrl))
+        {
+            var photoTask = photoRef.SetAsync(new Dictionary<string, object>
+        {
+            { "url", photoUrl },
+            { "uploadedAt", Timestamp.GetCurrentTimestamp() }
+        });
+            yield return new WaitUntil(() => photoTask.IsCompleted);
+        }
+
+        // 🌍 Optional: Upload to Deed Feed
+        if (postToDeedFeed)
+        {
+            var userDocTask = db.Collection("userInfo").Document(userId).GetSnapshotAsync();
+            yield return new WaitUntil(() => userDocTask.IsCompleted);
+
+            if (!userDocTask.Result.Exists)
+            {
+                Debug.LogWarning("⚠️ User document not found.");
+            }
+
+            DocumentSnapshot userDoc = userDocTask.Result;
+            string username = userDoc.ContainsField("Username") ? userDoc.GetValue<string>("Username") : "Anonymous";
+            string profilePicUrl = userDoc.ContainsField("profilePicUrl") ? userDoc.GetValue<string>("profilePicUrl") : "";
+            List<string> traits = userDoc.ContainsField("Traits") ? new List<string>(userDoc.GetValue<List<string>>("Traits")) : new List<string>();
+
+            var deedData = new Dictionary<string, object>
+        {
+            { "userId", userId },
+            { "username", username },
+            { "profilePicUrl", profilePicUrl },
+            { "prompt", shortText },
+            { "photoUrl", photoUrl },
+            { "timestamp", Timestamp.GetCurrentTimestamp() },
+            { "traits", traits },
+            { "reactions", new Dictionary<string, object> {
+                { "like", 0 }, { "heart", 0 }, { "hug", 0 }, { "wow", 0 }
+            }}
+        };
+
+            var deedUploadTask = db.Collection("deeds").AddAsync(deedData);
+            yield return new WaitUntil(() => deedUploadTask.IsCompleted);
+
+            if (deedUploadTask.Exception != null)
+            {
+                Debug.LogError("❌ Failed to upload deed: " + deedUploadTask.Exception);
+            }
+        }
+
+        Destroy(popup);
+        LoadTasks(); // refresh UI
+    }
     private IEnumerator UploadTaskPhoto(string taskId, Texture2D texture)
     {
         string userId = auth.CurrentUser.UserId;
