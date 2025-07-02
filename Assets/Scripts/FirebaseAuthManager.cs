@@ -37,6 +37,8 @@ public class FirebaseAuthManager : MonoBehaviour
     [SerializeField] TextMeshProUGUI debugText;
     private FirebaseFirestore db;
 
+    [SerializeField] AuthSceneAnimation authCanvas;
+
     private void Start()
     {
         //DontDestroyOnLoad(this);
@@ -92,8 +94,9 @@ public class FirebaseAuthManager : MonoBehaviour
         else
         {
             debugText.text += "Not logged in: redirecting to register screen\n";
-            loadingScreen.SetActive(false);
-            registerScreen.SetActive(true);
+            authCanvas.FinishLoadingFirebase();
+            //loadingScreen.SetActive(false);
+            //registerScreen.SetActive(true);
         }
     }
     private void AutoLogin()
@@ -115,8 +118,9 @@ public class FirebaseAuthManager : MonoBehaviour
         else
         {
             debugText.text += "Not logged in: redirecting to register screen\n";
-            registerScreen.SetActive(true);
-            loadingScreen.SetActive(false);
+            authCanvas.FinishLoadingFirebase();
+            //registerScreen.SetActive(true);
+            //loadingScreen.SetActive(false);
         }
     }
 
@@ -334,14 +338,12 @@ public class FirebaseAuthManager : MonoBehaviour
     {
         if(num == 0)
         {
-            registerScreen.SetActive(false);
-            loginScreen.SetActive(true);
+            authCanvas.RedirectToLogin();
         }
 
         if (num == 1)
         {
-            registerScreen.SetActive(true);
-            loginScreen.SetActive(false);
+            authCanvas.RedirectToRegister();
         }
         if (num == 2)
         {
