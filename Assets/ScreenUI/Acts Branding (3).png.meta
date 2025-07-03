@@ -1,0 +1,1014 @@
+fileFormatVersion: 2
+guid: da26114cc964d1248bd02821b92f2641
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 935473539242503437
+    second: Acts Branding (3)_0
+  - first:
+      213: -8538470907113140029
+    second: Acts Branding (3)_1
+  - first:
+      213: -2203902404124324482
+    second: Acts Branding (3)_2
+  - first:
+      213: 943765944791992095
+    second: Acts Branding (3)_3
+  - first:
+      213: 4018010388066386590
+    second: Acts Branding (3)_4
+  - first:
+      213: -2398626267741100618
+    second: Acts Branding (3)_5
+  - first:
+      213: -7919983767077270939
+    second: Acts Branding (3)_6
+  - first:
+      213: -8393141082767605104
+    second: Acts Branding (3)_7
+  - first:
+      213: 87677588739557655
+    second: Acts Branding (3)_8
+  - first:
+      213: -7321218592429328811
+    second: Acts Branding (3)_9
+  - first:
+      213: -7304427064043446753
+    second: Acts Branding (3)_10
+  - first:
+      213: 8873580137156221663
+    second: Acts Branding (3)_11
+  - first:
+      213: -4495236188787490550
+    second: Acts Branding (3)_12
+  - first:
+      213: 5556495605453969037
+    second: Acts Branding (3)_13
+  - first:
+      213: -1549131736339056918
+    second: Acts Branding (3)_14
+  - first:
+      213: 6489454593424237601
+    second: Acts Branding (3)_15
+  - first:
+      213: -1277136661238034104
+    second: Acts Branding (3)_16
+  - first:
+      213: -586389698186610689
+    second: Acts Branding (3)_17
+  - first:
+      213: -2138726233335677657
+    second: Acts Branding (3)_18
+  - first:
+      213: -1655234828260043552
+    second: Acts Branding (3)_19
+  - first:
+      213: -6659488722781267286
+    second: Acts Branding (3)_20
+  - first:
+      213: 3552027658329478235
+    second: Acts Branding (3)_21
+  - first:
+      213: 4910709322060527655
+    second: Acts Branding (3)_22
+  - first:
+      213: 4342927444274841072
+    second: Acts Branding (3)_23
+  - first:
+      213: 6722197567756094522
+    second: Acts Branding (3)_24
+  - first:
+      213: 8210387930033726742
+    second: Acts Branding (3)_25
+  - first:
+      213: -432185889876029290
+    second: Acts Branding (3)_26
+  - first:
+      213: -3389914812496593579
+    second: Acts Branding (3)_27
+  - first:
+      213: 3601780846379859242
+    second: Acts Branding (3)_28
+  - first:
+      213: -228981218773959127
+    second: Acts Branding (3)_29
+  - first:
+      213: -9045083092023633189
+    second: Acts Branding (3)_30
+  - first:
+      213: -3449440778275274605
+    second: Acts Branding (3)_31
+  - first:
+      213: -5526859145559802480
+    second: Acts Branding (3)_32
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Acts Branding (3)_0
+      rect:
+        serializedVersion: 2
+        x: 290
+        y: 1914
+        width: 300
+        height: 372
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0da3534a387bfc00800000000000000
+      internalID: 935473539242503437
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_1
+      rect:
+        serializedVersion: 2
+        x: 535
+        y: 1983
+        width: 248
+        height: 278
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c09380e2f1418980800000000000000
+      internalID: -8538470907113140029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_2
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 1660
+        width: 39
+        height: 53
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7d4a82b07a2a61e0800000000000000
+      internalID: -2203902404124324482
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_3
+      rect:
+        serializedVersion: 2
+        x: 368
+        y: 1659
+        width: 34
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f170072602ee81d00800000000000000
+      internalID: 943765944791992095
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_4
+      rect:
+        serializedVersion: 2
+        x: 405
+        y: 1660
+        width: 30
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e92c68cd827d2c730800000000000000
+      internalID: 4018010388066386590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_5
+      rect:
+        serializedVersion: 2
+        x: 437
+        y: 1659
+        width: 29
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b5ee523e1e56bed0800000000000000
+      internalID: -2398626267741100618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_6
+      rect:
+        serializedVersion: 2
+        x: 470
+        y: 1659
+        width: 36
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56acf78c9b0961290800000000000000
+      internalID: -7919983767077270939
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_7
+      rect:
+        serializedVersion: 2
+        x: 510
+        y: 1660
+        width: 40
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09246eb67a2958b80800000000000000
+      internalID: -8393141082767605104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_8
+      rect:
+        serializedVersion: 2
+        x: 553
+        y: 1659
+        width: 35
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 719859b6d4e773100800000000000000
+      internalID: 87677588739557655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_9
+      rect:
+        serializedVersion: 2
+        x: 590
+        y: 1660
+        width: 18
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 556b34bca7ec56a90800000000000000
+      internalID: -7321218592429328811
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_10
+      rect:
+        serializedVersion: 2
+        x: 630
+        y: 1660
+        width: 18
+        height: 53
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1ed0f7294671aa90800000000000000
+      internalID: -7304427064043446753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_11
+      rect:
+        serializedVersion: 2
+        x: 653
+        y: 1660
+        width: 40
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fda9829de1a452b70800000000000000
+      internalID: 8873580137156221663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_12
+      rect:
+        serializedVersion: 2
+        x: 696
+        y: 1660
+        width: 28
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0147d9c086bd91c0800000000000000
+      internalID: -4495236188787490550
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_13
+      rect:
+        serializedVersion: 2
+        x: 719
+        y: 1659
+        width: 36
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d865a174053ac1d40800000000000000
+      internalID: 5556495605453969037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_14
+      rect:
+        serializedVersion: 2
+        x: 105
+        y: 1404
+        width: 872
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae6f939b4e0608ae0800000000000000
+      internalID: -1549131736339056918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_15
+      rect:
+        serializedVersion: 2
+        x: 104
+        y: 1178
+        width: 871
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1242413f19c2f0a50800000000000000
+      internalID: 6489454593424237601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_16
+      rect:
+        serializedVersion: 2
+        x: 104
+        y: 930
+        width: 871
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 841574129f2b64ee0800000000000000
+      internalID: -1277136661238034104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_17
+      rect:
+        serializedVersion: 2
+        x: 389
+        y: 804
+        width: 35
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff773a32da9bcd7f0800000000000000
+      internalID: -586389698186610689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_18
+      rect:
+        serializedVersion: 2
+        x: 453
+        y: 803
+        width: 22
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72db73e72d7b152e0800000000000000
+      internalID: -2138726233335677657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_19
+      rect:
+        serializedVersion: 2
+        x: 545
+        y: 804
+        width: 22
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e494b981bc6709e0800000000000000
+      internalID: -1655234828260043552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_20
+      rect:
+        serializedVersion: 2
+        x: 577
+        y: 804
+        width: 31
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aaa17e44a4eb493a0800000000000000
+      internalID: -6659488722781267286
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_21
+      rect:
+        serializedVersion: 2
+        x: 615
+        y: 836
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b545717f5565b4130800000000000000
+      internalID: 3552027658329478235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_22
+      rect:
+        serializedVersion: 2
+        x: 650
+        y: 803
+        width: 22
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 728fd904c18562440800000000000000
+      internalID: 4910709322060527655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_23
+      rect:
+        serializedVersion: 2
+        x: 671
+        y: 804
+        width: 31
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f50c41308d254c30800000000000000
+      internalID: 4342927444274841072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_24
+      rect:
+        serializedVersion: 2
+        x: 426
+        y: 803
+        width: 28
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3cc818721b0a4d50800000000000000
+      internalID: 6722197567756094522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_25
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 803
+        width: 26
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 615a0d5625821f170800000000000000
+      internalID: 8210387930033726742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_26
+      rect:
+        serializedVersion: 2
+        x: 515
+        y: 803
+        width: 28
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 690d0051931900af0800000000000000
+      internalID: -432185889876029290
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_27
+      rect:
+        serializedVersion: 2
+        x: 611
+        y: 804
+        width: 15
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55d3e46407a94f0d0800000000000000
+      internalID: -3389914812496593579
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_28
+      rect:
+        serializedVersion: 2
+        x: 628
+        y: 804
+        width: 23
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2df643c8981cf130800000000000000
+      internalID: 3601780846379859242
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_29
+      rect:
+        serializedVersion: 2
+        x: 108
+        y: 574
+        width: 223
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92efdb27bce72dcf0800000000000000
+      internalID: -228981218773959127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_30
+      rect:
+        serializedVersion: 2
+        x: 354
+        y: 574
+        width: 236
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bda1a08c9d8697280800000000000000
+      internalID: -9045083092023633189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_31
+      rect:
+        serializedVersion: 2
+        x: 614
+        y: 574
+        width: 361
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 390c72953ef1120d0800000000000000
+      internalID: -3449440778275274605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Acts Branding (3)_32
+      rect:
+        serializedVersion: 2
+        x: 108
+        y: 203
+        width: 873
+        height: 195
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09df941c3e6ac43b0800000000000000
+      internalID: -5526859145559802480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Acts Branding (3)_0: 935473539242503437
+      Acts Branding (3)_1: -8538470907113140029
+      Acts Branding (3)_10: -7304427064043446753
+      Acts Branding (3)_11: 8873580137156221663
+      Acts Branding (3)_12: -4495236188787490550
+      Acts Branding (3)_13: 5556495605453969037
+      Acts Branding (3)_14: -1549131736339056918
+      Acts Branding (3)_15: 6489454593424237601
+      Acts Branding (3)_16: -1277136661238034104
+      Acts Branding (3)_17: -586389698186610689
+      Acts Branding (3)_18: -2138726233335677657
+      Acts Branding (3)_19: -1655234828260043552
+      Acts Branding (3)_2: -2203902404124324482
+      Acts Branding (3)_20: -6659488722781267286
+      Acts Branding (3)_21: 3552027658329478235
+      Acts Branding (3)_22: 4910709322060527655
+      Acts Branding (3)_23: 4342927444274841072
+      Acts Branding (3)_24: 6722197567756094522
+      Acts Branding (3)_25: 8210387930033726742
+      Acts Branding (3)_26: -432185889876029290
+      Acts Branding (3)_27: -3389914812496593579
+      Acts Branding (3)_28: 3601780846379859242
+      Acts Branding (3)_29: -228981218773959127
+      Acts Branding (3)_3: 943765944791992095
+      Acts Branding (3)_30: -9045083092023633189
+      Acts Branding (3)_31: -3449440778275274605
+      Acts Branding (3)_32: -5526859145559802480
+      Acts Branding (3)_4: 4018010388066386590
+      Acts Branding (3)_5: -2398626267741100618
+      Acts Branding (3)_6: -7919983767077270939
+      Acts Branding (3)_7: -8393141082767605104
+      Acts Branding (3)_8: 87677588739557655
+      Acts Branding (3)_9: -7321218592429328811
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
