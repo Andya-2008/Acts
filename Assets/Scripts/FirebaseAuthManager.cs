@@ -89,7 +89,7 @@ public class FirebaseAuthManager : MonoBehaviour
 
             yield return new WaitUntil(() => reloadUserTask.IsCompleted);
 
-            AutoLogin();
+            StartCoroutine(AutoLogin());
         }
         else
         {
@@ -99,13 +99,14 @@ public class FirebaseAuthManager : MonoBehaviour
             //registerScreen.SetActive(true);
         }
     }
-    private void AutoLogin()
+    private IEnumerator AutoLogin()
     {
         if(user != null)
         {
             References.userName = user.DisplayName;
             debugText.text += "Auto logged in:" + user.DisplayName+"\n";
             authCanvas.ConfigLoader();
+            yield return new WaitForSeconds(.5f);
             CheckUserConfig(isFinished => {
                 if (isFinished)
                     SceneManager.LoadScene("MainAppScene");
