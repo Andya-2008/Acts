@@ -105,9 +105,7 @@ public class FirebaseAuthManager : MonoBehaviour
         {
             References.userName = user.DisplayName;
             debugText.text += "Auto logged in:" + user.DisplayName+"\n";
-            loadingScreen.SetActive(false);
-            loginScreen.SetActive(false);
-            loggedInScreen.SetActive(true);
+            authCanvas.ConfigLoader();
             CheckUserConfig(isFinished => {
                 if (isFinished)
                     SceneManager.LoadScene("MainAppScene");
@@ -193,10 +191,8 @@ public class FirebaseAuthManager : MonoBehaviour
         {
             user = loginTask.Result.User;
 
-            loadingScreen.SetActive(false);
-            loginScreen.SetActive(false);
-            registerScreen.SetActive(false);
-            loggedInScreen.SetActive(true);
+            authCanvas.Login();
+            yield return new WaitForSeconds(.5f);
             CheckUserConfig(isFinished => {
                 if (isFinished)
                     SceneManager.LoadScene("MainAppScene");
@@ -310,10 +306,9 @@ public class FirebaseAuthManager : MonoBehaviour
                 {
                     GameObject.Find("FirebaseDBManager").GetComponent<FirebaseDBManager>().CreateUserAuthData(email,user);
                     //UIManager.Instance.OpenLoginPanel();loadingScreen.SetActive(false);
-                    loadingScreen.SetActive(false);
-                    registerScreen.SetActive(false);
-                    loginScreen.SetActive(false);
-                    loggedInScreen.SetActive(true);
+
+                    authCanvas.Registered();
+                    yield return new WaitForSeconds(.5f);
                     CheckUserConfig(isFinished => {
                         if (isFinished)
                             SceneManager.LoadScene("MainAppScene");

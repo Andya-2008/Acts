@@ -6,6 +6,8 @@ public class AuthSceneAnimation : MonoBehaviour
     [SerializeField] PlayableDirector firstAnimation;
     [SerializeField] PlayableDirector secondAnimation;
     [SerializeField] PlayableDirector thirdAnimation;
+    [SerializeField] PlayableDirector registerAnimation;
+    [SerializeField] PlayableDirector loginAnimation;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -31,5 +33,20 @@ public class AuthSceneAnimation : MonoBehaviour
     {
         Debug.Log("3");
         thirdAnimation.Play();
+    }
+    public void Registered()
+    {
+        Debug.Log("3");
+        registerAnimation.Play();
+    }
+    public void Login()
+    {
+        Debug.Log("3");
+        loginAnimation.Play();
+    }
+    public void ConfigLoader()
+    {
+        Debug.Log("3");
+        GetComponent<PlayableDirector>().Play();
     }
 }
