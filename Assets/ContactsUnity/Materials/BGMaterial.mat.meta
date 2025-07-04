@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cb84150eb874e41b680db13cbce62cf5
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 202545
+  packageName: Contacts for Android
+  packageVersion: 1.0
+  assetPath: Assets/ContactsUnity/Materials/BGMaterial.mat
+  uploadId: 496907

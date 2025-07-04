@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: a656b0243150348308323fa02b1aa896
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 202545
+  packageName: Contacts for Android
+  packageVersion: 1.0
+  assetPath: Assets/Plugins/Contacts.cs
+  uploadId: 496907

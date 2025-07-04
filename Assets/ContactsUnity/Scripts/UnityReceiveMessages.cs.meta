@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f920da570dd2c4694b3ee2e64fb89bce
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 202545
+  packageName: Contacts for Android
+  packageVersion: 1.0
+  assetPath: Assets/ContactsUnity/Scripts/UnityReceiveMessages.cs
+  uploadId: 496907

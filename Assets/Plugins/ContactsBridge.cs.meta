@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 5ec3913182dae4e09bc9c48880786116
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 202545
+  packageName: Contacts for Android
+  packageVersion: 1.0
+  assetPath: Assets/Plugins/ContactsBridge.cs
+  uploadId: 496907

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Firebase.Firestore;
 using System.Collections.Generic; // Needed for Dictionary
 using Firebase.Extensions; // Needed for ContinueWithOnMainThread
@@ -7,6 +7,7 @@ using System;
 using TMPro;
 using UnityEngine.Android;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class UserConfigManager : MonoBehaviour
 {
@@ -24,6 +25,9 @@ public class UserConfigManager : MonoBehaviour
     [SerializeField] TMP_InputField username;
     [SerializeField] List<GameObject> screens = new List<GameObject>();
     [SerializeField] List<PersonalityButtonPress> personalityButtons = new List<PersonalityButtonPress>();
+
+    [SerializeField] Image CameraCover;
+    [SerializeField] Image NotifCover;
     void Start()
     {
         // Get the Firestore instance
@@ -32,7 +36,30 @@ public class UserConfigManager : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
 
     }
-    
+    private void Update()
+    {
+
+#if UNITY_ANDROID
+        if (Permission.HasUserAuthorizedPermission(Permission.Camera))
+        {
+            CameraCover.enabled = true;
+        }
+        else
+        {
+            CameraCover.enabled = false;
+        }
+
+
+        if (Permission.HasUserAuthorizedPermission("android.permission.POST_NOTIFICATIONS"))
+        {
+            NotifCover.enabled = true;
+        }
+        else
+        {
+            NotifCover.enabled = false;
+        }
+#endif
+    }
     public void AddUserInfoScreen1()
     {
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
@@ -69,13 +96,12 @@ public class UserConfigManager : MonoBehaviour
 #if UNITY_ANDROID
         if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
         {
-            Permission.RequestUserPermission(Permission.Camera);
-            Debug.LogError("Doesn't have camera permission");
+            GameObject.Find("PermissionManager").GetComponent<CameraPermissionManager>().RequestCameraPermission();
             return;
         }
         if (!Permission.HasUserAuthorizedPermission("android.permission.POST_NOTIFICATIONS"))
         {
-            Debug.LogError("Doesn't have notification permission");
+            GameObject.Find("PermissionManager").GetComponent<PushNotificationManager>().RequestPushPermission();
             return;
         }
 #endif
@@ -83,6 +109,38 @@ public class UserConfigManager : MonoBehaviour
 
         screens[2].SetActive(false);
         screens[3].SetActive(true);
+    }
+
+    public void AskPermissions(int permission)
+    {
+#if UNITY_ANDROID
+        if (permission == 0)
+        {
+            GameObject.Find("PermissionManager").GetComponent<CameraPermissionManager>().RequestCameraPermission();
+            Debug.Log("📷 Camera permission requested.");
+        }
+        else if (permission == 1)
+        {
+            GameObject permissionManager = GameObject.Find("PermissionManager");
+            if (permissionManager != null)
+            {
+                var pushManager = permissionManager.GetComponent<PushNotificationManager>();
+                if (pushManager != null)
+                {
+                    pushManager.RequestPushPermission();
+                    Debug.Log("🔔 Push notification permission requested.");
+                }
+                else
+                {
+                    Debug.LogError("❌ PushNotificationManager component not found on PermissionManager.");
+                }
+            }
+            else
+            {
+                Debug.LogError("❌ PermissionManager GameObject not found.");
+            }
+        }
+#endif
     }
     public void AddUserInfoUsernameAndPFP()
     {
@@ -93,8 +151,12 @@ public class UserConfigManager : MonoBehaviour
         }, SetOptions.MergeAll);
         screens[3].SetActive(false);
         screens[4].SetActive(true);
-        UserConfigFinished();
-        
+#if UNITY_ANDROID
+        {
+            RequestContactsPermission();
+            GameObject.Find("FriendContactManager").GetComponent<ContactImportManager>().StartContactImport();
+        }
+#endif
     }
 
     public void UserConfigFinished()
@@ -104,5 +166,15 @@ public class UserConfigManager : MonoBehaviour
             { "UserConfig", true}
         }, SetOptions.MergeAll);
         SceneManager.LoadScene("MainAppScene");
+    }
+
+    public void RequestContactsPermission()
+    {
+    #if UNITY_ANDROID
+        if (!Permission.HasUserAuthorizedPermission("android.permission.READ_CONTACTS"))
+        {
+            Permission.RequestUserPermission("android.permission.READ_CONTACTS");
+        }
+    #endif
     }
 }

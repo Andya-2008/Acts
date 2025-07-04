@@ -34,35 +34,38 @@ public class ProfilePictureManager : MonoBehaviour
                     return;
                 }
 
-                // Now launch the cropping UI with the loaded texture
                 ImageCropper.Instance.Show(
-    originalTexture,
-    (bool result, Texture originalImage, Texture2D croppedTexture) =>
-    {
-        if (!result || croppedTexture == null)
-        {
-            Debug.LogWarning("User cancelled cropping.");
-            return;
-        }
+                    originalTexture,
+                    (bool result, Texture originalImage, Texture2D croppedTexture) =>
+                    {
+                        if (!result || croppedTexture == null)
+                        {
+                            Debug.LogWarning("User cancelled cropping.");
+                            return;
+                        }
 
-        if (croppedTexture.width < 32 || croppedTexture.height < 32)
-        {
-            Debug.LogError("Cropped image too small.");
-            return;
-        }
+                        if (croppedTexture.width < 32 || croppedTexture.height < 32)
+                        {
+                            Debug.LogError("Cropped image too small.");
+                            return;
+                        }
 
-        profilePictureDisplay.texture = croppedTexture;
-        UploadProfilePicture(croppedTexture);
-    },
-    new ImageCropper.Settings()
-    {
-        selectionMinAspectRatio = 1f,
-        selectionMaxAspectRatio = 1f,
-        ovalSelection = true,
-        autoZoomEnabled = true,
-        markTextureNonReadable = false
-    }
-);
+                        // Apply circular mask
+                        Texture2D masked = ApplyCircularMask(croppedTexture);
+                        profilePictureDisplay.texture = masked;
+
+                        // Upload
+                        UploadProfilePicture(masked);
+                    },
+                    new ImageCropper.Settings()
+                    {
+                        selectionMinAspectRatio = 1f,
+                        selectionMaxAspectRatio = 1f,
+                        ovalSelection = true,
+                        autoZoomEnabled = true,
+                        markTextureNonReadable = false
+                    }
+                );
             }
         }, "Select a Profile Picture", "image/*");
     }
@@ -76,20 +79,15 @@ public class ProfilePictureManager : MonoBehaviour
 
         try
         {
-            // Upload image bytes
             await storageRef.PutBytesAsync(imageBytes);
-
-            // Get download URL
             Uri uri = await storageRef.GetDownloadUrlAsync();
             string downloadUrl = uri.ToString();
 
-            // Save URL to Firestore
             FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
             await db.Collection("userInfo").Document(userId).UpdateAsync(new Dictionary<string, object>
-        {
-            { "profilePicUrl", downloadUrl }
-        });
-
+            {
+                { "profilePicUrl", downloadUrl }
+            });
         }
         catch (System.Exception ex)
         {
@@ -117,5 +115,43 @@ public class ProfilePictureManager : MonoBehaviour
                 Debug.LogError("Failed to download profile picture: " + task.Exception);
             }
         });
+    }
+
+    private Texture2D ApplyCircularMask(Texture2D source)
+    {
+        int width = source.width;
+        int height = source.height;
+        Texture2D masked = new Texture2D(width, height, TextureFormat.RGBA32, false);
+
+        Color32[] pixels = source.GetPixels32();
+        Color32[] maskedPixels = new Color32[pixels.Length];
+
+        float centerX = width / 2f;
+        float centerY = height / 2f;
+        float radius = Mathf.Min(width, height) / 2f;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int index = y * width + x;
+                float dx = x - centerX;
+                float dy = y - centerY;
+                float distance = Mathf.Sqrt(dx * dx + dy * dy);
+
+                if (distance <= radius)
+                {
+                    maskedPixels[index] = pixels[index]; // Keep pixel
+                }
+                else
+                {
+                    maskedPixels[index] = new Color32(0, 0, 0, 0); // Transparent
+                }
+            }
+        }
+
+        masked.SetPixels32(maskedPixels);
+        masked.Apply();
+        return masked;
     }
 }
