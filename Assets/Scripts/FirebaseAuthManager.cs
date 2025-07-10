@@ -31,18 +31,18 @@ public class FirebaseAuthManager : MonoBehaviour
 
     [SerializeField] GameObject loadingScreen;
     [SerializeField] GameObject loginScreen;
-    [SerializeField] GameObject loggedInScreen;
     [SerializeField] GameObject registerScreen;
 
-    [SerializeField] TextMeshProUGUI debugText;
+    [SerializeField] TextMeshProUGUI registerErrorText;
     private FirebaseFirestore db;
 
     [SerializeField] AuthSceneAnimation authCanvas;
 
+    [SerializeField] TextMeshProUGUI loginErrorText;
+
     private void Start()
     {
         //DontDestroyOnLoad(this);
-        debugText.text = "Debug:\n";
         StartCoroutine(CheckAndFixDependenciesAsync());
         DontDestroyOnLoad(this);
         //FirebaseApp.Create();
@@ -53,15 +53,12 @@ public class FirebaseAuthManager : MonoBehaviour
     {
         if (dependencyStatus == DependencyStatus.Available)
         {
-            debugText.text += "3\n";
             InitializeFirebase();
-            debugText.text += "4\n";
             yield return StartCoroutine(CheckForAutoLogin());
-            debugText.text += "5\n";
         }
         else
         {
-            debugText.text += "Could not resolve all Firebase dependencies: " + dependencyStatus + "\n";
+            Debug.Log("Could not resolve all Firebase dependencies: " + dependencyStatus + "\n");
         }
     }
 
@@ -69,16 +66,10 @@ public class FirebaseAuthManager : MonoBehaviour
     {
         //Set the default instance object
 
-        debugText.text += "4\n";
         auth = FirebaseAuth.DefaultInstance;
 
-        debugText.text += "5\n";
         auth.StateChanged += AuthStateChanged;
-        debugText.text += "6\n";
         AuthStateChanged(this, null);
-        debugText.text += "7\n";
-        debugText.text += "Firebase initialized\n";
-        debugText.text += "8\n";
     }
 
     private IEnumerator CheckForAutoLogin()
@@ -93,10 +84,7 @@ public class FirebaseAuthManager : MonoBehaviour
         }
         else
         {
-            debugText.text += "Not logged in: redirecting to register screen\n";
             authCanvas.FinishLoadingFirebase();
-            //loadingScreen.SetActive(false);
-            //registerScreen.SetActive(true);
         }
     }
     private IEnumerator AutoLogin()
@@ -104,7 +92,6 @@ public class FirebaseAuthManager : MonoBehaviour
         if(user != null)
         {
             References.userName = user.DisplayName;
-            debugText.text += "Auto logged in:" + user.DisplayName+"\n";
             authCanvas.ConfigLoader();
             yield return new WaitForSeconds(.5f);
             CheckUserConfig(isFinished => {
@@ -116,10 +103,7 @@ public class FirebaseAuthManager : MonoBehaviour
         }
         else
         {
-            debugText.text += "Not logged in: redirecting to register screen\n";
             authCanvas.FinishLoadingFirebase();
-            //registerScreen.SetActive(true);
-            //loadingScreen.SetActive(false);
         }
     }
 
@@ -170,23 +154,23 @@ public class FirebaseAuthManager : MonoBehaviour
             switch (authError)
             {
                 case AuthError.InvalidEmail:
-                    failedMessage += "Email is invalid";
+                    failedMessage += "your email has not been registered. Would you like to register instead?";
                     break;
                 case AuthError.WrongPassword:
-                    failedMessage += "Wrong Password";
+                    failedMessage += "of incorrect password.";
                     break;
                 case AuthError.MissingEmail:
-                    failedMessage += "Email is missing";
+                    failedMessage += "your email is not formatted correctly.";
                     break;
                 case AuthError.MissingPassword:
-                    failedMessage += "Password is missing";
+                    failedMessage += "your password is not formatted correctly.";
                     break;
                 default:
-                    failedMessage = "Login Failed";
+                    failedMessage = "Login failed. Please make sure you're connected to the internet.";
                     break;
             }
 
-            Debug.Log(failedMessage);
+            loginErrorText.text = failedMessage;
         }
         else
         {
@@ -212,17 +196,13 @@ public class FirebaseAuthManager : MonoBehaviour
 
     private IEnumerator RegisterAsync(string email, string password, string confirmPassword)
     {
-        if (name == "")
+        if (email == "")
         {
-            Debug.LogError("User Name is empty");
-        }
-        else if (email == "")
-        {
-            Debug.LogError("email field is empty");
+            registerErrorText.text = "Email field is empty!";
         }
         else if (passwordRegisterField.text != confirmPasswordRegisterField.text)
         {
-            Debug.LogError("Password does not match");
+            registerErrorText.text = "Passwords do not match!";
         }
         else
         {
@@ -237,25 +217,28 @@ public class FirebaseAuthManager : MonoBehaviour
                 FirebaseException firebaseException = registerTask.Exception.GetBaseException() as FirebaseException;
                 AuthError authError = (AuthError)firebaseException.ErrorCode;
 
-                string failedMessage = "Registration Failed!";
+                string failedMessage = "Registration Failed! Because ";
+
                 switch (authError)
                 {
                     case AuthError.InvalidEmail:
-                        failedMessage += "Email is invalid";
+                        failedMessage += "your email is not formatted correctly.";
                         break;
                     case AuthError.WrongPassword:
-                        failedMessage += "Wrong Password";
+                        failedMessage += "of an incorrect password.";
                         break;
                     case AuthError.MissingEmail:
-                        failedMessage += "Email is missing";
+                        failedMessage += "your email is not formatted correctly.";
                         break;
                     case AuthError.MissingPassword:
-                        failedMessage += "Password is missing";
+                        failedMessage += "your password is not formatted correctly.";
                         break;
                     default:
-                        failedMessage = "Registration Failed";
+                        failedMessage = "Registration failed. Please make sure you're connected to the internet.";
                         break;
                 }
+
+                registerErrorText.text = failedMessage;
 
                 Debug.Log(failedMessage);
             }
@@ -281,27 +264,28 @@ public class FirebaseAuthManager : MonoBehaviour
                     AuthError authError = (AuthError)firebaseException.ErrorCode;
 
 
-                    string failedMessage = "Profile update Failed! Becuase ";
+                    string failedMessage = "Profile update failed! Because ";
+
                     switch (authError)
                     {
                         case AuthError.InvalidEmail:
-                            failedMessage += "Email is invalid";
+                            failedMessage += "your email is not formatted correctly.";
                             break;
                         case AuthError.WrongPassword:
-                            failedMessage += "Wrong Password";
+                            failedMessage += "of an incorrect password.";
                             break;
                         case AuthError.MissingEmail:
-                            failedMessage += "Email is missing";
+                            failedMessage += "your email is not formatted correctly.";
                             break;
                         case AuthError.MissingPassword:
-                            failedMessage += "Password is missing";
+                            failedMessage += "your password is not formatted correctly.";
                             break;
                         default:
-                            failedMessage = "Profile update Failed";
+                            failedMessage = "Profile update failed. Please make sure you're connected to the internet.";
                             break;
                     }
 
-                    Debug.Log(failedMessage);
+                    registerErrorText.text = failedMessage;
                 }
                 else
                 {
@@ -326,7 +310,6 @@ public class FirebaseAuthManager : MonoBehaviour
         {
             auth.SignOut();
             loginScreen.SetActive(true);
-            loggedInScreen.SetActive(false);
             loadingScreen.SetActive(false);
         }
     }
@@ -345,7 +328,6 @@ public class FirebaseAuthManager : MonoBehaviour
         {
             registerScreen.SetActive(false);
             loginScreen.SetActive(false);
-            loggedInScreen.SetActive(true);
         }
     }
     private void OnLoginCompleted(object sender, EventArgs e)

@@ -153,8 +153,9 @@ public class UserConfigManager : MonoBehaviour
         screens[4].SetActive(true);
 #if UNITY_ANDROID
         {
-            RequestContactsPermission();
-            GameObject.Find("FriendContactManager").GetComponent<ContactImportManager>().StartContactImport();
+            Debug.Log("🟡 [UserConfigManager] Requesting contact permission via BrainCheck...");
+            BrainCheck.ContactsBridge.setUnityGameObjectNameAndMethodName("UnityReceiveMessage", "CallbackMethod");
+            BrainCheck.ContactsBridge.requestContactsPermission();
         }
 #endif
     }
@@ -170,11 +171,10 @@ public class UserConfigManager : MonoBehaviour
 
     public void RequestContactsPermission()
     {
-    #if UNITY_ANDROID
         if (!Permission.HasUserAuthorizedPermission("android.permission.READ_CONTACTS"))
         {
             Permission.RequestUserPermission("android.permission.READ_CONTACTS");
         }
-    #endif
+        Debug.Log("Asked for contacts");
     }
 }

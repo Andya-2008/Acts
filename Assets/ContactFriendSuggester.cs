@@ -24,7 +24,7 @@ public class ContactFriendSuggester : MonoBehaviour
 
     public void CheckContactsForFriends()
     {
-        var contactList = UnityReceiveMessages.Instance?.contactList;
+        /*var contactList = UnityReceiveMessages.Instance?.contactList;
         if (contactList == null || contactList.Count == 0)
         {
             Debug.LogWarning("No contacts found.");
@@ -50,6 +50,7 @@ public class ContactFriendSuggester : MonoBehaviour
                 }
             });
         }
+        */
     }
 
     string NormalizePhone(string raw)
