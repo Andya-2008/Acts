@@ -92,7 +92,7 @@ public class FirebaseAuthManager : MonoBehaviour
         if(user != null)
         {
             References.userName = user.DisplayName;
-            authCanvas.ConfigLoader();
+            //authCanvas.ConfigLoader();
             yield return new WaitForSeconds(.5f);
             CheckUserConfig(isFinished => {
                 if (isFinished)

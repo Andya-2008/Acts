@@ -12,13 +12,13 @@ public class ContactImportManager : MonoBehaviour
         BrainCheck.ContactsBridge.setUnityGameObjectNameAndMethodName("UnityReceiveMessage", "CallbackMethod");
     }
 
-    // Call this from your UI button
     public void StartContactImport()
     {
         Debug.Log("📲 Requesting contact permission...");
         contactListRequested = true;
         try
         {
+            BrainCheck.ContactsBridge.setUnityGameObjectNameAndMethodName("UnityReceiveMessage", "CallbackMethod");
             BrainCheck.ContactsBridge.requestContactsPermission();
         }
         catch (System.Exception ex)
@@ -27,41 +27,40 @@ public class ContactImportManager : MonoBehaviour
         }
     }
 
-    // Called by UnityReceiveMessages.cs once contacts are parsed
     public void OnPermissionResult(bool granted)
     {
-        Debug.Log("🔵 [ContactImportManager] OnPermissionResult() called: " + granted);
-        if (granted)
-        {
-            Debug.Log("✅ [ContactImportManager] Fetching contacts...");
-            BrainCheck.ContactsBridge.getContactList();
-        }
-        else
-        {
-            Debug.LogWarning("🚫 [ContactImportManager] Permission denied. Cannot fetch contacts.");
-        }
+        Debug.Log("🔵 OnPermissionResult: " + granted);
+        if (!granted) { Debug.LogWarning("🚫 Permission denied."); return; }
+        StartCoroutine(FetchThenEmitList());
     }
+
+    private System.Collections.IEnumerator FetchThenEmitList()
+    {
+        Debug.Log("📥 startFetchingRequest()");
+        BrainCheck.ContactsBridge.startFetchingRequest();
+        yield return new WaitForSeconds(0.5f); // small breath for native side
+        Debug.Log("📤 getContactList()");
+        BrainCheck.ContactsBridge.getContactList(); // <- this often triggers the ContactList callback
+    }
+
+    public bool diagnosticMode = true;
 
     public void OnContactsParsed()
     {
-        Debug.Log("🟢 [ContactImportManager] OnContactsParsed() called");
-
-        if (!contactListRequested)
-        {
-            Debug.Log("⚠️ [ContactImportManager] contactListRequested is false — ignoring.");
-            return;
-        }
-
+        Debug.Log("🟢 OnContactsParsed()");
         contactListRequested = false;
 
-        if (friendSuggester != null)
+        if (friendSuggester == null) { Debug.LogError("❌ friendSuggester not assigned"); return; }
+
+        if (diagnosticMode)
         {
-            Debug.Log("🎯 [ContactImportManager] Starting friend match...");
-            friendSuggester.CheckContactsForFriends();
+            Debug.Log("🧪 Diagnostic: ShowAllContactsRaw()");
+            friendSuggester.ShowAllContactsRaw();   // show EVERYTHING in the container
         }
         else
         {
-            Debug.LogWarning("❌ [ContactImportManager] friendSuggester is not assigned!");
+            friendSuggester.CheckContactsForFriends(); // your real matching flow
         }
+        friendSuggester.RunContactsDiagnostics(renderUI: true);
     }
 }

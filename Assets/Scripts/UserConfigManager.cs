@@ -63,14 +63,15 @@ public class UserConfigManager : MonoBehaviour
     public void AddUserInfoScreen1()
     {
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
-        string phoneNum = System.Text.RegularExpressions.Regex.Replace(phone.text, @"[^0-9]", string.Empty) ?? string.Empty;
-        docRef.SetAsync(new Dictionary<string, object> {
-            { "First", first.text },
-            { "Last", last.text },
-            {"DOB", dobM.text + "/" + dobD.text + "/" + dobY.text},
-            {"Phone", phoneNum}
+        string digits = System.Text.RegularExpressions.Regex.Replace(phone.text, @"\D", "");
+        if (digits.Length > 10) digits = digits.Substring(digits.Length - 10);
 
-        }, SetOptions.MergeAll);
+        docRef.SetAsync(new Dictionary<string, object> {
+    { "First", first.text },
+    { "Last",  last.text },
+    { "DOB",   dobM.text + "/" + dobD.text + "/" + dobY.text },
+    { "Phone", digits }   // ✅ store normalized
+}, SetOptions.MergeAll);
         screens[0].SetActive(false);
         screens[1].SetActive(true);
     }
@@ -144,18 +145,19 @@ public class UserConfigManager : MonoBehaviour
     }
     public void AddUserInfoUsernameAndPFP()
     {
-        //GameObject.Find("ProfilePictureManager").GetComponent<ProfilePictureManager>().LoadProfilePicture();
         DocumentReference docRef = db.Collection("userInfo").Document(user.UserId);
         docRef.SetAsync(new Dictionary<string, object> {
-            { "Username", username.text}
-        }, SetOptions.MergeAll);
+        { "Username", username.text}
+    }, SetOptions.MergeAll);
+
         screens[3].SetActive(false);
         screens[4].SetActive(true);
+
 #if UNITY_ANDROID
         {
-            Debug.Log("🟡 [UserConfigManager] Requesting contact permission via BrainCheck...");
-            BrainCheck.ContactsBridge.setUnityGameObjectNameAndMethodName("UnityReceiveMessage", "CallbackMethod");
-            BrainCheck.ContactsBridge.requestContactsPermission();
+            // ✅ Single entry point: this triggers permission + (later) fetch
+            var cim = GameObject.Find("FriendContactManager").GetComponent<ContactImportManager>();
+            cim.StartContactImport();
         }
 #endif
     }

@@ -18,8 +18,6 @@ public class TaskAssigner : MonoBehaviour
         while (auth.CurrentUser == null)
             await Task.Delay(100);
 
-        string userId = auth.CurrentUser.UserId;
-
         if (await ShouldReassign("dailyTask", "today"))
             await AssignTasks("dailyTask", "today", 3);
 
@@ -29,6 +27,7 @@ public class TaskAssigner : MonoBehaviour
         if (await ShouldReassign("monthlyTask", "thisMonth"))
             await AssignTasks("monthlyTask", "thisMonth", 3);
     }
+
     public async Task<bool> ShouldReassign(string category, string docName)
     {
         string userId = auth.CurrentUser.UserId;
@@ -51,6 +50,7 @@ public class TaskAssigner : MonoBehaviour
     public async Task AssignTasks(string taskType, string userDocName, int count)
     {
         string userId = auth.CurrentUser.UserId;
+
         var userSnap = await db.Collection("userInfo").Document(userId).GetSnapshotAsync();
         var traits = userSnap.GetValue<List<string>>("Traits");
         string dob = userSnap.GetValue<string>("DOB");
@@ -92,31 +92,30 @@ public class TaskAssigner : MonoBehaviour
             var data = doc.ToDictionary();
 
             selectedTasks.Add(new Dictionary<string, object>
-{
-    { "taskId", doc.Id },
-    { "text", data["text"] },
-    { "textShort", data["textShort"] },
-    { "difficulty", data["difficulty"] },
-    { "category", data.ContainsKey("category") ? data["category"] : "" },
-    { "minAge", data.ContainsKey("minAge") ? data["minAge"] : 0 },
-    { "maxAge", data.ContainsKey("maxAge") ? data["maxAge"] : 100 },
-    { "traits", data.ContainsKey("traits") ? data["traits"] : new List<object>() },
-    { "materials", data.ContainsKey("materials") ? data["materials"] : new List<object>() },
-    { "picture", data.ContainsKey("picture") ? data["picture"] : false },
-    { "length", data.ContainsKey("length") ? data["length"] : "" },
-    { "completed", false }
-});
+            {
+                { "taskId", doc.Id },
+                { "text", data["text"] },
+                { "textShort", data["textShort"] },
+                { "difficulty", data["difficulty"] },            // 1..4
+                { "category", data.ContainsKey("category") ? data["category"] : "" },
+                { "minAge", data.ContainsKey("minAge") ? data["minAge"] : 0 },
+                { "maxAge", data.ContainsKey("maxAge") ? data["maxAge"] : 100 },
+                { "traits", data.ContainsKey("traits") ? data["traits"] : new List<object>() },
+                { "materials", data.ContainsKey("materials") ? data["materials"] : new List<object>() },
+                { "picture", data.ContainsKey("picture") ? data["picture"] : false },  // photo recommended flag
+                { "length", data.ContainsKey("length") ? data["length"] : "" },        // "daily"|"weekly"|"monthly"
+                { "completed", false }
+            });
         }
 
         var bundle = new Dictionary<string, object>
-    {
-        { "tasks", selectedTasks },
-        { "assignedDate", Timestamp.GetCurrentTimestamp() }
-    };
+        {
+            { "tasks", selectedTasks },
+            { "assignedDate", Timestamp.GetCurrentTimestamp() }
+        };
 
         await db.Collection("userInfo").Document(userId).Collection(taskType).Document(userDocName).SetAsync(bundle);
     }
-
 
     private int CalculateAge(string dob)
     {
