@@ -1,96 +1,106 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Firebase.Firestore;
 using Firebase.Auth;
 using Firebase.Storage;
-using UnityEngine.Networking;
 
 public class TaskListUI : MonoBehaviour
 {
-    public GameObject taskItemPrefab;
-    public Transform taskContainer;
-    public TMP_Dropdown taskTypeDropdown;
-    public ScrollRect scrollRect;
-    public float pullThreshold = 100f;
+    [Header("List & Prefabs")]
+    [SerializeField] private GameObject taskItemPrefab;
+    [SerializeField] private Transform taskContainer;
 
+    [Header("Filters & Controls")]
+    [SerializeField] private TMP_Dropdown taskTypeDropdown;          // 0=daily,1=weekly,2=monthly,3=all
+    [SerializeField] private TMP_Dropdown completionFilterDropdown;  // 0=All,1=Incomplete,2=Complete
+    [SerializeField] private ScrollRect scrollRect;
+    [SerializeField] private float pullThreshold = 100f;
+
+    [Header("Popups")]
+    [SerializeField] private GameObject taskDetailPopupPrefab;
+    [SerializeField] private Transform popupParent;
+    [SerializeField] private GameObject customTaskPopupPrefab;
+
+    // Firebase
     private FirebaseFirestore db;
     private FirebaseAuth auth;
     private FirebaseStorage storage;
-    private HashSet<string> uploadedTaskIds = new HashSet<string>();
-    private bool isPulling = false;
-    private float pullStartY = 0f;
 
-    private string currentTaskType = "dailyTask";
-    private string currentDocName = "today";
-
-    public TMP_Dropdown completionFilterDropdown;
+    // State
+    private string currentTaskType = "dailyTask"; // "dailyTask" | "weeklyTask" | "monthlyTask" | "all"
+    private string currentDocName = "today";      // "today" | "thisWeek" | "thisMonth"
     private enum CompletionFilter { All, Incomplete, Complete }
     private CompletionFilter currentFilter = CompletionFilter.All;
 
-    public GameObject taskDetailPopupPrefab;
-    public Transform popupParent;
-    public GameObject customTaskPopupPrefab;
+    private bool isPulling = false;
+    private float pullStartY = 0f;
 
-    // ---------------- helpers ----------------
-    static void EnableOnly(Transform parent, string childToEnable)
+    // Session guard to avoid double-uploads
+    private readonly HashSet<string> uploadedTaskIds = new HashSet<string>();
+    // Track card views by taskId for quick refresh
+    private readonly Dictionary<string, TaskCardView> cardByTaskId = new Dictionary<string, TaskCardView>();
+
+    // ----------------- Unity lifecycle -----------------
+    private void Start()
     {
-        if (parent == null) return;
-        foreach (Transform t in parent) t.gameObject.SetActive(false);
-        if (string.IsNullOrEmpty(childToEnable)) return;
-        var child = parent.Find(childToEnable);
-        if (child != null) child.gameObject.SetActive(true);
-    }
-
-    static int ParseToInt(object v)
-    {
-        if (v == null) return 0;
-        if (v is int i) return i;
-        if (v is long l) return (int)l;
-        if (v is double d) return (int)d;
-        int.TryParse(v.ToString(), out var x);
-        return x;
-    }
-
-    static string PrettyLen(string len)
-    {
-        if (string.IsNullOrEmpty(len)) return "";
-        len = len.ToLowerInvariant();
-        if (len == "daily") return "Daily";
-        if (len == "weekly") return "Weekly";
-        if (len == "monthly") return "Monthly";
-        return char.ToUpper(len[0]) + len.Substring(1);
-    }
-
-    static string DifficultyName(int d)
-        => d == 1 ? "Easy"
-         : d == 2 ? "Medium"
-         : d == 3 ? "Hard"
-         : d == 4 ? "AHHHHH"
-         : "?";
-
-    void Start()
-    {
-        completionFilterDropdown.onValueChanged.AddListener(OnCompletionFilterChanged);
-
         db = FirebaseFirestore.DefaultInstance;
         auth = FirebaseAuth.DefaultInstance;
         storage = FirebaseStorage.DefaultInstance;
 
-        taskTypeDropdown.onValueChanged.AddListener(OnTaskTypeChanged);
+        if (taskTypeDropdown) taskTypeDropdown.onValueChanged.AddListener(OnTaskTypeChanged);
+        if (completionFilterDropdown) completionFilterDropdown.onValueChanged.AddListener(OnCompletionFilterChanged);
+
         LoadTasks();
     }
 
-    void OnCompletionFilterChanged(int index)
+    private void Update()
     {
-        currentFilter = (CompletionFilter)index;
-        LoadTasks();
+        if (scrollRect == null) return;
+
+#if UNITY_EDITOR || UNITY_STANDALONE || UNITY_WEBGL
+        if (scrollRect.verticalNormalizedPosition > 0.98f)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                isPulling = true;
+                pullStartY = Input.mousePosition.y;
+            }
+            else if (Input.GetMouseButtonUp(0) && isPulling)
+            {
+                float pullDelta = Input.mousePosition.y - pullStartY;
+                if (pullDelta < -pullThreshold) LoadTasks();
+                isPulling = false;
+            }
+        }
+#elif UNITY_IOS || UNITY_ANDROID
+        if (scrollRect.verticalNormalizedPosition < 0.02f)
+        {
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+                if (touch.phase == TouchPhase.Began)
+                {
+                    isPulling = true;
+                    pullStartY = touch.position.y;
+                }
+                else if (touch.phase == TouchPhase.Ended && isPulling)
+                {
+                    float pullDelta = touch.position.y - pullStartY;
+                    if (pullDelta > pullThreshold) LoadTasks();
+                    isPulling = false;
+                }
+            }
+        }
+#endif
     }
 
-    public void OnTaskTypeChanged(int index)
+    // ----------------- Dropdown handlers -----------------
+    private void OnTaskTypeChanged(int index)
     {
         switch (index)
         {
@@ -102,417 +112,282 @@ public class TaskListUI : MonoBehaviour
         LoadTasks();
     }
 
-    private void Update()
+    private void OnCompletionFilterChanged(int index)
     {
-        if (scrollRect == null || scrollRect.verticalNormalizedPosition < 0.98f) return;
-
-#if UNITY_EDITOR || UNITY_STANDALONE || UNITY_WEBGL
-        if (Input.GetMouseButtonDown(0))
-        {
-            isPulling = true;
-            pullStartY = Input.mousePosition.y;
-        }
-        else if (Input.GetMouseButtonUp(0) && isPulling)
-        {
-            float pullDelta = Input.mousePosition.y - pullStartY;
-            if (pullDelta < -pullThreshold) LoadTasks();
-            isPulling = false;
-        }
-#elif UNITY_IOS || UNITY_ANDROID
-        if (Input.touchCount > 0)
-        {
-            Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
-            {
-                isPulling = true;
-                pullStartY = touch.position.y;
-            }
-            else if (touch.phase == TouchPhase.Ended && isPulling)
-            {
-                float pullDelta = touch.position.y - pullStartY;
-                if (pullDelta > pullThreshold) LoadTasks();
-                isPulling = false;
-            }
-        }
-#endif
+        currentFilter = (CompletionFilter)index;
+        LoadTasks();
     }
 
+    // ----------------- Load & render -----------------
     public async void LoadTasks()
     {
         uploadedTaskIds.Clear();
+        cardByTaskId.Clear();
+
         foreach (Transform child in taskContainer)
             Destroy(child.gameObject);
 
+        if (auth?.CurrentUser == null)
+        {
+            Debug.LogWarning("TaskListUI: No current user.");
+            return;
+        }
         string userId = auth.CurrentUser.UserId;
 
-        if (currentTaskType == "all")
+        try
         {
-            await LoadTasksFromDoc(userId, "dailyTask", "today");
-            await LoadTasksFromDoc(userId, "weeklyTask", "thisWeek");
-            await LoadTasksFromDoc(userId, "monthlyTask", "thisMonth");
+            if (currentTaskType == "all")
+            {
+                await LoadTasksFromDoc(userId, "dailyTask", "today");
+                await LoadTasksFromDoc(userId, "weeklyTask", "thisWeek");
+                await LoadTasksFromDoc(userId, "monthlyTask", "thisMonth");
+            }
+            else
+            {
+                await LoadTasksFromDoc(userId, currentTaskType, currentDocName);
+            }
         }
-        else
+        catch (Exception e)
         {
-            await LoadTasksFromDoc(userId, currentTaskType, currentDocName);
+            Debug.LogError($"TaskListUI.LoadTasks error: {e}");
         }
     }
 
-    private async System.Threading.Tasks.Task LoadTasksFromDoc(string userId, string taskType, string docName)
+    private async Task LoadTasksFromDoc(string userId, string taskType, string docName)
     {
         var docRef = db.Collection("userInfo").Document(userId).Collection(taskType).Document(docName);
         var docSnap = await docRef.GetSnapshotAsync();
         if (!docSnap.Exists || !docSnap.ContainsField("tasks")) return;
 
         var tasks = docSnap.GetValue<List<object>>("tasks");
+        if (tasks == null) return;
 
         foreach (var raw in tasks)
         {
             var data = raw as Dictionary<string, object>;
             if (data == null) continue;
 
-            string taskId = data["taskId"].ToString();
-            string text = data.ContainsKey("textShort") ? data["textShort"].ToString() : "";
-            bool completed = data.ContainsKey("completed") && (bool)data["completed"];
+            string taskId = GetString(data, "taskId");
+            if (string.IsNullOrEmpty(taskId)) continue;
 
-            // Completion filter (if you use it)
+            string textShort = GetString(data, "textShort");
+            bool completed = GetBool(data, "completed");
+
+            // Completion filter
             if (currentFilter == CompletionFilter.Complete && !completed) continue;
             if (currentFilter == CompletionFilter.Incomplete && completed) continue;
 
-            // Build card
-            GameObject taskGO = Instantiate(taskItemPrefab, taskContainer);
-            taskGO.transform.Find("TaskText")?.GetComponent<TMP_Text>()?.SetText(text);
+            // Instantiate & cache view
+            var go = Instantiate(taskItemPrefab, taskContainer);
+            var view = go.GetComponent<TaskCardView>();
+            if (view == null)
+            {
+                Debug.LogError("TaskItem prefab is missing TaskCardView.");
+                Destroy(go);
+                continue;
+            }
+            cardByTaskId[taskId] = view;
 
-            // ---------------- INCOMPLETE GROUP (chips) ----------------
-            // Length chip
-            string len = data.ContainsKey("length") ? (data["length"]?.ToString() ?? "") : "";
+            // ---- Texts
+            view.SetTaskText(textShort);
+
+            // ---- Length chip + label
+            string len = GetString(data, "length");
             if (string.IsNullOrEmpty(len))
             {
                 len = taskType == "dailyTask" ? "daily" :
                       taskType == "weeklyTask" ? "weekly" :
                       taskType == "monthlyTask" ? "monthly" : "";
             }
-            Transform lengthParent = taskGO.transform.Find("Incomplete/LengthParent");
-            string lengthChild =
-                len.ToLower() == "daily" ? "Length" :
-                len.ToLower() == "weekly" ? "Length (1)" :
-                len.ToLower() == "monthly" ? "Length (2)" : null;
-            if (!string.IsNullOrEmpty(lengthChild)) EnableOnly(lengthParent, lengthChild);
+            string lenLower = len.ToLowerInvariant();
+            view.SetLengthChip(lenLower);
+            view.SetTypeLabel(PrettyLen(lenLower));
 
-            // Optional label if you keep one
-            var typeText = taskGO.transform.Find("LengthBackground/TaskTypeText")?.GetComponent<TMP_Text>();
-            if (typeText != null) typeText.text = PrettyLen(len);
-
-            // Difficulty chip
-            int diffInt = data.ContainsKey("difficulty") ? Mathf.Clamp(ParseToInt(data["difficulty"]), 1, 4) : 0;
-            Transform diffParent = taskGO.transform.Find("Incomplete/DifficultyParent");
-            string[] diffNames = { "Difficulty", "Difficulty (1)", "Difficulty (2)", "Difficulty (3)" };
-            if (diffParent != null && diffInt >= 1 && diffInt <= 4)
-                EnableOnly(diffParent, diffNames[diffInt - 1]);
-            // Optional difficulty text
-            var diffText = taskGO.transform.Find("Incomplete/DifficultyText")?.GetComponent<TMP_Text>();
-            if (diffText != null) diffText.text = $"Difficulty: {DifficultyName(diffInt)}";
-
-            // Photo recommended (Yes/No)
-            bool photoRecommended = false;
-            if (data.ContainsKey("picture"))
+            // ---- Difficulty chip + label
+            int diffInt = Mathf.Clamp(ParseToInt(GetObj(data, "difficulty")), 1, 4);
+            if (diffInt >= 1 && diffInt <= 4)
             {
-                var pv = data["picture"];
-                if (pv is bool b) photoRecommended = b;
-                else photoRecommended = pv.ToString().Trim().ToLowerInvariant().StartsWith("y");
+                view.SetDifficultyChip(diffInt);
+                view.SetDifficultyLabel($"Difficulty: {DifficultyName(diffInt)}");
             }
-            Transform photoRecParent = taskGO.transform.Find("Incomplete/Photo");
-            if (photoRecParent != null)
-                EnableOnly(photoRecParent, photoRecommended ? "PhotoRequired" : "PhotoRequired (1)");
 
-            // ---------------- COMPLETE GROUP (photo + deed feed) ----------------
-            // Determine if a photo exists for this task
-            // ----- Determine if a photo is present for THIS completion -----
+            // ---- Photo recommended chip
+            bool photoRecommended = GetBoolLoose(GetObj(data, "picture"));
+            view.SetPhotoRecommended(photoRecommended);
+
+            // ---- Pull completion state from history: hasPhoto + deedUploaded
             bool hasPhoto = false;
-            string photoUrl = "";
+            bool deedUploaded = false;
 
-            // Only check history if the task is currently completed
             if (completed)
             {
-                var historyDoc = await db.Collection("userInfo").Document(userId)
-                                         .Collection("taskHistory").Document(taskId)
-                                         .GetSnapshotAsync();
+                var hist = await db.Collection("userInfo").Document(userId)
+                                   .Collection("taskHistory").Document(taskId).GetSnapshotAsync();
 
-                if (historyDoc.Exists && historyDoc.ContainsField("photoUrl"))
+                if (hist.Exists)
                 {
-                    photoUrl = historyDoc.GetValue<string>("photoUrl") ?? "";
-                    hasPhoto = !string.IsNullOrEmpty(photoUrl);
+                    if (hist.ContainsField("photoUrl"))
+                    {
+                        string pu = hist.GetValue<string>("photoUrl") ?? "";
+                        hasPhoto = !string.IsNullOrEmpty(pu);
+                    }
+                    if (hist.ContainsField("deedUploaded"))
+                    {
+                        deedUploaded = hist.GetValue<bool>("deedUploaded");
+                        if (deedUploaded) uploadedTaskIds.Add(taskId); // sync session cache
+                    }
                 }
             }
 
-            // ----- COMPLETE group: photo state + photo button -----
-            Transform completePhoto = taskGO.transform.Find("Complete/Photo");
-            if (completePhoto != null)
+            // ---- Completed flip + photo icons
+            view.SetCompletedUI(completed);
+            view.SetPhotoState(completed, hasPhoto);
+
+            // ---- Deed icons (use persisted flag)
+            bool alreadyUploaded = deedUploaded || uploadedTaskIds.Contains(taskId);
+            bool canUpload = completed && hasPhoto && !alreadyUploaded;
+            view.SetDeedFeedState(completed, hasPhoto, alreadyUploaded, canUpload);
+
+            // ---- Click handlers
+            // Toggle completion
+            view.OnToggleClicked(() => ToggleTaskCompletion(taskType, docName, taskId));
+
+            // Photo icon click -> pick/upload
+            view.OnPhotoIconClicked(() =>
             {
-                // Explicitly hide both first
-                var uploadedGO = completePhoto.Find("PhotoUploaded")?.gameObject;
-                var notUploadedGO = completePhoto.Find("PhotoNotUploaded")?.gameObject;
+                if (view.IsCompleteVisible())
+                    PickAndUploadTaskPhoto(taskId);
+            });
 
-                if (uploadedGO != null) uploadedGO.SetActive(false);
-                if (notUploadedGO != null) notUploadedGO.SetActive(false);
-
-                // Show exactly one if the task is completed
-                if (completed)
-                {
-                    if (uploadedGO != null) uploadedGO.SetActive(hasPhoto);
-                    if (notUploadedGO != null) notUploadedGO.SetActive(!hasPhoto);
-                }
-
-                // Keep the PhotoButton visible; interactable only when completed
-                var photoBtn = completePhoto.Find("PhotoButton")?.GetComponent<UnityEngine.UI.Button>();
-                if (photoBtn != null)
-                {
-                    photoBtn.gameObject.SetActive(true);
-                    photoBtn.onClick.RemoveAllListeners();
-                    photoBtn.interactable = completed;
-                    if (completed) photoBtn.onClick.AddListener(() => PickAndUploadTaskPhoto(taskId));
-                }
-            }
-
-            // UploadButton (Deed Feed) – enabled only if completed, has photo, and not uploaded yet
-            var deedBtn = taskGO.transform.Find("UploadButton")?.GetComponent<Button>();
-            if (deedBtn != null)
+            // Deed icon click -> upload to feed (when eligible)
+            view.OnDeedIconClicked(() =>
             {
-                deedBtn.onClick.RemoveAllListeners();
-                bool canUpload = completed && hasPhoto && !uploadedTaskIds.Contains(taskId);
-                deedBtn.interactable = canUpload;
+                if (!view.IsCompleteVisible()) return;
+                if (uploadedTaskIds.Contains(taskId)) return;
+
+                // Only proceed if Firestore says not uploaded yet
                 if (canUpload)
                 {
-                    deedBtn.onClick.AddListener(() =>
-                    {
-                        if (!uploadedTaskIds.Contains(taskId))
-                        {
-                            uploadedTaskIds.Add(taskId);
-                            StartCoroutine(UploadToDeedFeed(taskId, text));
-                        }
-                    });
+                    uploadedTaskIds.Add(taskId);
+                    // Flip deed icons immediately
+                    view.SetDeedFeedState(true, hasPhoto: true, uploaded: true, canUpload: false);
+                    StartCoroutine(UploadToDeedFeed(taskId, textShort));
                 }
-            }
+            });
 
-            // ---------------- Toggle button + parents flip ----------------
-            var toggleBtn = taskGO.transform.Find("ToggleButton")?.GetComponent<Button>();
-            if (toggleBtn != null)
-            {
-                toggleBtn.onClick.RemoveAllListeners();
-                toggleBtn.onClick.AddListener(() =>
-                    ToggleTaskCompletion(taskType, docName, taskId, taskGO));
-            }
-
-            // Initial parent visibility + toggle label
-            Transform incompleteParent = taskGO.transform.Find("Incomplete");
-            Transform completeParent = taskGO.transform.Find("Complete");
-            if (incompleteParent != null) incompleteParent.gameObject.SetActive(!completed);
-            if (completeParent != null) completeParent.gameObject.SetActive(completed);
-
-            var toggleText = taskGO.transform.Find("ToggleButton/ToggleButtonText")?.GetComponent<TMP_Text>();
-            if (toggleText != null) toggleText.text = completed ? "Complete" : "Incomplete";
-
-            // Tap background to open details (optional; keep if you have the popup)
-            Transform bg = taskGO.transform.Find("Background");
-            if (bg != null)
-            {
-                var bgButton = bg.GetComponent<Button>() ?? bg.gameObject.AddComponent<Button>();
-                bgButton.onClick.RemoveAllListeners();
-                bgButton.onClick.AddListener(() => ShowTaskDetailPopup(data));
-            }
+            // Background/details
+            view.OnBackgroundClicked(() => ShowTaskDetailPopup(data));
         }
     }
 
-    // INCOMPLETE parent: length/difficulty/photo-recommended images
-    private void SetupIncompleteGroup(Transform card, Dictionary<string, object> data, string sourceTaskType)
+    // ----------------- Toggle completion -----------------
+    private async void ToggleTaskCompletion(string taskType, string docName, string taskId)
     {
-        // Length chip
-        string len = data.ContainsKey("length") ? data["length"].ToString() : "";
-        if (string.IsNullOrEmpty(len))
+        try
         {
-            len = sourceTaskType == "dailyTask" ? "daily" :
-                  sourceTaskType == "weeklyTask" ? "weekly" :
-                  sourceTaskType == "monthlyTask" ? "monthly" : "";
-        }
+            string userId = auth.CurrentUser.UserId;
+            var docRef = db.Collection("userInfo").Document(userId).Collection(taskType).Document(docName);
+            var docSnap = await docRef.GetSnapshotAsync();
+            if (!docSnap.Exists || !docSnap.ContainsField("tasks")) return;
 
-        Transform lengthParent = card.Find("Incomplete/LengthParent");
-        string lengthChild =
-            len.ToLower() == "daily" ? "Length" :
-            len.ToLower() == "weekly" ? "Length (1)" :
-            len.ToLower() == "monthly" ? "Length (2)" : null;
-        if (!string.IsNullOrEmpty(lengthChild))
-            EnableOnly(lengthParent, lengthChild);
+            var rawTasks = docSnap.GetValue<List<object>>("tasks");
+            var updatedTasks = new List<Dictionary<string, object>>();
+            bool newCompletedState = false;
+            string textShort = "";
 
-        // Optional label if you kept it
-        var typeText = card.Find("LengthBackground/TaskTypeText")?.GetComponent<TMP_Text>();
-        if (typeText != null) typeText.text = PrettyLen(len);
-
-        // Difficulty chip
-        int diffInt = data.ContainsKey("difficulty") ? Mathf.Clamp(ParseToInt(data["difficulty"]), 1, 4) : 0;
-        Transform diffParent = card.Find("Incomplete/DifficultyParent");
-        string[] diffNames = { "Difficulty", "Difficulty (1)", "Difficulty (2)", "Difficulty (3)" };
-        if (diffParent != null && diffInt >= 1 && diffInt <= 4)
-            EnableOnly(diffParent, diffNames[diffInt - 1]);
-
-        // Optional difficulty label
-        var diffText = card.Find("Incomplete/DifficultyText")?.GetComponent<TMP_Text>();
-        if (diffText != null) diffText.text = $"Difficulty: {DifficultyName(diffInt)}";
-
-        // Photo recommended image (Yes/No)
-        bool photoRecommended = false;
-        if (data.ContainsKey("picture"))
-        {
-            var pv = data["picture"];
-            if (pv is bool b) photoRecommended = b;
-            else photoRecommended = pv.ToString().Trim().ToLowerInvariant().StartsWith("y");
-        }
-        Transform photoParent = card.Find("Incomplete/Photo");
-        if (photoParent != null)
-            EnableOnly(photoParent, photoRecommended ? "PhotoRequired" : "PhotoRequired (1)");
-    }
-
-    // COMPLETE parent: photo status and deed feed availability.
-    // COMPLETE parent: photo state + button + deed-feed enablement
-    private IEnumerator SetupCompleteGroup(Transform card, string taskId, string prompt, bool completedNow)
-    {
-        string userId = auth.CurrentUser.UserId;
-
-        // Consider a photo "present" only for THIS completion: read from taskHistory.photoUrl
-        bool hasPhoto = false;
-        string photoUrl = "";
-
-        if (completedNow)
-        {
-            var historyDocTask = db.Collection("userInfo").Document(userId)
-                                   .Collection("taskHistory").Document(taskId).GetSnapshotAsync();
-            yield return new WaitUntil(() => historyDocTask.IsCompleted);
-
-            var historyDoc = historyDocTask.Result;
-            if (historyDoc.Exists && historyDoc.ContainsField("photoUrl"))
+            foreach (var raw in rawTasks)
             {
-                photoUrl = historyDoc.GetValue<string>("photoUrl") ?? "";
-                hasPhoto = !string.IsNullOrEmpty(photoUrl);
-            }
-        }
+                var task = raw as Dictionary<string, object>;
+                if (task == null) continue;
 
-        // ---- Flip ONLY the two state icons; never hide the PhotoButton ----
-        Transform completePhoto = card.Find("Complete/Photo");
-        if (completePhoto != null)
-        {
-            var uploadedGO = completePhoto.Find("PhotoUploaded")?.gameObject;
-            var notUploadedGO = completePhoto.Find("PhotoNotUploaded")?.gameObject;
-
-            // Hide both first to avoid double-visible glitch
-            if (uploadedGO != null) uploadedGO.SetActive(false);
-            if (notUploadedGO != null) notUploadedGO.SetActive(false);
-
-            // Show exactly one when completed
-            if (completedNow)
-            {
-                if (uploadedGO != null) uploadedGO.SetActive(hasPhoto);
-                if (notUploadedGO != null) notUploadedGO.SetActive(!hasPhoto);
-            }
-
-            // Keep the PhotoButton visible; only interactable when completed
-            var photoBtn = completePhoto.Find("PhotoButton")?.GetComponent<UnityEngine.UI.Button>();
-            if (photoBtn != null)
-            {
-                photoBtn.gameObject.SetActive(true);
-                photoBtn.onClick.RemoveAllListeners();
-                photoBtn.interactable = completedNow;
-                if (completedNow) photoBtn.onClick.AddListener(() => PickAndUploadTaskPhoto(taskId));
-            }
-        }
-
-        // ---- Deed Feed upload button ----
-        var deedBtn = card.Find("UploadButton")?.GetComponent<UnityEngine.UI.Button>();
-        if (deedBtn != null)
-        {
-            deedBtn.onClick.RemoveAllListeners();
-            bool canUpload = completedNow && hasPhoto && !uploadedTaskIds.Contains(taskId);
-            deedBtn.interactable = canUpload;
-            if (canUpload)
-            {
-                deedBtn.onClick.AddListener(() =>
+                if (GetString(task, "taskId") == taskId)
                 {
-                    if (!uploadedTaskIds.Contains(taskId))
+                    bool completed = GetBool(task, "completed");
+                    newCompletedState = !completed;
+                    task["completed"] = newCompletedState;
+                    textShort = GetString(task, "textShort");
+
+                    var historyRef = db.Collection("userInfo").Document(userId)
+                                       .Collection("taskHistory").Document(taskId);
+
+                    if (!completed)
+                    {
+                        // Completing now -> create history
+                        await historyRef.SetAsync(new Dictionary<string, object> {
+                            { "completedAt", Timestamp.GetCurrentTimestamp() },
+                            { "textShort", textShort },
+                            { "difficulty", task.ContainsKey("difficulty") ? task["difficulty"] : 0 },
+                            { "photoUrl", "" },
+                            { "deedUploaded", false }
+                        }, SetOptions.MergeAll);
+                    }
+                    else
+                    {
+                        // Un-completing -> remove history and session flag
+                        await historyRef.DeleteAsync();
+                        uploadedTaskIds.Remove(taskId);
+                    }
+                }
+                updatedTasks.Add(task);
+            }
+
+            await docRef.UpdateAsync(new Dictionary<string, object> { { "tasks", updatedTasks } });
+
+            // Flip UI for that card
+            if (cardByTaskId.TryGetValue(taskId, out var view))
+            {
+                view.SetCompletedUI(newCompletedState);
+
+                bool hasPhoto = false;
+                bool deedUploaded = false;
+
+                if (newCompletedState)
+                {
+                    var hist = await db.Collection("userInfo").Document(userId)
+                                       .Collection("taskHistory").Document(taskId).GetSnapshotAsync();
+                    if (hist.Exists)
+                    {
+                        if (hist.ContainsField("photoUrl"))
+                            hasPhoto = !string.IsNullOrEmpty(hist.GetValue<string>("photoUrl") ?? "");
+                        if (hist.ContainsField("deedUploaded"))
+                        {
+                            deedUploaded = hist.GetValue<bool>("deedUploaded");
+                            if (deedUploaded) uploadedTaskIds.Add(taskId);
+                        }
+                    }
+                }
+                else
+                {
+                    uploadedTaskIds.Remove(taskId);
+                }
+
+                view.SetPhotoState(newCompletedState, hasPhoto);
+
+                bool alreadyUploaded = deedUploaded || uploadedTaskIds.Contains(taskId);
+                bool canUpload = newCompletedState && hasPhoto && !alreadyUploaded;
+                view.SetDeedFeedState(newCompletedState, hasPhoto, alreadyUploaded, canUpload);
+
+                // Rebind deed icon click
+                view.OnDeedIconClicked(() =>
+                {
+                    if (!view.IsCompleteVisible()) return;
+                    if (uploadedTaskIds.Contains(taskId)) return;
+                    if (canUpload)
                     {
                         uploadedTaskIds.Add(taskId);
-                        StartCoroutine(UploadToDeedFeed(taskId, prompt));
+                        view.SetDeedFeedState(true, true, true, false);
+                        StartCoroutine(UploadToDeedFeed(taskId, textShort));
                     }
                 });
             }
         }
-
-        yield break;
-    }
-
-    // Shows one of the two groups + updates ToggleButton text
-    private void RenderCompletionState(Transform card, bool completed)
-    {
-        var incomplete = card.Find("Incomplete");
-        var complete = card.Find("Complete");
-
-        if (incomplete != null) incomplete.gameObject.SetActive(!completed);
-        if (complete != null) complete.gameObject.SetActive(completed);
-
-        var btnText = card.Find("ToggleButton/ToggleButtonText")?.GetComponent<TMP_Text>();
-        if (btnText != null) btnText.text = completed ? "Complete" : "Incomplete";
-    }
-
-    // Persist + immediate UI flip
-    public async void ToggleTaskCompletion(string taskType, string docName, string taskId, GameObject taskGO)
-    {
-        string userId = auth.CurrentUser.UserId;
-        var docRef = db.Collection("userInfo").Document(userId).Collection(taskType).Document(docName);
-        var docSnap = await docRef.GetSnapshotAsync();
-
-        if (!docSnap.Exists || !docSnap.ContainsField("tasks")) return;
-
-        var rawTasks = docSnap.GetValue<List<object>>("tasks");
-        List<Dictionary<string, object>> updatedTasks = new List<Dictionary<string, object>>();
-        bool newCompletedState = false;
-
-        foreach (var raw in rawTasks)
+        catch (Exception e)
         {
-            var task = raw as Dictionary<string, object>;
-            if (task["taskId"].ToString() == taskId)
-            {
-                bool completed = (bool)task["completed"];
-                newCompletedState = !completed;
-                task["completed"] = newCompletedState;
-
-                var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory").Document(taskId);
-
-                if (!completed)
-                {
-                    await historyRef.SetAsync(new Dictionary<string, object> {
-                    { "completedAt", Timestamp.GetCurrentTimestamp() },
-                    { "textShort", task["textShort"] },
-                    { "difficulty", task.ContainsKey("difficulty") ? task["difficulty"] : "?" },
-                    { "photoUrl", "" }
-                });
-                }
-                else
-                {
-                    await historyRef.DeleteAsync();
-                }
-            }
-            updatedTasks.Add(task);
-        }
-
-        await docRef.UpdateAsync(new Dictionary<string, object> { { "tasks", updatedTasks } });
-
-        // 🔄 Toggle UI parents
-        Transform incompleteParent = taskGO.transform.Find("Incomplete");
-        Transform completeParent = taskGO.transform.Find("Complete");
-        if (incompleteParent != null && completeParent != null)
-        {
-            incompleteParent.gameObject.SetActive(!newCompletedState);
-            completeParent.gameObject.SetActive(newCompletedState);
+            Debug.LogError($"TaskListUI.ToggleTaskCompletion error: {e}");
         }
     }
 
-    // ---------- existing photo upload / feed code (unchanged except for reuse) ----------
+    // ----------------- Photo pick & upload -----------------
     public void PickAndUploadTaskPhoto(string taskId)
     {
         NativeGallery.GetImageFromGallery(path =>
@@ -520,7 +395,8 @@ public class TaskListUI : MonoBehaviour
             if (path != null)
             {
                 Texture2D texture = NativeGallery.LoadImageAtPath(path, 1024, false);
-                if (texture != null) StartCoroutine(UploadTaskPhoto(taskId, texture));
+                if (texture != null)
+                    StartCoroutine(UploadTaskPhoto(taskId, texture));
             }
         }, "Select a photo for your task", "image/*");
     }
@@ -535,59 +411,97 @@ public class TaskListUI : MonoBehaviour
         var uploadTask = storageRef.PutBytesAsync(pngData);
         yield return new WaitUntil(() => uploadTask.IsCompleted);
 
-        if (uploadTask.IsFaulted || uploadTask.IsCanceled) yield break;
+        if (uploadTask.IsFaulted || uploadTask.IsCanceled)
+        {
+            Debug.LogError("Photo upload failed.");
+            yield break;
+        }
 
         var getUrlTask = storageRef.GetDownloadUrlAsync();
         yield return new WaitUntil(() => getUrlTask.IsCompleted);
-        if (getUrlTask.IsFaulted || getUrlTask.IsCanceled) yield break;
+        if (getUrlTask.IsFaulted || getUrlTask.IsCanceled)
+        {
+            Debug.LogError("GetDownloadUrl failed.");
+            yield break;
+        }
 
         string downloadUrl = getUrlTask.Result.ToString();
 
-        var saveTask = db.Collection("userInfo").Document(auth.CurrentUser.UserId)
+        // Save under userInfo/{uid}/taskPhotos/{taskId}
+        var savePhotoDoc = db.Collection("userInfo").Document(userId)
             .Collection("taskPhotos").Document(taskId)
             .SetAsync(new Dictionary<string, object> {
                 { "url", downloadUrl },
                 { "uploadedAt", Timestamp.GetCurrentTimestamp() }
             });
-        yield return new WaitUntil(() => saveTask.IsCompleted);
+        yield return new WaitUntil(() => savePhotoDoc.IsCompleted);
 
-        var historyRef = db.Collection("userInfo").Document(auth.CurrentUser.UserId).Collection("taskHistory").Document(taskId);
+        // Patch taskHistory.photoUrl (if task is completed)
+        var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory").Document(taskId);
         var saveHistoryUrlTask = historyRef.UpdateAsync(new Dictionary<string, object> { { "photoUrl", downloadUrl } });
         yield return new WaitUntil(() => saveHistoryUrlTask.IsCompleted);
 
-        // Find the card in the list and refresh just its "Complete" group UI
-        foreach (Transform card in taskContainer)
+        // Refresh that one card (photo + deed icons)
+        if (cardByTaskId.TryGetValue(taskId, out var view))
         {
-            var textCmp = card.Find("TaskText")?.GetComponent<TMP_Text>();
-            if (textCmp == null) continue;
-            // best-effort: refresh all cards; it’s cheap
-            string prompt = textCmp.text;
-            StartCoroutine(SetupCompleteGroup(card, taskId, prompt, card.Find("Complete")?.gameObject.activeSelf ?? false));
-        }
-    }
+            bool isCompleted = view.IsCompleteVisible();
 
-    private async void LoadTaskPhotoIfExists(string taskId, RawImage image)
-    {
-        if (image == null) return;
-        string userId = auth.CurrentUser.UserId;
-        var photoDoc = await db.Collection("userInfo").Document(userId)
-            .Collection("taskPhotos").Document(taskId).GetSnapshotAsync();
+            view.SetPhotoState(isCompleted, hasPhoto: true);
 
-        if (photoDoc.Exists && photoDoc.ContainsField("url"))
-        {
-            string url = photoDoc.GetValue<string>("url");
-            UnityWebRequest req = UnityWebRequestTexture.GetTexture(url);
-            await req.SendWebRequest();
-            if (req.result == UnityWebRequest.Result.Success)
+            bool deedUploaded = false;
+            var histTask = db.Collection("userInfo").Document(userId)
+                             .Collection("taskHistory").Document(taskId).GetSnapshotAsync();
+            yield return new WaitUntil(() => histTask.IsCompleted);
+            var histSnap = histTask.Result;
+            if (histSnap.Exists && histSnap.ContainsField("deedUploaded"))
+                deedUploaded = histSnap.GetValue<bool>("deedUploaded");
+
+            if (deedUploaded) uploadedTaskIds.Add(taskId);
+
+            bool alreadyUploaded = deedUploaded || uploadedTaskIds.Contains(taskId);
+            bool canUpload = isCompleted && !alreadyUploaded; // hasPhoto is true
+            view.SetDeedFeedState(isCompleted, hasPhoto: true, uploaded: alreadyUploaded, canUpload: canUpload);
+
+            // Bind deed icon click
+            view.OnDeedIconClicked(() =>
             {
-                image.texture = ((DownloadHandlerTexture)req.downloadHandler).texture;
-                image.gameObject.SetActive(true);
-            }
-            else image.gameObject.SetActive(false);
+                if (!view.IsCompleteVisible()) return;
+                if (uploadedTaskIds.Contains(taskId)) return;
+                if (canUpload)
+                {
+                    uploadedTaskIds.Add(taskId);
+                    view.SetDeedFeedState(true, true, true, false);
+                    StartCoroutine(UploadToDeedFeed_WithHistoryPrompt(taskId));
+                }
+            });
         }
-        else image.gameObject.SetActive(false);
     }
 
+    private IEnumerator UploadToDeedFeed_WithHistoryPrompt(string taskId)
+    {
+        string userId = auth.CurrentUser.UserId;
+
+        // Get photo URL
+        var photoDocTask = db.Collection("userInfo").Document(userId)
+            .Collection("taskPhotos").Document(taskId).GetSnapshotAsync();
+        yield return new WaitUntil(() => photoDocTask.IsCompleted);
+        var photoDoc = photoDocTask.Result;
+        if (!photoDoc.Exists || !photoDoc.ContainsField("url")) yield break;
+        string photoUrl = photoDoc.GetValue<string>("url");
+
+        // Get prompt from history (textShort)
+        var histTask = db.Collection("userInfo").Document(userId)
+            .Collection("taskHistory").Document(taskId).GetSnapshotAsync();
+        yield return new WaitUntil(() => histTask.IsCompleted);
+        string prompt = "Completed a task!";
+        var hist = histTask.Result;
+        if (hist.Exists && hist.ContainsField("textShort"))
+            prompt = hist.GetValue<string>("textShort");
+
+        yield return UploadToDeedFeed(taskId, prompt, photoUrl);
+    }
+
+    // ----------------- Deed feed upload (persists deedUploaded) -----------------
     private IEnumerator UploadToDeedFeed(string taskId, string prompt)
     {
         string userId = auth.CurrentUser.UserId;
@@ -598,9 +512,16 @@ public class TaskListUI : MonoBehaviour
 
         var photoDoc = photoDocTask.Result;
         if (!photoDoc.Exists || !photoDoc.ContainsField("url")) yield break;
-
         string photoUrl = photoDoc.GetValue<string>("url");
 
+        yield return UploadToDeedFeed(taskId, prompt, photoUrl);
+    }
+
+    private IEnumerator UploadToDeedFeed(string taskId, string prompt, string photoUrl)
+    {
+        string userId = auth.CurrentUser.UserId;
+
+        // Get user display info
         var userDocTask = db.Collection("userInfo").Document(userId).GetSnapshotAsync();
         yield return new WaitUntil(() => userDocTask.IsCompleted);
 
@@ -609,6 +530,7 @@ public class TaskListUI : MonoBehaviour
         string profilePicUrl = userDoc.ContainsField("profilePicUrl") ? userDoc.GetValue<string>("profilePicUrl") : "";
         List<string> traits = userDoc.ContainsField("Traits") ? new List<string>(userDoc.GetValue<List<string>>("Traits")) : new List<string>();
 
+        // Create deed
         var deedData = new Dictionary<string, object>
         {
             { "userId", userId },
@@ -618,35 +540,50 @@ public class TaskListUI : MonoBehaviour
             { "photoUrl", photoUrl },
             { "timestamp", Timestamp.GetCurrentTimestamp() },
             { "traits", traits },
-            { "reactions", new Dictionary<string, object> {
-                { "like", 0 }, { "heart", 0 }, { "hug", 0 }, { "wow", 0 }
-            }}
+            { "reactions", new Dictionary<string, object> { { "like", 0 }, { "heart", 0 }, { "hug", 0 }, { "wow", 0 } } },
+            { "taskId", taskId }
         };
 
         var deedUploadTask = db.Collection("deeds").AddAsync(deedData);
         yield return new WaitUntil(() => deedUploadTask.IsCompleted);
+        if (deedUploadTask.IsFaulted || deedUploadTask.IsCanceled) yield break;
+
+        // Persist "already uploaded" on this completion
+        var historyRef = db.Collection("userInfo").Document(userId)
+                           .Collection("taskHistory").Document(taskId);
+        var markTask = historyRef.UpdateAsync(new Dictionary<string, object>
+        {
+            { "deedUploaded", true },
+            { "deedDocId", deedUploadTask.Result.Id }
+        });
+        yield return new WaitUntil(() => markTask.IsCompleted);
+
+        // Keep session flag in sync
+        uploadedTaskIds.Add(taskId);
     }
 
-    // -------- popup + misc (unchanged) ----------
+    // ----------------- Task details & custom task -----------------
     private void ShowTaskDetailPopup(Dictionary<string, object> data)
     {
+        if (!taskDetailPopupPrefab || !popupParent) return;
+
         GameObject popup = Instantiate(taskDetailPopupPrefab, popupParent);
         popup.SetActive(true);
 
-        string textShort = data.ContainsKey("textShort") ? data["textShort"].ToString() : "";
-        string textLong = data.ContainsKey("text") ? data["text"].ToString() : "";
-        string category = data.ContainsKey("category") ? data["category"].ToString() : "";
-        string length = data.ContainsKey("length") ? data["length"].ToString() : "";
-        int difficulty = data.ContainsKey("difficulty") ? Mathf.Clamp(ParseToInt(data["difficulty"]), 1, 4) : 0;
-        string minAgeStr = data.ContainsKey("minAge") ? data["minAge"].ToString() : "";
-        string maxAgeStr = data.ContainsKey("maxAge") ? data["maxAge"].ToString() : "";
-        bool picture = data.ContainsKey("picture") && (data["picture"] is bool pb ? pb : data["picture"].ToString().Trim().ToLower().StartsWith("y"));
+        string textShort = GetString(data, "textShort");
+        string textLong = GetString(data, "text");
+        string category = GetString(data, "category");
+        string length = GetString(data, "length");
+        int difficulty = Mathf.Clamp(ParseToInt(GetObj(data, "difficulty")), 1, 4);
+        string minAgeStr = GetString(data, "minAge");
+        string maxAgeStr = GetString(data, "maxAge");
+        bool picture = GetBoolLoose(GetObj(data, "picture"));
 
-        List<object> rawTraits = data.ContainsKey("traits") ? (List<object>)data["traits"] : new List<object>();
-        List<object> rawMaterials = data.ContainsKey("materials") ? (List<object>)data["materials"] : new List<object>();
+        var rawTraits = GetList(data, "traits");
+        var rawMaterials = GetList(data, "materials");
 
-        List<string> traits = rawTraits.ConvertAll(t => t.ToString());
-        List<string> materials = rawMaterials.ConvertAll(m => m.ToString());
+        var traits = rawTraits.ConvertAll(t => t.ToString());
+        var materials = rawMaterials.ConvertAll(m => m.ToString());
 
         popup.transform.Find("HeaderBackground/HeaderText")?.GetComponent<TMP_Text>()?.SetText(textShort);
         popup.transform.Find("DescriptionText")?.GetComponent<TMP_Text>()?.SetText(textLong);
@@ -670,6 +607,8 @@ public class TaskListUI : MonoBehaviour
 
     public void OpenCustomTaskPopup()
     {
+        if (!customTaskPopupPrefab || !popupParent) return;
+
         GameObject popup = Instantiate(customTaskPopupPrefab, popupParent);
         popup.SetActive(true);
 
@@ -704,19 +643,22 @@ public class TaskListUI : MonoBehaviour
         {
             submitBtn.onClick.AddListener(() =>
                 StartCoroutine(SubmitCustomTask(
-                    shortText.text,
-                    longText.text,
-                    categoryDropdown.options[categoryDropdown.value].text,
-                    difficultyDropdown.options[difficultyDropdown.value].text,
+                    shortText?.text ?? "",
+                    longText?.text ?? "",
+                    categoryDropdown != null && categoryDropdown.options.Count > 0
+                        ? categoryDropdown.options[categoryDropdown.value].text : "",
+                    difficultyDropdown != null && difficultyDropdown.options.Count > 0
+                        ? difficultyDropdown.options[difficultyDropdown.value].text : "",
                     imagePath,
-                    deedFeedToggle.isOn,
+                    deedFeedToggle != null && deedFeedToggle.isOn,
                     popup)));
         }
 
         popup.transform.Find("CloseButton")?.GetComponent<Button>()?.onClick.AddListener(() => Destroy(popup));
     }
 
-    private IEnumerator SubmitCustomTask(string shortText, string longText, string category, string difficulty, string imagePath, bool postToDeedFeed, GameObject popup)
+    private IEnumerator SubmitCustomTask(string shortText, string longText, string category, string difficulty,
+                                         string imagePath, bool postToDeedFeed, GameObject popup)
     {
         string userId = auth.CurrentUser.UserId;
         string taskId = Guid.NewGuid().ToString();
@@ -746,7 +688,8 @@ public class TaskListUI : MonoBehaviour
             { "category", category },
             { "difficulty", difficulty },
             { "photoUrl", photoUrl },
-            { "completedAt", Timestamp.GetCurrentTimestamp() }
+            { "completedAt", Timestamp.GetCurrentTimestamp() },
+            { "deedUploaded", false }
         };
 
         var historyRef = db.Collection("userInfo").Document(userId).Collection("taskHistory").Document(taskId);
@@ -782,30 +725,96 @@ public class TaskListUI : MonoBehaviour
                 { "photoUrl", photoUrl },
                 { "timestamp", Timestamp.GetCurrentTimestamp() },
                 { "traits", traits },
-                { "reactions", new Dictionary<string, object> { { "like", 0 }, { "heart", 0 }, { "hug", 0 }, { "wow", 0 } } }
+                { "reactions", new Dictionary<string, object> { { "like", 0 }, { "heart", 0 }, { "hug", 0 }, { "wow", 0 } } },
+                { "taskId", taskId }
             };
 
             var deedUploadTask = db.Collection("deeds").AddAsync(deedData);
             yield return new WaitUntil(() => deedUploadTask.IsCompleted);
+
+            // Mark persisted uploaded flag
+            var markTask = historyRef.UpdateAsync(new Dictionary<string, object> {
+                { "deedUploaded", true }, { "deedDocId", deedUploadTask.Result.Id }
+            });
+            yield return new WaitUntil(() => markTask.IsCompleted);
         }
 
         Destroy(popup);
         LoadTasks();
     }
 
-    string ToTitleCase(string input)
+    // ----------------- Helpers -----------------
+    private static object GetObj(Dictionary<string, object> d, string key)
+        => d != null && d.ContainsKey(key) ? d[key] : null;
+
+    private static string GetString(Dictionary<string, object> d, string key)
+    {
+        var v = GetObj(d, key);
+        return v == null ? "" : v.ToString();
+    }
+
+    private static bool GetBool(Dictionary<string, object> d, string key)
+    {
+        var v = GetObj(d, key);
+        if (v is bool b) return b;
+        bool.TryParse(v?.ToString(), out var r);
+        return r;
+    }
+
+    private static bool GetBoolLoose(object v)
+    {
+        if (v is bool b) return b;
+        var s = v?.ToString().Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(s)) return false;
+        return s == "true" || s == "yes" || s == "y" || s == "1";
+    }
+
+    private static int ParseToInt(object v)
+    {
+        if (v == null) return 0;
+        if (v is int i) return i;
+        if (v is long l) return (int)l;
+        if (v is double d) return (int)d;
+        int.TryParse(v.ToString(), out var x);
+        return x;
+    }
+
+    private static List<object> GetList(Dictionary<string, object> d, string key)
+    {
+        var v = GetObj(d, key) as List<object>;
+        return v ?? new List<object>();
+    }
+
+    private static string PrettyLen(string len)
+    {
+        if (string.IsNullOrEmpty(len)) return "";
+        len = len.ToLowerInvariant();
+        if (len == "daily") return "Daily";
+        if (len == "weekly") return "Weekly";
+        if (len == "monthly") return "Monthly";
+        return char.ToUpper(len[0]) + len.Substring(1);
+    }
+
+    private static string DifficultyName(int d)
+        => d == 1 ? "Easy"
+         : d == 2 ? "Medium"
+         : d == 3 ? "Hard"
+         : d == 4 ? "AHHHHH"
+         : "?";
+
+    private static string ToTitleCase(string input)
     {
         if (string.IsNullOrEmpty(input)) return "";
         var words = input.Split(' ');
         for (int i = 0; i < words.Length; i++)
         {
             if (words[i].Length > 0)
-                words[i] = char.ToUpper(words[i][0]) + words[i].Substring(1);
+                words[i] = char.ToUpper(words[i][0]) + words[i].Substring(1).ToLowerInvariant();
         }
         return string.Join(" ", words);
     }
 
-    string CapitalizeList(List<string> items)
+    private static string CapitalizeList(List<string> items)
     {
         return string.Join(", ", items.ConvertAll(item =>
             string.IsNullOrWhiteSpace(item) ? "" :
