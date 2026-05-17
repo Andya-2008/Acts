@@ -1,0 +1,42 @@
+import type { FieldValue, Timestamp } from 'firebase/firestore';
+
+import type { ActsAppSettings } from '@/shared/types/actsSettings';
+
+/**
+ * Firestore `userInfo/{uid}` shape aligned with the Acts Firebase project.
+ * Field names match console casing (including `Date Joined`).
+ */
+export type UserInfoDoc = {
+  DOB: string;
+  'Date Joined': Timestamp | FieldValue;
+  Email: string;
+  First: string;
+  Last: string;
+  Phone: string;
+  Traits: string[];
+  UserConfig: boolean;
+  Username: string;
+  profilePicUrl: string | null;
+  /** Kindness / heart points balance (synced with local currency store). */
+  HeartPoints?: number;
+};
+
+/** Written after onboarding; optional on older documents. */
+export type UserInfoOnboardingFields = {
+  /** Mobile number for contact-based friend matching (stored on profile). */
+  Phone: string;
+  Hobbies: string[];
+  Interests: string[];
+  FavoriteActivities: string[];
+  Goals: string[];
+  GrowthGoals: string[];
+  PersonalityTraits: string[];
+  TaskDifficulty: 'easy' | 'medium' | 'hard';
+  HasKids: boolean;
+  BecomeCategory: string;
+};
+
+export type UserInfoRead = UserInfoDoc &
+  Partial<UserInfoOnboardingFields> & {
+    ActsSettings?: Partial<ActsAppSettings>;
+  };

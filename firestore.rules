@@ -1,0 +1,177 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function deedPostSnapshot(postId) {
+      return get(/databases/$(database)/documents/deedPosts/$(postId));
+    }
+
+    /** Missing flag on older posts means "on" (matches app parsing). */
+    function deedPostReactionsEnabled(postId) {
+      let d = deedPostSnapshot(postId);
+      return d.exists && d.data.get('feedReactionsEnabled', true) != false;
+    }
+
+    function deedPostCommentsEnabled(postId) {
+      let d = deedPostSnapshot(postId);
+      return d.exists && d.data.get('feedCommentsEnabled', true) != false;
+    }
+
+    function deedPostAuthorIsViewer(postId) {
+      let d = deedPostSnapshot(postId);
+      return d.exists && d.data.get('authorUid', '') == request.auth.uid;
+    }
+    /** Published act catalog (read-only for clients). */
+    match /tasks/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /userInfo/{userId} {
+      allow get: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow list: if false;
+    }
+
+    match /userInfo/{toUid}/friendRequestsIncoming/{fromUid} {
+      allow read: if request.auth != null && request.auth.uid == toUid;
+      allow create: if request.auth != null && request.auth.uid == fromUid
+        && request.resource.data.keys().hasAll(['fromUid', 'status'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.fromUid == fromUid
+        && request.resource.data.status == 'pending';
+      allow delete: if request.auth != null && (request.auth.uid == toUid || request.auth.uid == fromUid);
+      allow update: if false;
+    }
+
+    match /userInfo/{fromUid}/friendRequestsOutgoing/{toUid} {
+      allow read: if request.auth != null && request.auth.uid == fromUid;
+      allow create: if request.auth != null && request.auth.uid == fromUid
+        && request.resource.data.keys().hasAll(['toUid', 'status'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.toUid == toUid
+        && request.resource.data.status == 'pending';
+      allow delete: if request.auth != null && (request.auth.uid == fromUid || request.auth.uid == toUid);
+      allow update: if false;
+    }
+
+    match /userInfo/{ownerUid}/friends/{friendUid} {
+      /* Owner can always read; friends of owner can read (e.g. mutual friends on profiles). */
+      allow read: if request.auth != null && (
+        request.auth.uid == ownerUid
+        || exists(/databases/$(database)/documents/userInfo/$(request.auth.uid)/friends/$(ownerUid))
+      );
+      allow create: if request.auth != null
+        && (request.auth.uid == ownerUid || request.auth.uid == friendUid)
+        && request.resource.data.keys().hasAll(['friendUid', 'Username', 'First', 'Last'])
+        && request.resource.data.since == request.time
+        && request.resource.data.friendUid == friendUid;
+      allow delete: if request.auth != null && (request.auth.uid == ownerUid || request.auth.uid == friendUid);
+      allow update: if false;
+    }
+
+    match /userInfo/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /deedPosts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['authorUid', 'authorProfilePicUrl', 'photoUrl', 'caption', 'authorDisplayName'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.photoUrl is string
+        && request.resource.data.photoUrl.size() > 10
+        && request.resource.data.caption is string
+        && request.resource.data.authorDisplayName is string
+        && request.resource.data.authorProfilePicUrl is string;
+      allow update, delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
+
+      match /reactions/{reactorUid} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && deedPostReactionsEnabled(postId)
+          && reactorUid == request.auth.uid
+          && request.resource.data.keys().hasAll(['reactorUid', 'kind'])
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.reactorUid == request.auth.uid
+          && request.resource.data.kind in ['heart', 'clap', 'sparkle', 'hug', 'star'];
+        allow update: if request.auth != null
+          && deedPostReactionsEnabled(postId)
+          && reactorUid == request.auth.uid
+          && request.resource.data.keys().hasAll(['reactorUid', 'kind'])
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.reactorUid == request.auth.uid
+          && request.resource.data.kind in ['heart', 'clap', 'sparkle', 'hug', 'star'];
+        allow delete: if request.auth != null && (
+          reactorUid == request.auth.uid
+          || deedPostAuthorIsViewer(postId)
+        );
+      }
+
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && deedPostCommentsEnabled(postId)
+          && request.resource.data.keys().hasAll(['authorUid', 'text'])
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow delete: if request.auth != null && (
+          resource.data.authorUid == request.auth.uid
+          || deedPostAuthorIsViewer(postId)
+        );
+        allow update: if false;
+      }
+    }
+
+    match /usernames/{usernameKey} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['userId', 'authEmail'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.authEmail is string
+        && request.resource.data.authEmail.size() > 3;
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['userId', 'authEmail'])
+        && request.resource.data.authEmail is string
+        && request.resource.data.authEmail.size() > 3;
+      allow delete: if false;
+    }
+
+    match /phoneLoginLookup/{key} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'authEmail'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.authEmail is string
+        && request.resource.data.authEmail.size() > 3;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'authEmail'])
+        && request.resource.data.authEmail is string
+        && request.resource.data.authEmail.size() > 3;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    match /registeredContactKeys/{key} {
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['uid', 'username', 'first', 'last'])
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid', 'username', 'first', 'last']);
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}
