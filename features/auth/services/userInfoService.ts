@@ -2,6 +2,7 @@ import type { User } from 'firebase/auth';
 import { doc, getDoc, runTransaction, serverTimestamp, updateDoc, type Firestore } from 'firebase/firestore';
 
 import { registerContactKeysForProfile, syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
+import { markPostSignupFriendsGatePending } from '@/features/friends/friendsGetStartedStorage';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
 import type { UserInfoDoc } from '@/shared/types/userInfo';
@@ -99,6 +100,8 @@ export async function createUserInfoForEmailPasswordSignup(input: {
     Username: usernameKey,
     profilePicUrl: input.profilePicUrl,
     HeartPoints: 0,
+    LifetimeXP: 0,
+    ShopPurchasedIds: [],
   };
 
   await commitUserInfoWithUsernameClaim(db, input.uid, usernameKey, payload);
@@ -181,6 +184,8 @@ export async function ensureUserInfoForGoogleUser(user: User): Promise<void> {
         Username: usernameKey,
         profilePicUrl: user.photoURL,
         HeartPoints: 0,
+        LifetimeXP: 0,
+        ShopPurchasedIds: [],
       };
       await commitUserInfoWithUsernameClaim(db, user.uid, usernameKey, payload);
       try {
@@ -194,6 +199,7 @@ export async function ensureUserInfoForGoogleUser(user: User): Promise<void> {
       } catch {
         /* best-effort; do not fail Google sign-up after profile is saved */
       }
+      await markPostSignupFriendsGatePending(user.uid);
       return;
     } catch (error) {
       if (error instanceof Error && error.message === 'USERNAME_TAKEN') {

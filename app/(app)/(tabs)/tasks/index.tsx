@@ -3,25 +3,27 @@ import {
   ActivityIndicator,
   AppState,
   FlatList,
-  LayoutAnimation,
   ListRenderItem,
   Modal,
   Platform,
   Pressable,
   RefreshControl,
-  TextInput,
   UIManager,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 
 import { TaskListFiltersModal } from '@/features/tasks/components/TaskListFiltersModal';
 import { TaskRewardFly } from '@/features/tasks/components/TaskRewardFly';
 import { TaskRow, type TaskToggleOrigin } from '@/features/tasks/components/TaskRow';
 import { authorDisplayNameForDeed } from '@/features/deed-feed/utils/authorDisplayName';
+import { ownedTaskThemeSet } from '@/features/shop/shopCatalog';
+import { autoAssignPerCadenceFromPurchases } from '@/features/shop/shopEntitlements';
 import { useCreateDeedPostMutation } from '@/features/deed-feed/hooks/useDeedPostsQueries';
 import { sliceAutoAssignableFromCatalog } from '@/features/tasks/constants/taskCatalog';
+import { currentRosterPeriodKeys } from '@/features/tasks/utils/taskPeriodKeys';
 import {
   useAddTaskMutation,
   useClearTaskPhotoMutation,
@@ -31,7 +33,7 @@ import {
   useTasksQuery,
   useToggleTaskCompleteMutation,
 } from '@/features/tasks/hooks/useTasksQueries';
-import { taskMatchesUserProfile } from '@/features/tasks/utils/taskEligibility';
+import { catalogEntryMatchesUser, taskMatchesUserProfile } from '@/features/tasks/utils/taskEligibility';
 import { periodKeyForDate } from '@/features/tasks/utils/taskPeriodKeys';
 import {
   activeFilterCount,
@@ -40,21 +42,52 @@ import {
   taskMatchesListFilters,
 } from '@/features/tasks/utils/taskListFilters';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
+import { ServiceRankUpOverlay, type ServiceRankUpPayload } from '@/features/user-profile/components/ServiceRankUpOverlay';
+import { computeLifetimeRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
+import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { AppButton, AppCard, AppText, FadeInView, Screen } from '@/shared/components/ui';
+import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
+import { grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
+import {
+  canOfferStreakGraceSave,
+  calendarMonthKey,
+} from '@/features/user-profile/utils/computeCompletionStreak';
+import { mergeActsDefaults } from '@/shared/types/actsSettings';
+import { celebrateTaskComplete, taskUncheckedHaptic } from '@/shared/utils/haptics';
+import { preferredDifficultyLevelFromActs } from '@/shared/utils/preferredTaskDifficulty';
+import { resolveEquippedTaskCheckTheme } from '@/features/cosmetics/taskCheckThemes';
+import { ActsTextInput, AppButton, AppCard, AppText, FadeInView, Screen } from '@/shared/components/ui';
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+import { configureActsLayoutAnimation } from '@/shared/utils/accessibilityMotion';
+import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useCurrencyStore } from '@/shared/stores/currencyStore';
 import type { ActTask } from '@/shared/types/task';
 import { HEARTS_FOR_DEED_FEED_SHARE } from '@/shared/utils/deedFeedReward';
 import { rewardForCadence } from '@/shared/utils/taskReward';
+import { XP_FOR_DEED_FEED_SHARE, xpForCadence } from '@/shared/utils/xpRewards';
+import { isWeekendDoubleActive, weekendDoubleEarnedAmount, weekendDoubleXpDelta } from '@/shared/utils/weekendDouble';
 
 export default function TasksListScreen() {
+  const reduceMotion = useReduceMotion();
   const uid = useAuthStore((s) => s.user?.uid);
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const { data: tasks, isPending, isError, error, refetch, isRefetching } = useTasksQuery(uid);
   const { data: catalogEntries, isError: catalogIsError, error: catalogError, refetch: refetchCatalog, isFetching: catalogFetching } =
     useTaskCatalogQuery(Boolean(uid));
   const { data: userInfo } = useUserInfoQuery(uid);
+  const actsSettingsForGrace = useMemo(() => mergeActsDefaults(userInfo?.ActsSettings), [userInfo?.ActsSettings]);
+  const streakGraceOffer = useMemo(
+    () => canOfferStreakGraceSave(tasks ?? [], actsSettingsForGrace),
+    [tasks, actsSettingsForGrace.streakGraceForgivenDayKey, actsSettingsForGrace.streakGraceAppliedInMonth],
+  );
+  const mergeActsSettingsMutation = useMergeActsSettingsMutation(uid);
+  const equippedTaskCheckTheme = useMemo(() => {
+    const acts = mergeActsDefaults(userInfo?.ActsSettings);
+    const ownedThemes = ownedTaskThemeSet(userInfo?.ShopPurchasedIds);
+    return resolveEquippedTaskCheckTheme(acts.activeTaskCheckTheme, ownedThemes);
+  }, [userInfo?.ActsSettings, userInfo?.ShopPurchasedIds]);
   const ensureAssignedMutation = useEnsureAssignedTasksMutation(uid);
   const toggleMutation = useToggleTaskCompleteMutation(uid);
   const addMutation = useAddTaskMutation(uid);
@@ -81,9 +114,11 @@ export default function TasksListScreen() {
     heartCount: number;
   } | null>(null);
   const flyAmountRef = useRef(0);
+  const pendingRankUpRef = useRef<ServiceRankUpPayload | null>(null);
   const autoAssignAttempted = useRef(false);
   const periodSigRef = useRef('');
   const [homeRosterVersion, setHomeRosterVersion] = useState(0);
+  const [rankUpPayload, setRankUpPayload] = useState<ServiceRankUpPayload | null>(null);
 
   const bumpHomeRosterIfPeriodChanged = useCallback(() => {
     const n = new Date();
@@ -104,6 +139,14 @@ export default function TasksListScreen() {
     }, [bumpHomeRosterIfPeriodChanged]),
   );
 
+  /** Period rollover runs in `fetchTasksForUser` → `reconcilePeriodRosters`. */
+  useEffect(() => {
+    if (!uid || homeRosterVersion < 1) {
+      return;
+    }
+    void refetch();
+  }, [homeRosterVersion, uid, refetch]);
+
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
@@ -113,10 +156,25 @@ export default function TasksListScreen() {
     return () => sub.remove();
   }, [bumpHomeRosterIfPeriodChanged]);
 
-  const assignableFromCatalog = useMemo(
-    () => sliceAutoAssignableFromCatalog(catalogEntries ?? [], new Date()),
-    [catalogEntries, homeRosterVersion],
+  const profileFilteredCatalog = useMemo(
+    () => (catalogEntries ?? []).filter((e) => catalogEntryMatchesUser(e, userInfo ?? undefined)),
+    [catalogEntries, userInfo],
   );
+
+  const rosterPeriodKeys = useMemo(() => currentRosterPeriodKeys(), [homeRosterVersion]);
+
+  const assignableFromCatalog = useMemo(() => {
+    const acts = mergeActsDefaults(userInfo?.ActsSettings);
+    return sliceAutoAssignableFromCatalog(
+      profileFilteredCatalog,
+      new Date(),
+      autoAssignPerCadenceFromPurchases(userInfo?.ShopPurchasedIds),
+      {
+        uid,
+        preferredDifficultyLevel: preferredDifficultyLevelFromActs(acts.preferredDifficulty),
+      },
+    );
+  }, [profileFilteredCatalog, homeRosterVersion, userInfo?.ShopPurchasedIds, userInfo?.ActsSettings, uid]);
 
   const homeRosterCatalogIds = useMemo(
     () => new Set(assignableFromCatalog.map((c) => c.taskId)),
@@ -128,8 +186,16 @@ export default function TasksListScreen() {
       if (!t.active) {
         return false;
       }
-      if (homeRosterCatalogIds.has(t.id)) {
-        return true;
+      const isCatalogCadence =
+        t.cadence === 'daily' || t.cadence === 'weekly' || t.cadence === 'monthly';
+      if (isCatalogCadence && homeRosterCatalogIds.has(t.id)) {
+        const periodKey =
+          t.cadence === 'daily'
+            ? rosterPeriodKeys.daily
+            : t.cadence === 'weekly'
+              ? rosterPeriodKeys.weekly
+              : rosterPeriodKeys.monthly;
+        return periodKey != null && t.assignedPeriodKey === periodKey;
       }
       if (t.cadence === 'anytime' || t.taskId.startsWith('custom_')) {
         return taskMatchesUserProfile(t, userInfo ?? undefined);
@@ -145,7 +211,7 @@ export default function TasksListScreen() {
     incomplete.sort((a, b) => b.sortKey - a.sortKey);
     complete.sort((a, b) => b.sortKey - a.sortKey);
     return [...incomplete, ...complete];
-  }, [tasks, userInfo, rewardFly?.taskId, homeRosterCatalogIds]);
+  }, [tasks, userInfo, rewardFly?.taskId, homeRosterCatalogIds, rosterPeriodKeys]);
 
   const categoryOptions = useMemo(() => {
     const s = new Set<string>();
@@ -167,14 +233,10 @@ export default function TasksListScreen() {
   useEffect(() => {
     const n = displayedTasks.length;
     if (n > 0 && prevVisibleLen.current === 0) {
-      LayoutAnimation.configureNext({
-        duration: 340,
-        update: { type: LayoutAnimation.Types.easeInEaseOut },
-        create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      });
+      configureActsLayoutAnimation(reduceMotion);
     }
     prevVisibleLen.current = n;
-  }, [displayedTasks.length]);
+  }, [displayedTasks.length, reduceMotion]);
 
   useEffect(() => {
     autoAssignAttempted.current = false;
@@ -205,14 +267,14 @@ export default function TasksListScreen() {
 
   const onRewardFlyFinished = useCallback(() => {
     useCurrencyStore.getState().adjustBalance(flyAmountRef.current);
-    LayoutAnimation.configureNext({
-      duration: 380,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-    });
+    configureActsLayoutAnimation(reduceMotion);
     setRewardFly(null);
-  }, []);
+    const pending = pendingRankUpRef.current;
+    pendingRankUpRef.current = null;
+    if (pending) {
+      setRankUpPayload(pending);
+    }
+  }, [reduceMotion]);
 
   const uploadPickedTaskPhoto = useCallback(
     (task: ActTask, uri: string | undefined) => {
@@ -280,37 +342,73 @@ export default function TasksListScreen() {
       setLocalError(null);
       const next = task.completedAt == null;
       const reward = rewardForCadence(task.cadence);
+      const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
       toggleMutation.mutate(
-        { taskId: task.id, completed: next },
+        {
+          taskId: task.id,
+          completed: next,
+          completionLedger: next
+            ? {
+                seeds: weekendDoubleEarnedAmount(reward),
+                xp: weekendDoubleXpDelta(xpForCadence(task.cadence)),
+              }
+            : null,
+        },
         {
           onSuccess: () => {
             if (!next) {
-              useCurrencyStore.getState().adjustBalance(-reward);
+              taskUncheckedHaptic();
+              const seedsToRevoke = task.lastCompletionSeeds ?? rewardForCadence(task.cadence);
+              const xpToRevoke = task.lastCompletionXp ?? xpForCadence(task.cadence);
+              useCurrencyStore.getState().adjustBalance(-seedsToRevoke);
+              if (xpToRevoke > 0 && uid) {
+                void grantLifetimeXp(uid, -xpToRevoke).then(() =>
+                  queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) }),
+                );
+              }
               return;
             }
-            if (reward <= 0) {
+            celebrateTaskComplete();
+            const xpGain = weekendDoubleXpDelta(xpForCadence(task.cadence));
+            const transition = xpGain > 0 ? computeLifetimeRankPromotionTransition(prevXp, xpGain) : null;
+            if (xpGain > 0 && uid) {
+              void grantLifetimeXp(uid, xpGain).then(() =>
+                queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) }),
+              );
+            }
+            const grantSeeds = weekendDoubleEarnedAmount(reward);
+            if (grantSeeds <= 0) {
+              if (transition) {
+                setRankUpPayload(transition);
+              }
               return;
             }
             const anchor = useCurrencyStore.getState().pillAnchor;
             if (origin?.card && anchor) {
-              flyAmountRef.current = reward;
+              flyAmountRef.current = grantSeeds;
+              if (transition) {
+                pendingRankUpRef.current = transition;
+              }
               setRewardFly({
                 key: Date.now(),
                 taskId: task.id,
                 card: origin.card,
                 ex: anchor.x,
                 ey: anchor.y,
-                heartCount: reward,
+                heartCount: grantSeeds,
               });
             } else {
-              useCurrencyStore.getState().adjustBalance(reward);
+              useCurrencyStore.getState().adjustBalance(grantSeeds);
+              if (transition) {
+                setRankUpPayload(transition);
+              }
             }
           },
           onError: (e) => setLocalError(mapAuthError(e)),
         },
       );
     },
-    [toggleMutation],
+    [toggleMutation, uid, queryClient, userInfo?.LifetimeXP],
   );
 
   const onAddCustom = useCallback(() => {
@@ -365,13 +463,25 @@ export default function TasksListScreen() {
         },
         {
           onSuccess: () => {
-            useCurrencyStore.getState().adjustBalance(HEARTS_FOR_DEED_FEED_SHARE);
+            const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE);
+            const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE);
+            useCurrencyStore.getState().adjustBalance(hearts);
+            if (uid) {
+              const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
+              const transition = computeLifetimeRankPromotionTransition(prevXp, xpGrant);
+              void grantLifetimeXp(uid, xpGrant).then(() => {
+                void queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) });
+                if (transition) {
+                  setRankUpPayload(transition);
+                }
+              });
+            }
           },
           onError: (e) => setLocalError(mapAuthError(e)),
         },
       );
     },
-    [uid, user, userInfo, createDeedPostMutation],
+    [uid, user, userInfo, createDeedPostMutation, queryClient],
   );
 
   const photoActionTaskId = saveTaskPhotoMutation.isPending
@@ -398,6 +508,7 @@ export default function TasksListScreen() {
         photoActionTaskId={photoActionTaskId}
         onShareToDeedFeed={Platform.OS === 'web' ? undefined : shareToDeedFeed}
         deedFeedShareTaskId={deedFeedShareTaskId}
+        taskCheckThemeId={equippedTaskCheckTheme}
       />
     ),
     [
@@ -410,6 +521,7 @@ export default function TasksListScreen() {
       photoActionTaskId,
       shareToDeedFeed,
       deedFeedShareTaskId,
+      equippedTaskCheckTheme,
     ],
   );
 
@@ -417,12 +529,53 @@ export default function TasksListScreen() {
     const nActive = activeFilterCount(listFilters);
     return (
       <View className="mb-3">
+        {isWeekendDoubleActive() ? (
+          <AppCard className="mb-3 border-acts-green/35 bg-acts-green-soft/80 p-3">
+            <AppText variant="subtitle" className="mb-0.5 text-acts-ink">
+              Double seeds & XP weekend
+            </AppText>
+            <AppText variant="caption" className="text-acts-muted">
+              Friday–Sunday: task rewards, deed-feed bonuses, and shop XP boosts pay out twice.
+            </AppText>
+          </AppCard>
+        ) : null}
+        {streakGraceOffer.show ? (
+          <AppCard className="mb-3 border-acts-green/45 bg-acts-green-soft p-3">
+            <AppText variant="subtitle" className="mb-1 text-acts-ink">
+              Save your streak
+            </AppText>
+            <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+              You missed yesterday but your run is still recoverable. You can use one streak save per calendar month.
+            </AppText>
+            <AppButton
+              title="Use monthly streak save"
+              loading={mergeActsSettingsMutation.isPending}
+              disabled={mergeActsSettingsMutation.isPending || !streakGraceOffer.forgivenDayKey}
+              onPress={() => {
+                const key = streakGraceOffer.forgivenDayKey;
+                if (!key) {
+                  return;
+                }
+                void mergeActsSettingsMutation.mutateAsync({
+                  streakGraceForgivenDayKey: key,
+                  streakGraceAppliedInMonth: calendarMonthKey(new Date()),
+                });
+              }}
+            />
+          </AppCard>
+        ) : null}
+        <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+          Suggested acts match your age, traits, and difficulty preference, then rotate with the calendar. Change
+          difficulty under Settings → Preferences.
+        </AppText>
         <Pressable
           onPress={() => setFiltersModalOpen(true)}
           accessibilityRole="button"
           accessibilityLabel="Open task filters"
           className="mb-2 flex-row items-center self-start rounded-2xl border border-acts-border bg-acts-surface px-4 py-2.5 active:opacity-80">
-          <AppText variant="subtitle">Filters</AppText>
+          <AppText variant="subtitle" className="text-acts-ink">
+            Filters
+          </AppText>
           {nActive > 0 ? (
             <View className="ml-2 min-w-[22px] items-center rounded-full bg-acts-green px-1.5 py-0.5">
               <AppText variant="caption" className="font-semibold text-white">
@@ -446,7 +599,7 @@ export default function TasksListScreen() {
         ) : null}
       </View>
     );
-  }, [catalogIsError, catalogError, localError, refetchCatalog, listFilters]);
+  }, [catalogIsError, catalogError, localError, refetchCatalog, listFilters, streakGraceOffer.show, streakGraceOffer.forgivenDayKey, mergeActsSettingsMutation.isPending]);
 
   const listEmpty = useMemo(() => {
     if (ensureAssignedMutation.isPending && (tasks?.length ?? 0) === 0) {
@@ -513,12 +666,13 @@ export default function TasksListScreen() {
           </AppCard>
         </FadeInView>
       ) : null}
-      <TextInput
+      <ActsTextInput
         value={newTitle}
         onChangeText={setNewTitle}
         placeholder="Add your own act"
         placeholderTextColor="#9CA3AF"
-        className="mb-3 rounded-2xl border border-acts-border bg-acts-surface px-4 py-3.5 text-base text-acts-ink"
+        className="mb-3 rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
+        style={getActsTextInputBoxStyle()}
         editable={!addMutation.isPending}
         onSubmitEditing={onAddCustom}
         returnKeyType="done"
@@ -605,6 +759,7 @@ export default function TasksListScreen() {
           ) : null}
         </View>
       </Modal>
+      <ServiceRankUpOverlay payload={rankUpPayload} onClose={() => setRankUpPayload(null)} />
     </Screen>
   );
 }

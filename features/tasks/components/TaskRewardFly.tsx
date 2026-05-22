@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+
 export type TaskRewardCardRect = {
   x: number;
   y: number;
@@ -64,6 +66,7 @@ function heartFontSize(count: number): number {
 
 /** Full-screen overlay: task card dissolves into many hearts that fly to the currency pill. */
 export function TaskRewardFly({ flyKey, card, endX, endY, heartCount, onFinished }: TaskRewardFlyProps) {
+  const reduceMotion = useReduceMotion();
   const cardOpacity = useRef(new Animated.Value(1)).current;
   const cardScale = useRef(new Animated.Value(1)).current;
   const cardRotate = useRef(new Animated.Value(0)).current;
@@ -79,6 +82,10 @@ export function TaskRewardFly({ flyKey, card, endX, endY, heartCount, onFinished
   );
 
   useEffect(() => {
+    if (reduceMotion) {
+      onFinished();
+      return;
+    }
     let cancelled = false;
     cardOpacity.setValue(1);
     cardScale.setValue(1);
@@ -137,6 +144,7 @@ export function TaskRewardFly({ flyKey, card, endX, endY, heartCount, onFinished
     cardScale,
     cardRotate,
     onFinished,
+    reduceMotion,
   ]);
 
   const fs = heartFontSize(heartCount);

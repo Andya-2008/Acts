@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text as RNText, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
@@ -14,10 +14,19 @@ import {
 } from '@/features/friends/hooks/useFriendsQueries';
 import type { MutualFriendSummary } from '@/features/friends/services/friendsRepository';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
+import { getServiceRankForLifetimeXp } from '@/features/user-profile/config/xpServiceRanks';
+import { computeCompletionStreak } from '@/features/user-profile/utils/computeCompletionStreak';
+import { getBlockedUidSet } from '@/features/safety/blockedUids';
+import { useBlockUserMutation, useUnblockUserMutation } from '@/features/safety/useSafetyMutations';
+import { useTasksQuery } from '@/features/tasks/hooks/useTasksQueries';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import type { UserInfoRead } from '@/shared/types/userInfo';
+import { normalizeProfileBio } from '@/shared/constants/profileBio';
+import { profileBioVisibleForViewer, profileStatVisibleForViewer } from '@/shared/utils/profileStatVisibility';
 import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
+import { profileActionAccessibilityLabel } from '@/shared/utils/accessibilityMotion';
 
 function paramUid(raw: string | string[] | undefined): string {
   if (typeof raw === 'string') {
@@ -42,6 +51,7 @@ function displayName(info: UserInfoRead | null | undefined): string {
 }
 
 function ProfileStackBackButton() {
+  const act = useActAppearance();
   return (
     <Pressable
       accessibilityRole="button"
@@ -55,7 +65,7 @@ function ProfileStackBackButton() {
         }
       }}
       className="-ml-1 rounded-lg p-1 active:opacity-70">
-      <Ionicons name="chevron-back" size={28} color="#2D1528" />
+      <Ionicons name="chevron-back" size={28} color={act.palette.ink} />
     </Pressable>
   );
 }
@@ -105,23 +115,21 @@ function MutualFriendsInstagramRow({ mutuals }: { mutuals: MutualFriendSummary[]
           </Pressable>
         ))}
       </View>
-      <RNText className="min-w-0 flex-1 text-[14px] leading-5 text-acts-ink" numberOfLines={3}>
-        <RNText>Mutual friends with </RNText>
-        <RNText onPress={() => open(first.friendUid)} style={{ fontWeight: '700' }}>
+      <AppText variant="caption" className="min-w-0 flex-1 leading-5">
+        Mutual friends with{' '}
+        <AppText variant="caption" onPress={() => open(first.friendUid)} style={{ fontWeight: '700' }}>
           {first.boldHandle}
-        </RNText>
+        </AppText>
         {second ? (
           <>
-            <RNText>, </RNText>
-            <RNText onPress={() => open(second.friendUid)} style={{ fontWeight: '700' }}>
+            {', '}
+            <AppText variant="caption" onPress={() => open(second.friendUid)} style={{ fontWeight: '700' }}>
               {second.boldHandle}
-            </RNText>
+            </AppText>
           </>
         ) : null}
-        {moreCount > 0 ? (
-          <RNText style={{ fontWeight: '400' }}>{` +${moreCount} more`}</RNText>
-        ) : null}
-      </RNText>
+        {moreCount > 0 ? <AppText variant="caption">{` +${moreCount} more`}</AppText> : null}
+      </AppText>
     </View>
   );
 }
@@ -155,6 +163,8 @@ export default function PublicProfileScreen() {
   const myUid = useAuthStore((s) => s.user?.uid);
 
   const { data: profile, isPending: profilePending, isError, error } = useUserInfoQuery(profileUid || undefined);
+  const { data: myUserInfo } = useUserInfoQuery(myUid || undefined);
+  const { data: profileTasks = [] } = useTasksQuery(profileUid || undefined);
   const relationQuery = useFriendshipRelationQuery(myUid, profileUid || undefined);
   const acceptMutation = useAcceptFriendRequestMutation(myUid);
   const declineMutation = useDeclineFriendRequestMutation(myUid);
@@ -167,18 +177,41 @@ export default function PublicProfileScreen() {
   const allowsRequests = acts.allowFriendRequests !== false;
   const relation = relationQuery.data;
   const relationActionsReady = profileUid === myUid || relationQuery.isFetched;
-  const bioText = acts.bio.trim();
+  const isSelf = Boolean(myUid && profileUid === myUid);
+  const isFriend = relation === 'friends';
+  const visCtx = { isSelf, isFriend };
+  const showRank = profileStatVisibleForViewer(acts.profileServiceRankVisibility, visCtx);
+  const showStreak = profileStatVisibleForViewer(acts.profileStreakVisibility, visCtx);
+  const showXp = profileStatVisibleForViewer(acts.profileXpVisibility, visCtx);
+  const showActs = profileStatVisibleForViewer(acts.profileActsCompletedVisibility, visCtx);
+  const streakDays = useMemo(
+    () => computeCompletionStreak(profileTasks, mergeActsDefaults(profile?.ActsSettings)),
+    [profileTasks, profile?.ActsSettings],
+  );
+  const actsCompleted = useMemo(() => profileTasks.filter((t) => t.completedAt != null).length, [profileTasks]);
+  const bioText = normalizeProfileBio(acts.bio);
+  const showBio = profileBioVisibleForViewer() && bioText.length > 0;
+  const lifetimeXp = Math.max(0, Math.floor(Number(profile?.LifetimeXP ?? 0)));
+  const serviceRank = getServiceRankForLifetimeXp(lifetimeXp);
 
   const avatarUri = profile?.profilePicUrl?.trim() || null;
   const handle = profile?.Username?.trim() ? `@${profile.Username.replace(/^@+/, '')}` : null;
+  const profileName = displayName(profile);
 
   const mutualFriendsQuery = useMutualFriendsQuery(myUid, profileUid, relation);
+
+  const blockedSet = useMemo(() => getBlockedUidSet(myUserInfo), [myUserInfo]);
+  const isBlocked = Boolean(profileUid && blockedSet.has(profileUid));
+  const blockMutation = useBlockUserMutation(myUid);
+  const unblockMutation = useUnblockUserMutation(myUid);
 
   const busy =
     acceptMutation.isPending ||
     declineMutation.isPending ||
     cancelMutation.isPending ||
-    sendToUidMutation.isPending;
+    sendToUidMutation.isPending ||
+    blockMutation.isPending ||
+    unblockMutation.isPending;
 
   const onAccept = useCallback(() => {
     setLocalError(null);
@@ -257,9 +290,14 @@ export default function PublicProfileScreen() {
       <View className="items-center border-b border-acts-border/50 pb-6 pt-2">
         <View className="mb-4 h-28 w-28 overflow-hidden rounded-full border-2 border-acts-border bg-acts-canvas">
           {avatarUri ? (
-            <Image source={{ uri: avatarUri }} className="h-full w-full" resizeMode="cover" />
+            <Image
+              source={{ uri: avatarUri }}
+              className="h-full w-full"
+              resizeMode="cover"
+              accessibilityLabel={`${profileName} profile photo`}
+            />
           ) : (
-            <View className="h-full w-full items-center justify-center">
+            <View className="h-full w-full items-center justify-center" accessibilityLabel="No profile photo">
               <Ionicons name="person" size={52} color="#8B6F82" />
             </View>
           )}
@@ -272,7 +310,49 @@ export default function PublicProfileScreen() {
             {handle}
           </AppText>
         ) : null}
-        {bioText.length > 0 ? (
+        {showRank ? (
+          <View className="mt-3 flex-row items-center gap-2 rounded-2xl border border-acts-green/35 bg-acts-green-soft px-3 py-2">
+            <Ionicons name={serviceRank.tier.icon} size={20} color="#15803D" />
+            <View className="min-w-0 flex-1">
+              <AppText variant="caption" className="font-bold text-acts-ink">
+                {serviceRank.tier.label}
+              </AppText>
+              <AppText variant="caption" className="text-acts-muted">
+                {showXp ? <>{lifetimeXp} lifetime XP · </> : null}
+                {serviceRank.tier.tagline}
+              </AppText>
+            </View>
+          </View>
+        ) : null}
+        {showStreak || (showXp && !showRank) || showActs ? (
+          <View className="mt-3 flex-row flex-wrap justify-center gap-2">
+            {showStreak ? (
+              <View className="flex-row items-center gap-1.5 rounded-full border border-acts-border/70 bg-acts-canvas px-3 py-1.5">
+                <Ionicons name="flame" size={16} color="#EA580C" />
+                <AppText variant="caption" className="text-acts-ink">
+                  {streakDays} day streak
+                </AppText>
+              </View>
+            ) : null}
+            {showXp && !showRank ? (
+              <View className="flex-row items-center gap-1.5 rounded-full border border-acts-border/70 bg-acts-canvas px-3 py-1.5">
+                <Ionicons name="sparkles" size={16} color="#CA8A04" />
+                <AppText variant="caption" className="text-acts-ink">
+                  {lifetimeXp} XP
+                </AppText>
+              </View>
+            ) : null}
+            {showActs ? (
+              <View className="flex-row items-center gap-1.5 rounded-full border border-acts-border/70 bg-acts-canvas px-3 py-1.5">
+                <Ionicons name="checkmark-done" size={16} color="#4F46E5" />
+                <AppText variant="caption" className="text-acts-ink">
+                  {actsCompleted} acts
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+        {showBio ? (
           <View className="mt-4 w-full max-w-md self-stretch px-1">
             <AppText variant="caption" className="mb-1.5 text-acts-muted">
               Bio
@@ -298,27 +378,58 @@ export default function PublicProfileScreen() {
         ) : null}
 
         {relationActionsReady && relation === 'self' ? (
-          <AppButton title="Edit profile & photo" onPress={() => router.push('/(app)/settings/account' as Href)} />
+          <AppButton
+            title="Edit profile & photo"
+            accessibilityLabel="Edit your profile and photo"
+            onPress={() => router.push('/(app)/settings/account' as Href)}
+          />
         ) : null}
 
         {relationActionsReady && relation === 'incoming_pending' ? (
           <View className="gap-2">
-            <View className="flex-row flex-wrap gap-2">
-              <AppButton title="Decline" variant="secondary" className="min-w-[44%] flex-1" disabled={busy} onPress={onDecline} />
-              <AppButton title="Accept" className="min-w-[44%] flex-1" disabled={busy} onPress={onAccept} />
+            <View className="flex-row gap-2">
+              <AppButton
+                title="Decline"
+                variant="secondary"
+                size="compact"
+                className="flex-1"
+                disabled={busy}
+                accessibilityLabel={profileActionAccessibilityLabel('Decline friend request from', profileName)}
+                onPress={onDecline}
+              />
+              <AppButton
+                title="Accept"
+                size="compact"
+                className="flex-1"
+                disabled={busy}
+                accessibilityLabel={profileActionAccessibilityLabel('Accept friend request from', profileName)}
+                onPress={onAccept}
+              />
             </View>
           </View>
         ) : null}
 
         {relationActionsReady && relation === 'outgoing_pending' ? (
           <View className="gap-2">
-            <AppButton title="Cancel request" variant="secondary" disabled={busy} onPress={onCancelRequest} />
+            <AppButton
+              title="Cancel request"
+              variant="secondary"
+              disabled={busy}
+              accessibilityLabel={profileActionAccessibilityLabel('Cancel friend request to', profileName)}
+              onPress={onCancelRequest}
+            />
           </View>
         ) : null}
 
-        {relationActionsReady && relation === 'none' ? (
+        {relationActionsReady && relation === 'none' && !isBlocked ? (
           allowsRequests ? (
-            <AppButton title="Add friend" disabled={busy} loading={sendToUidMutation.isPending} onPress={onAddFriend} />
+            <AppButton
+              title="Add friend"
+              disabled={busy}
+              loading={sendToUidMutation.isPending}
+              accessibilityLabel={profileActionAccessibilityLabel('Send friend request to', profileName)}
+              onPress={onAddFriend}
+            />
           ) : (
             <AppText variant="body" className="text-acts-muted">
               Not accepting requests.
@@ -327,7 +438,61 @@ export default function PublicProfileScreen() {
         ) : null}
       </View>
 
-      {relationActionsReady && relation === 'friends' ? (
+      {relationActionsReady && !isSelf && myUid ? (
+        <View className="mt-6 border-t border-acts-border/60 pt-6">
+          <AppText variant="subtitle" className="mb-2 text-acts-ink">
+            Safety
+          </AppText>
+          {isBlocked ? (
+            <>
+              <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+                {`You blocked this person. Their deed posts stay hidden until you unblock them. They are not on your friend list while blocked.`}
+              </AppText>
+              <AppButton
+                title="Unblock"
+                variant="secondary"
+                className="shrink-0"
+                disabled={unblockMutation.isPending}
+                loading={unblockMutation.isPending}
+                accessibilityLabel={profileActionAccessibilityLabel('Unblock', profileName)}
+                onPress={() =>
+                  unblockMutation.mutate(profileUid, {
+                    onError: (e) => setLocalError(mapAuthError(e)),
+                  })
+                }
+              />
+            </>
+          ) : (
+            <AppButton
+              title="Block"
+              variant="ghost"
+              className="shrink-0"
+              disabled={busy}
+              loading={blockMutation.isPending}
+              accessibilityLabel={profileActionAccessibilityLabel('Block', profileName)}
+              onPress={() =>
+                Alert.alert(
+                  'Block this person?',
+                  'You will not see their deed posts, and any friendship or pending friend request between you will be removed. You can unblock them in Settings → Privacy.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Block',
+                      style: 'destructive',
+                      onPress: () =>
+                        blockMutation.mutate(profileUid, {
+                          onError: (e) => setLocalError(mapAuthError(e)),
+                        }),
+                    },
+                  ],
+                )
+              }
+            />
+          )}
+        </View>
+      ) : null}
+
+      {relationActionsReady && relation === 'friends' && !isBlocked ? (
         <View className="mt-8 border-t border-acts-border/60 pt-6">
           {myUid && profileUid !== myUid && mutualFriendsQuery.isSuccess && (mutualFriendsQuery.data?.length ?? 0) > 0 ? (
             <MutualFriendsInstagramRow mutuals={mutualFriendsQuery.data!} />

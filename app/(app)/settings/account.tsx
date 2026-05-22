@@ -1,9 +1,12 @@
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, Platform, View } from 'react-native';
 
+import { deleteAccount, signOutCurrentUser } from '@/features/auth/services/authService';
+import { DeleteAccountConfirmModal } from '@/features/settings/components/DeleteAccountConfirmModal';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import {
   useMergeActsSettingsMutation,
@@ -11,15 +14,19 @@ import {
   useUpdateUserProfileBasicsMutation,
 } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
+import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
+import { PROFILE_BIO_MAX_LENGTH, normalizeProfileBio } from '@/shared/constants/profileBio';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import { AppButton, AppText, AppTextField, Screen } from '@/shared/components/ui';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
-const BIO_MAX_LEN = 500;
-
 export default function SettingsAccountScreen() {
+  const act = useActAppearance();
+  const queryClient = useQueryClient();
   const uid = useAuthStore((s) => s.user?.uid);
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const { data: userInfo } = useUserInfoQuery(uid);
   const mergeSettings = useMergeActsSettingsMutation(uid);
   const updateBasics = useUpdateUserProfileBasicsMutation(uid);
@@ -33,8 +40,12 @@ export default function SettingsAccountScreen() {
   const [cityState, setCityState] = useState('');
   const [bio, setBio] = useState('');
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const avatarUri = userInfo?.profilePicUrl?.trim() || user?.photoURL || null;
+  const username = userInfo?.Username?.trim() ?? '';
 
   useEffect(() => {
     if (!userInfo) {
@@ -115,8 +126,46 @@ export default function SettingsAccountScreen() {
     await mergeSettings.mutateAsync({
       profileTitle: title.trim(),
       cityState: cityState.trim(),
-      bio: bio.trim().slice(0, BIO_MAX_LEN),
+      bio: normalizeProfileBio(bio),
     });
+  };
+
+  const runDeleteAccount = async () => {
+    setDeleteError(null);
+    setDeleteBusy(true);
+    try {
+      await deleteAccount();
+      setDeleteConfirmOpen(false);
+      setUser(null);
+      queryClient.removeQueries({ queryKey: userInfoQueryKeys.all });
+      router.replace('/(auth)/login');
+    } catch (e) {
+      const msg = mapAuthError(e);
+      setDeleteError(msg);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const openDeleteConfirm = () => {
+    setDeleteError(null);
+    if (!username) {
+      setDeleteError('Your account is missing a username. Contact support before deleting.');
+      return;
+    }
+    setDeleteConfirmOpen(true);
+  };
+
+  const closeDeleteConfirm = () => {
+    if (!deleteBusy) {
+      setDeleteConfirmOpen(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    queryClient.removeQueries({ queryKey: userInfoQueryKeys.all });
+    await signOutCurrentUser();
+    router.replace('/(auth)/login');
   };
 
   const busy = updateBasics.isPending || mergeSettings.isPending;
@@ -133,7 +182,7 @@ export default function SettingsAccountScreen() {
               <Image source={{ uri: avatarUri }} className="h-full w-full" resizeMode="cover" />
             ) : (
               <View className="h-full w-full items-center justify-center">
-                <Ionicons name="person" size={48} color="#8B6F82" accessibilityLabel="No profile photo" />
+                <Ionicons name="person" size={48} color={act.palette.muted} accessibilityLabel="No profile photo" />
               </View>
             )}
           </View>
@@ -144,6 +193,7 @@ export default function SettingsAccountScreen() {
               className="min-w-[44%] flex-1"
               disabled={saveProfilePic.isPending}
               loading={saveProfilePic.isPending}
+              accessibilityLabel="Choose profile photo from library"
               onPress={() => void pickFromLibrary()}
             />
             <AppButton
@@ -151,6 +201,7 @@ export default function SettingsAccountScreen() {
               variant="secondary"
               className="min-w-[44%] flex-1"
               disabled={saveProfilePic.isPending}
+              accessibilityLabel="Take a new profile photo"
               onPress={() => void pickFromCamera()}
             />
           </View>
@@ -180,20 +231,67 @@ export default function SettingsAccountScreen() {
         <AppTextField
           label="Bio"
           value={bio}
-          onChangeText={(t) => setBio(t.slice(0, BIO_MAX_LEN))}
-          placeholder="About you"
+          onChangeText={(t) => setBio(t.slice(0, PROFILE_BIO_MAX_LENGTH))}
+          placeholder="Short intro (public on your profile)"
           multiline
-          numberOfLines={5}
+          numberOfLines={3}
+          maxLength={PROFILE_BIO_MAX_LENGTH}
           textAlignVertical="top"
-          className="min-h-[120px] py-3"
+          className="min-h-[88px]"
         />
-        <AppText variant="caption" className="-mt-2 mb-4 text-acts-muted">
-          {bio.length}/{BIO_MAX_LEN}
+        <AppText variant="caption" className="-mt-2 mb-1 text-acts-muted">
+          {bio.length}/{PROFILE_BIO_MAX_LENGTH} · Visible to everyone on Acts
+        </AppText>
+        <AppText variant="caption" className="mb-4 text-acts-muted">
+          Your bio is always public on your profile, including to people who are not your friends.
         </AppText>
 
-        <AppButton title="Save" loading={busy} disabled={busy} onPress={() => void save()} className="mb-3" />
-        <AppButton title="Become path" variant="secondary" onPress={() => router.push('/(app)/become' as Href)} />
+        <AppButton
+          title="Save"
+          loading={busy}
+          disabled={busy}
+          accessibilityLabel="Save account details"
+          onPress={() => void save()}
+          className="mb-3"
+        />
+        <AppButton
+          title="Log out"
+          variant="secondary"
+          className="mb-3"
+          accessibilityLabel="Log out of Acts"
+          onPress={() => void handleLogout()}
+        />
+
+        <View className="mt-10 rounded-2xl border border-acts-danger/35 bg-acts-danger/5 px-4 py-4">
+          <AppText variant="subtitle" className="mb-2 text-acts-danger">
+            Delete account
+          </AppText>
+          <AppText variant="caption" className="mb-3 text-acts-muted">
+            {`Permanently removes your profile, tasks, friends, deed posts, photos, and sign-in. You will be signed out. If deletion fails, sign in again and retry (some accounts require a recent sign-in).`}
+          </AppText>
+          {deleteError ? (
+            <AppText variant="caption" className="mb-3 text-acts-danger">
+              {deleteError}
+            </AppText>
+          ) : null}
+          <AppButton
+            title="Delete my account"
+            variant="dangerOutline"
+            loading={deleteBusy}
+            disabled={deleteBusy || !uid || !username}
+            accessibilityLabel="Delete my Acts account permanently"
+            onPress={openDeleteConfirm}
+          />
+        </View>
       </View>
+
+      <DeleteAccountConfirmModal
+        visible={deleteConfirmOpen}
+        username={username}
+        busy={deleteBusy}
+        onClose={closeDeleteConfirm}
+        onConfirmDelete={() => void runDeleteAccount()}
+      />
     </Screen>
   );
 }

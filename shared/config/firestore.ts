@@ -7,6 +7,8 @@ export const firestoreCollections = {
   tasks: 'tasks',
   deeds: 'deeds',
   deedPosts: 'deedPosts',
+  /** User-submitted reports on deed posts (create-only for signed-in reporters). */
+  deedReports: 'deedReports',
   becomeCategories: 'becomeCategories',
   achievements: 'achievements',
   notifications: 'notifications',

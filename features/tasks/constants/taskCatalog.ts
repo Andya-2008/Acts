@@ -19,7 +19,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     maxAge: 999,
     traits: ['Any'],
     materials: ['Nothing'],
-    picture: false,
+    picture: true,
     cadence: 'daily',
     sortKey: 350,
   },
@@ -41,9 +41,9 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
   },
   {
     taskId: 'task_0000003',
-    textShort: 'Compliment a stranger (genuinely and respectfully)!',
+    textShort: 'Compliment a friend (genuinely and specifically)!',
     textLong:
-      'The next time you are out—at school, work, or even in line at a store—take a moment to give someone a sincere compliment. It could be about their outfit, smile, energy, or something kind they did. A genuine compliment can completely shift someone’s mood and remind them they are seen and appreciated.',
+      'Think of a friend you have not hyped up lately. Send them or tell them one sincere, specific compliment—in person, on a call, or in a message. It could be about their effort, humor, loyalty, or something kind they did. When you are done, take a picture together afterward if you are in person, or save a screenshot of your message as your act memory.',
     active: true,
     category: 'general',
     difficulty: 2,
@@ -99,7 +99,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     maxAge: 999,
     traits: ['Any'],
     materials: ['Nothing'],
-    picture: false,
+    picture: true,
     cadence: 'weekly',
     sortKey: 260,
   },
@@ -147,7 +147,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     maxAge: 999,
     traits: ['Any'],
     materials: ['Nothing'],
-    picture: false,
+    picture: true,
     cadence: 'weekly',
     sortKey: 257,
   },
@@ -179,31 +179,15 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     maxAge: 999,
     traits: ['Any'],
     materials: ['Paper', 'Pen'],
-    picture: false,
+    picture: true,
     cadence: 'monthly',
     sortKey: 160,
   },
   {
-    taskId: 'task_0000012',
-    textShort: 'Donate unused clothes or items.',
-    textLong:
-      'Go through your closet and donate clothes or items you no longer use. Choose things in good condition that could benefit someone else.',
-    active: true,
-    category: 'environmental',
-    difficulty: 2,
-    minAge: 8,
-    maxAge: 999,
-    traits: ['Any'],
-    materials: ['Bag', 'Items to donate'],
-    picture: true,
-    cadence: 'monthly',
-    sortKey: 159,
-  },
-  {
     taskId: 'task_0000013',
-    textShort: 'Do a kind act for a stranger.',
+    textShort: 'Do a kind act for a friend.',
     textLong:
-      'Do a random act of kindness for a stranger — pay for someone behind you in line, leave a kind note on a car, or give out a compliment that could make someone’s day.',
+      'Do something kind for a friend without them asking—bring them a snack, cover a small favor, send a care note, or help with one task they have been putting off. When you are done, take a picture together afterward if you see them, or save proof of the act as your memory.',
     active: true,
     category: 'community',
     difficulty: 2,
@@ -249,65 +233,156 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
   },
 ];
 
-/** Target picks per cadence (daily / weekly / monthly) before cross-cadence fill (see `MIN_HOME_ROSTER_CATALOG`). */
+/** Target picks per cadence (daily / weekly / monthly) before cross-cadence fill (see `sliceAutoAssignableFromCatalog`). */
 export const AUTO_ASSIGN_PER_CADENCE = 3;
 
-/** Home roster size when the catalog has enough unique rows (3 + 3 + 3). */
+/** When possible, this fraction of each cadence roster favors acts with `picture: true`. */
+export const PICTURE_ROSTER_RATIO = 2 / 3;
+
+/** Default home roster size when using three picks per cadence (3 + 3 + 3). */
 export const MIN_HOME_ROSTER_CATALOG = 9;
 
 const AUTO_ASSIGN_CADENCES = ['daily', 'weekly', 'monthly'] as const;
 
-function stableOffset(seed: string, modulo: number): number {
-  if (modulo <= 0) {
-    return 0;
-  }
+export type AutoAssignPerCadenceCounts = {
+  daily: number;
+  weekly: number;
+  monthly: number;
+};
+
+const DEFAULT_PER_CADENCE: AutoAssignPerCadenceCounts = {
+  daily: AUTO_ASSIGN_PER_CADENCE,
+  weekly: AUTO_ASSIGN_PER_CADENCE,
+  monthly: AUTO_ASSIGN_PER_CADENCE,
+};
+
+function rosterTargetSize(per: AutoAssignPerCadenceCounts): number {
+  return Math.max(1, per.daily + per.weekly + per.monthly);
+}
+
+export type SliceCatalogOptions = {
+  /** Prefer acts at this difficulty (1 easy … 3 hard) when building the rotating roster. */
+  preferredDifficultyLevel?: 1 | 2 | 3 | null;
+  /** When set, roster picks are shuffled per user + period (different users, different acts). */
+  uid?: string;
+};
+
+function sortPoolByPreferenceThenSortKey(pool: TaskCatalogEntry[], pref?: 1 | 2 | 3 | null): TaskCatalogEntry[] {
+  return [...pool].sort((a, b) => {
+    if (pref != null && pref >= 1 && pref <= 3) {
+      const ap = a.difficulty === pref ? 1 : 0;
+      const bp = b.difficulty === pref ? 1 : 0;
+      if (ap !== bp) {
+        return bp - ap;
+      }
+    }
+    return b.sortKey - a.sortKey;
+  });
+}
+
+function hashSeed(seed: string): number {
   let h = 0;
   for (let i = 0; i < seed.length; i += 1) {
     h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
   }
-  return Math.abs(h) % modulo;
+  return h >>> 0;
+}
+
+function mulberry32(a: number): number {
+  let t = (a += 0x6d2b79f5);
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** Deterministic shuffle: same uid + cadence + period → same picks; different users → different order. */
+export function seededShuffleCatalog<T>(items: readonly T[], seed: string): T[] {
+  const arr = [...items];
+  let state = hashSeed(seed) || 1;
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    state = Math.floor(mulberry32(state) * 4294967296);
+    const j = state % (i + 1);
+    const tmp = arr[i]!;
+    arr[i] = arr[j]!;
+    arr[j] = tmp;
+  }
+  return arr;
 }
 
 /**
- * Picks `AUTO_ASSIGN_PER_CADENCE` tasks per cadence (rotates with the calendar period), then **fills** with more
- * catalog acts (highest `sortKey` first) until `MIN_HOME_ROSTER_CATALOG` (nine: three daily, three weekly, three monthly)
- * when a cadence pool is short.
+ * Random catalog picks for one cadence (per-user seeded shuffle, then take first `cap`).
  */
-export function sliceAutoAssignableFromCatalog(entries: readonly TaskCatalogEntry[], now: Date = new Date()): TaskCatalogEntry[] {
-  const dailyKey = periodKeyForDate('daily', now) ?? '';
-  const weeklyKey = periodKeyForDate('weekly', now) ?? '';
-  const monthlyKey = periodKeyForDate('monthly', now) ?? '';
+export function pickCatalogForCadence(
+  entries: readonly TaskCatalogEntry[],
+  cadence: (typeof AUTO_ASSIGN_CADENCES)[number],
+  now: Date,
+  cap: number,
+  options?: SliceCatalogOptions,
+): TaskCatalogEntry[] {
+  const pool = sortPoolByPreferenceThenSortKey(
+    entries.filter((t) => t.cadence === cadence),
+    options?.preferredDifficultyLevel ?? null,
+  );
+  const n = Math.min(Math.max(0, cap), pool.length);
+  if (n === 0) {
+    return [];
+  }
+  if (pool.length <= n) {
+    return pool.slice(0, n);
+  }
+  const periodKey = periodKeyForDate(cadence, now) ?? '';
+  const uid = options?.uid?.trim() ?? '';
+  const seed = uid ? `${uid}:${cadence}:${periodKey}` : `${cadence}:${periodKey}`;
+
+  const picturePool = pool.filter((t) => t.picture);
+  const otherPool = pool.filter((t) => !t.picture);
+  const targetPicture = Math.min(
+    picturePool.length,
+    Math.max(picturePool.length > 0 ? 1 : 0, Math.ceil(n * PICTURE_ROSTER_RATIO)),
+  );
+  const picked = [...seededShuffleCatalog(picturePool, `${seed}:pic`).slice(0, targetPicture)];
+  const need = n - picked.length;
+  if (need > 0) {
+    const restPool = [
+      ...seededShuffleCatalog(otherPool, `${seed}:other`),
+      ...seededShuffleCatalog(picturePool, `${seed}:picRest`).slice(targetPicture),
+    ];
+    picked.push(...restPool.slice(0, need));
+  }
+  return picked;
+}
+
+/**
+ * Picks up to `perCadence.{daily|weekly|monthly}` tasks per cadence (rotates with the calendar period), then **fills**
+ * with more catalog acts (highest `sortKey` first) until the roster reaches `daily+weekly+monthly` when pools are short.
+ */
+export function sliceAutoAssignableFromCatalog(
+  entries: readonly TaskCatalogEntry[],
+  now: Date = new Date(),
+  perCadence: AutoAssignPerCadenceCounts = DEFAULT_PER_CADENCE,
+  options?: SliceCatalogOptions,
+): TaskCatalogEntry[] {
+  const targetRoster = rosterTargetSize(perCadence);
 
   const out: TaskCatalogEntry[] = [];
   for (const cadence of AUTO_ASSIGN_CADENCES) {
-    const pool = entries
-      .filter((t) => t.cadence === cadence)
-      .sort((a, b) => b.sortKey - a.sortKey);
-    if (pool.length === 0) {
-      continue;
-    }
-
-    const periodKey = cadence === 'daily' ? dailyKey : cadence === 'weekly' ? weeklyKey : monthlyKey;
-    const n = Math.min(AUTO_ASSIGN_PER_CADENCE, pool.length);
-    if (pool.length <= n) {
-      out.push(...pool.slice(0, n));
-      continue;
-    }
-    const start = stableOffset(`${cadence}:${periodKey}`, pool.length);
-    for (let i = 0; i < n; i += 1) {
-      out.push(pool[(start + i) % pool.length]!);
-    }
+    const cap = cadence === 'daily' ? perCadence.daily : cadence === 'weekly' ? perCadence.weekly : perCadence.monthly;
+    out.push(...pickCatalogForCadence(entries, cadence, now, cap, options));
   }
 
   const seen = new Set(out.map((t) => t.taskId));
-  if (out.length >= MIN_HOME_ROSTER_CATALOG) {
+  if (out.length >= targetRoster) {
     return out;
   }
-  const rest = [...entries]
-    .filter((t) => !seen.has(t.taskId))
-    .sort((a, b) => b.sortKey - a.sortKey);
-  for (const t of rest) {
-    if (out.length >= MIN_HOME_ROSTER_CATALOG) {
+  const pref = options?.preferredDifficultyLevel ?? null;
+  const rest = sortPoolByPreferenceThenSortKey(
+    [...entries].filter((t) => !seen.has(t.taskId)),
+    pref,
+  );
+  const uid = options?.uid?.trim() ?? '';
+  const fillSeed = uid ? `${uid}:fill:${periodKeyForDate('daily', now)}` : `fill:${periodKeyForDate('daily', now)}`;
+  for (const t of seededShuffleCatalog(rest, fillSeed ?? 'fill')) {
+    if (out.length >= targetRoster) {
       break;
     }
     out.push(t);

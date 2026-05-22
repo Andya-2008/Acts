@@ -3,11 +3,13 @@
 # dependencies
 node_modules/
 
-# Expo
+# Expo / EAS
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.expo-shared/
+.eas/
 
 # Native
 .kotlin/
@@ -34,6 +36,12 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+
+# Firebase Admin seed (never commit)
+scripts/*-service-account*.json
+scripts/*-firebase-adminsdk-*.json
+scripts/acts-firebase-admin.json
+**/firebase-service-account.json
 
 # typescript
 *.tsbuildinfo

@@ -2,7 +2,16 @@
  * Semantic UI colors for the in-app appearance system (see `ActAppearanceProvider`).
  * Tailwind `acts-*` classes stay as defaults for unwrapped UI; provider-driven screens use these via `style`.
  */
-export type ActAppearanceColorPresetId = 'blossom' | 'evergreen' | 'ocean' | 'dawn';
+/** Free in Settings; shop can unlock additional ids below. */
+export type ActAppearanceColorPresetId =
+  | 'blossom'
+  | 'evergreen'
+  | 'ocean'
+  | 'dawn'
+  | 'midnight'
+  | 'lavender_mist'
+  | 'desert_sand'
+  | 'aurora_night';
 
 export type ActAppearancePalette = {
   canvas: string;
@@ -17,11 +26,19 @@ export type ActAppearancePalette = {
   danger: string;
 };
 
+export const FREE_ACT_APPEARANCE_PRESET_IDS = ['blossom', 'evergreen', 'ocean', 'dawn'] as const satisfies readonly ActAppearanceColorPresetId[];
+
+export type FreeActAppearanceColorPresetId = (typeof FREE_ACT_APPEARANCE_PRESET_IDS)[number];
+
 export const ACT_APPEARANCE_PRESET_LABELS: Record<ActAppearanceColorPresetId, string> = {
   blossom: 'Blossom',
   evergreen: 'Evergreen',
   ocean: 'Ocean',
   dawn: 'Dawn',
+  midnight: 'Midnight studio',
+  lavender_mist: 'Lavender mist',
+  desert_sand: 'Desert sand',
+  aurora_night: 'Aurora night',
 };
 
 const BLOSSOM: ActAppearancePalette = {
@@ -76,16 +93,72 @@ const DAWN: ActAppearancePalette = {
   danger: '#B91C1C',
 };
 
+const MIDNIGHT: ActAppearancePalette = {
+  canvas: '#0B1220',
+  surface: '#151F32',
+  ink: '#F1F5F9',
+  muted: '#94A3B8',
+  green: '#38BDF8',
+  greenSoft: '#0C4A6E',
+  blue: '#818CF8',
+  blueSoft: '#1E1B4B',
+  border: '#334155',
+  danger: '#F87171',
+};
+
+const LAVENDER_MIST: ActAppearancePalette = {
+  canvas: '#FAF5FF',
+  surface: '#FFFFFF',
+  ink: '#2E1065',
+  muted: '#7C6AA0',
+  green: '#A855F7',
+  greenSoft: '#F3E8FF',
+  blue: '#6366F1',
+  blueSoft: '#EEF2FF',
+  border: '#DDD6FE',
+  danger: '#DC2626',
+};
+
+const DESERT_SAND: ActAppearancePalette = {
+  canvas: '#FAF8F5',
+  surface: '#FFFFFF',
+  ink: '#422006',
+  muted: '#92745B',
+  green: '#C2410C',
+  greenSoft: '#FFEDD5',
+  blue: '#B45309',
+  blueSoft: '#FEF3C7',
+  border: '#E7D5C4',
+  danger: '#B91C1C',
+};
+
+const AURORA_NIGHT: ActAppearancePalette = {
+  canvas: '#ECFDF5',
+  surface: '#F8FAFC',
+  ink: '#042F2E',
+  muted: '#0F766E',
+  green: '#14B8A6',
+  greenSoft: '#CCFBF1',
+  blue: '#0EA5E9',
+  blueSoft: '#E0F2FE',
+  border: '#99F6E4',
+  danger: '#DC2626',
+};
+
 const PRESETS: Record<ActAppearanceColorPresetId, ActAppearancePalette> = {
   blossom: BLOSSOM,
   evergreen: EVERGREEN,
   ocean: OCEAN,
   dawn: DAWN,
+  midnight: MIDNIGHT,
+  lavender_mist: LAVENDER_MIST,
+  desert_sand: DESERT_SAND,
+  aurora_night: AURORA_NIGHT,
 };
 
 export function resolveActAppearancePalette(preset: string | undefined | null): ActAppearancePalette {
-  if (preset === 'evergreen' || preset === 'ocean' || preset === 'dawn' || preset === 'blossom') {
-    return PRESETS[preset];
+  if (preset != null && preset in PRESETS) {
+    return PRESETS[preset as ActAppearanceColorPresetId];
   }
   return PRESETS.blossom;
 }

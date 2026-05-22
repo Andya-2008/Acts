@@ -8,7 +8,9 @@ import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { loginSchema, type LoginFormValues } from '@/features/auth/validation/authSchemas';
 import { signInWithIdentifier } from '@/features/auth/services/authService';
 import { AuthBrandingHeader } from '@/features/auth/components/AuthBrandingHeader';
+import { AuthMethodDivider } from '@/features/auth/components/AuthMethodDivider';
 import { GoogleSignInSection } from '@/features/auth/components/GoogleSignInSection';
+import { shouldShowGoogleAuthOnAuthScreens } from '@/shared/config/googleAuthEnv';
 import { AppButton, AppCard, AppText, AppTextField, FadeInView, Screen } from '@/shared/components/ui';
 import { actsTheme } from '@/shared/theme/actsTheme';
 import { useAuthStore } from '@/shared/stores/authStore';
@@ -106,19 +108,18 @@ export default function LoginScreen() {
             </AppText>
           ) : null}
 
-          <View className="my-6 flex-row items-center gap-3">
-            <View className="h-px flex-1 bg-acts-border" />
-            <AppText variant="caption">or</AppText>
-            <View className="h-px flex-1 bg-acts-border" />
-          </View>
-
-          <GoogleSignInSection />
-
           <Link href="/(auth)/forgot-password" className="mt-4 self-center py-2">
             <AppText variant="caption" className="text-acts-blue">
               Forgot password?
             </AppText>
           </Link>
+
+          {shouldShowGoogleAuthOnAuthScreens() ? (
+            <>
+              <AuthMethodDivider />
+              <GoogleSignInSection intent="sign-in" />
+            </>
+          ) : null}
         </AppCard>
 
         <View className="mt-8 flex-row items-center justify-center gap-1">

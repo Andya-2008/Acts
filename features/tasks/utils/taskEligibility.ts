@@ -1,4 +1,4 @@
-import type { ActTask } from '@/shared/types/task';
+import type { ActTask, TaskCatalogEntry } from '@/shared/types/task';
 import type { UserInfoRead } from '@/shared/types/userInfo';
 
 export function computeAgeFromDobMmDdYyyy(dob: string): number | null {
@@ -33,6 +33,19 @@ export function userPersonalityStrings(user: UserInfoRead | null | undefined): s
   const fromTraits = (user.Traits ?? []).map(normalizeTrait);
   const fromPersonality = (user.PersonalityTraits ?? []).map(normalizeTrait);
   return [...new Set([...fromTraits, ...fromPersonality])];
+}
+
+/** Catalog row as an `ActTask` probe for {@link taskMatchesUserProfile} (no Firestore fields). */
+export function catalogEntryMatchesUser(entry: TaskCatalogEntry, user: UserInfoRead | null | undefined): boolean {
+  const synthetic: ActTask = {
+    ...entry,
+    id: entry.taskId,
+    photoUrl: null,
+    deedFeedPostId: null,
+    createdAt: null,
+    completedAt: null,
+  };
+  return taskMatchesUserProfile(synthetic, user);
 }
 
 /** Whether this task should appear for the user (active, age band, traits). */

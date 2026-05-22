@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Blossom defaults — overridden in-app by `ActAppearanceProvider` theme vars. */
+@layer base {
+  :root {
+    --color-acts-canvas: 255 247 251;
+    --color-acts-surface: 255 255 255;
+    --color-acts-muted: 139 111 130;
+    --color-acts-ink: 45 21 40;
+    --color-acts-green: 225 29 116;
+    --color-acts-green-soft: 252 227 240;
+    --color-acts-blue: 91 107 232;
+    --color-acts-blue-soft: 232 236 255;
+    --color-acts-border: 241 201 224;
+    --color-acts-danger: 220 38 38;
+  }
+}

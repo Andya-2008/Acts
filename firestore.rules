@@ -2,24 +2,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function deedPostSnapshot(postId) {
-      return get(/databases/$(database)/documents/deedPosts/$(postId));
-    }
-
     /** Missing flag on older posts means "on" (matches app parsing). */
     function deedPostReactionsEnabled(postId) {
-      let d = deedPostSnapshot(postId);
-      return d.exists && d.data.get('feedReactionsEnabled', true) != false;
+      return exists(/databases/$(database)/documents/deedPosts/$(postId))
+        && get(/databases/$(database)/documents/deedPosts/$(postId)).data.get('feedReactionsEnabled', true) != false;
     }
 
     function deedPostCommentsEnabled(postId) {
-      let d = deedPostSnapshot(postId);
-      return d.exists && d.data.get('feedCommentsEnabled', true) != false;
+      return exists(/databases/$(database)/documents/deedPosts/$(postId))
+        && get(/databases/$(database)/documents/deedPosts/$(postId)).data.get('feedCommentsEnabled', true) != false;
     }
 
     function deedPostAuthorIsViewer(postId) {
-      let d = deedPostSnapshot(postId);
-      return d.exists && d.data.get('authorUid', '') == request.auth.uid;
+      return exists(/databases/$(database)/documents/deedPosts/$(postId))
+        && get(/databases/$(database)/documents/deedPosts/$(postId)).data.get('authorUid', '') == request.auth.uid;
+    }
+
+    function viewerShopPurchasedIds() {
+      return get(/databases/$(database)/documents/userInfo/$(request.auth.uid)).data.get('ShopPurchasedIds', []);
+    }
+
+    function viewerCanCommentOnDeeds() {
+      return 'deed_feed_comments_unlock' in viewerShopPurchasedIds();
+    }
+
+    /** Set via Firebase Admin SDK custom claim `actsModerator: true` on trusted staff accounts (see docs/moderation.md). */
+    function actsModerator() {
+      return request.auth != null && request.auth.token.actsModerator == true;
     }
     /** Published act catalog (read-only for clients). */
     match /tasks/{document=**} {
@@ -31,6 +40,37 @@ service cloud.firestore {
       allow get: if request.auth != null;
       allow create, update, delete: if request.auth != null && request.auth.uid == userId;
       allow list: if false;
+    }
+
+    match /deedReports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['reporterUid', 'postId', 'authorUid', 'reason', 'createdAt'])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.postId.size() > 0
+        && request.resource.data.postId.size() <= 200
+        && request.resource.data.authorUid is string
+        && request.resource.data.authorUid.size() > 0
+        && request.resource.data.authorUid.size() <= 200
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 500
+        && request.resource.data.createdAt == request.time;
+      allow read: if actsModerator()
+        || (request.auth != null && resource.data.reporterUid == request.auth.uid);
+      allow delete: if request.auth != null && resource.data.reporterUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    /** Collection-group queries during account deletion (own comments / reactions only). */
+    match /{path=**}/comments/{commentId} {
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
+    }
+
+    match /{path=**}/reactions/{reactorUid} {
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null && reactorUid == request.auth.uid;
     }
 
     match /userInfo/{toUid}/friendRequestsIncoming/{fromUid} {
@@ -89,20 +129,22 @@ service cloud.firestore {
 
       match /reactions/{reactorUid} {
         allow read: if request.auth != null;
+        /** createdAt uses serverTimestamp() — do not require createdAt == request.time (often fails on clients). */
         allow create: if request.auth != null
           && deedPostReactionsEnabled(postId)
           && reactorUid == request.auth.uid
-          && request.resource.data.keys().hasAll(['reactorUid', 'kind'])
-          && request.resource.data.createdAt == request.time
           && request.resource.data.reactorUid == request.auth.uid
-          && request.resource.data.kind in ['heart', 'clap', 'sparkle', 'hug', 'star'];
+          && request.resource.data.kind in ['heart', 'clap', 'sparkle', 'hug', 'star', 'rocket', 'pray', 'flame', 'rainbow', 'party', 'hundred'];
         allow update: if request.auth != null
           && deedPostReactionsEnabled(postId)
           && reactorUid == request.auth.uid
-          && request.resource.data.keys().hasAll(['reactorUid', 'kind'])
-          && request.resource.data.createdAt == request.time
-          && request.resource.data.reactorUid == request.auth.uid
-          && request.resource.data.kind in ['heart', 'clap', 'sparkle', 'hug', 'star'];
+          && request.resource.data.kind in ['heart', 'clap', 'sparkle', 'hug', 'star', 'rocket', 'pray', 'flame', 'rainbow', 'party', 'hundred']
+          && request.resource.data.get('reactorUid', request.auth.uid) == request.auth.uid
+          && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kind'])
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kind', 'reactorUid'])
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kind', 'reactorUid', 'createdAt'])
+          );
         allow delete: if request.auth != null && (
           reactorUid == request.auth.uid
           || deedPostAuthorIsViewer(postId)
@@ -113,6 +155,7 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && deedPostCommentsEnabled(postId)
+          && viewerCanCommentOnDeeds()
           && request.resource.data.keys().hasAll(['authorUid', 'text'])
           && request.resource.data.createdAt == request.time
           && request.resource.data.authorUid == request.auth.uid
@@ -141,7 +184,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['userId', 'authEmail'])
         && request.resource.data.authEmail is string
         && request.resource.data.authEmail.size() > 3;
-      allow delete: if false;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     match /phoneLoginLookup/{key} {

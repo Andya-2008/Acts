@@ -3,6 +3,9 @@ import { Modal, Pressable, Switch, View } from 'react-native';
 import type { DeedCardTintId } from '@/shared/constants/deedPostCardTints';
 import { DEED_CARD_TINT_HEX, DEED_CARD_TINT_OPTIONS } from '@/shared/constants/deedPostCardTints';
 import { AppButton, AppText } from '@/shared/components/ui';
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
+import { modalAnimationType } from '@/shared/utils/accessibilityMotion';
 
 type DeedPostCardSettingsModalProps = {
   visible: boolean;
@@ -27,8 +30,16 @@ export function DeedPostCardSettingsModal({
   onChangeReactions,
   onChangeComments,
 }: DeedPostCardSettingsModalProps) {
+  const act = useActAppearance();
+  const reduceMotion = useReduceMotion();
+  const selectedBorder = act.palette.ink;
+
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType={modalAnimationType(reduceMotion, 'fade')}
+      transparent
+      onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-black/40" onPress={onClose}>
         <Pressable className="rounded-t-3xl bg-acts-surface px-5 pb-8 pt-5" onPress={(e) => e.stopPropagation()}>
           <AppText variant="subtitle" className="mb-3 text-acts-ink">
@@ -41,13 +52,14 @@ export function DeedPostCardSettingsModal({
           <View className="mb-5 flex-row flex-wrap gap-3">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Default card background"
+              accessibilityLabel={`Default card background${selectedTintId == null ? ', selected' : ''}`}
               accessibilityState={{ selected: selectedTintId == null }}
               disabled={saving}
               onPress={() => onPickTint(null)}
-              className={`h-14 w-[30%] max-w-[120px] items-center justify-center rounded-2xl border-2 ${
-                selectedTintId == null ? 'border-acts-green bg-acts-green-soft' : 'border-acts-border bg-acts-canvas'
-              }`}>
+              className="h-14 w-[30%] max-w-[120px] items-center justify-center rounded-2xl border-2 bg-acts-canvas"
+              style={{
+                borderColor: selectedTintId == null ? selectedBorder : act.palette.border,
+              }}>
               <AppText variant="label" className="text-acts-ink">
                 Default
               </AppText>
@@ -58,14 +70,15 @@ export function DeedPostCardSettingsModal({
                 <Pressable
                   key={id}
                   accessibilityRole="button"
-                  accessibilityLabel={`${label} background`}
+                  accessibilityLabel={`${label} background${selected ? ', selected' : ''}`}
                   accessibilityState={{ selected }}
                   disabled={saving}
                   onPress={() => onPickTint(id)}
-                  className={`h-14 w-[30%] max-w-[120px] items-center justify-center rounded-2xl border-2 ${
-                    selected ? 'border-acts-green' : 'border-acts-border/80'
-                  }`}
-                  style={{ backgroundColor: DEED_CARD_TINT_HEX[id] }}>
+                  className="h-14 w-[30%] max-w-[120px] items-center justify-center rounded-2xl border-2"
+                  style={{
+                    backgroundColor: DEED_CARD_TINT_HEX[id],
+                    borderColor: selected ? selectedBorder : act.palette.border,
+                  }}>
                   <AppText variant="label" className="text-acts-ink">
                     {label}
                   </AppText>

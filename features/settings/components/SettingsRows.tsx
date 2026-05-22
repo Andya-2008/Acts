@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { AppText } from '@/shared/components/ui/AppText';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
+import { actsSelectionChipStyle } from '@/shared/utils/accessibilityMotion';
 
 export function YesNoRow({
   label,
@@ -28,25 +29,16 @@ export function YesNoRow({
             <Pressable
               key={side}
               accessibilityRole="button"
+              accessibilityState={{ selected: sel, disabled: !!disabled }}
+              accessibilityLabel={`${label}, ${side}`}
               disabled={disabled}
               onPress={() => onPick(v)}
               className={`min-h-[44px] min-w-[56px] items-center justify-center rounded-xl border px-3 py-2 ${
                 disabled ? 'opacity-50' : ''
               }`}
-              style={
-                sel
-                  ? {
-                      backgroundColor: act.palette.green,
-                      borderColor: act.palette.green,
-                      borderWidth: 1,
-                    }
-                  : {
-                      backgroundColor: act.palette.surface,
-                      borderColor: act.palette.border,
-                      borderWidth: 1,
-                    }
-              }>
+              style={actsSelectionChipStyle(act.palette, sel)}>
               <Text
+                allowFontScaling
                 style={{
                   fontSize: 14,
                   fontWeight: sel ? '700' : '500',
@@ -91,25 +83,16 @@ export function FriendsOrMeRow({
             <Pressable
               key={o.key}
               accessibilityRole="button"
+              accessibilityState={{ selected: sel, disabled: !!disabled }}
+              accessibilityLabel={`${label}, ${o.label}`}
               disabled={disabled}
               onPress={() => onPick(o.key)}
               className={`min-h-[44px] items-center justify-center rounded-xl border px-2.5 py-2 ${
                 disabled ? 'opacity-50' : ''
               }`}
-              style={
-                sel
-                  ? {
-                      backgroundColor: act.palette.green,
-                      borderColor: act.palette.green,
-                      borderWidth: 1,
-                    }
-                  : {
-                      backgroundColor: act.palette.surface,
-                      borderColor: act.palette.border,
-                      borderWidth: 1,
-                    }
-              }>
+              style={actsSelectionChipStyle(act.palette, sel)}>
               <Text
+                allowFontScaling
                 style={{
                   fontSize: 13,
                   fontWeight: sel ? '700' : '500',
@@ -152,25 +135,16 @@ export function ThreeChoiceRow({
             <Pressable
               key={o.key}
               accessibilityRole="button"
+              accessibilityState={{ selected: sel, disabled: !!disabled }}
+              accessibilityLabel={`${label}, ${o.label}`}
               disabled={disabled}
               onPress={() => onPick(o.key)}
               className={`min-h-[44px] items-center justify-center rounded-xl border px-3 py-2 ${
                 disabled ? 'opacity-50' : ''
               }`}
-              style={
-                sel
-                  ? {
-                      backgroundColor: act.palette.green,
-                      borderColor: act.palette.green,
-                      borderWidth: 1,
-                    }
-                  : {
-                      backgroundColor: act.palette.surface,
-                      borderColor: act.palette.border,
-                      borderWidth: 1,
-                    }
-              }>
+              style={actsSelectionChipStyle(act.palette, sel)}>
               <Text
+                allowFontScaling
                 style={{
                   fontSize: 14,
                   fontWeight: sel ? '700' : '500',

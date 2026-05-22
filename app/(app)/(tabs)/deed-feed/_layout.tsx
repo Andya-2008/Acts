@@ -1,43 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useRouter } from 'expo-router';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
-import { actsTheme } from '@/shared/theme/actsTheme';
-
-const headerCanvas = '#FFF7FB';
-const headerInk = '#2D1528';
-
-const styles = StyleSheet.create({
-  headerWrap: {
-    paddingRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: actsTheme.colors.surface,
-    borderWidth: 1,
-    borderColor: actsTheme.colors.border,
-  },
-});
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 
 function DeedFeedFriendsHeaderButton() {
   const router = useRouter();
+  const act = useActAppearance();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Friends"
       hitSlop={8}
       onPress={() => router.push('/deed-feed/friends')}
-      style={({ pressed }) => [styles.circleButton, pressed && { opacity: 0.85 }]}>
+      className="mr-3 h-11 w-11 items-center justify-center rounded-full border border-acts-border bg-acts-surface active:opacity-85">
       <Ionicons
         name="people"
         size={22}
-        color={headerInk}
+        color={act.palette.ink}
         style={Platform.OS === 'android' ? { includeFontPadding: false } : undefined}
       />
     </Pressable>
@@ -45,14 +25,16 @@ function DeedFeedFriendsHeaderButton() {
 }
 
 export default function DeedFeedLayout() {
+  const act = useActAppearance();
+
   return (
     <Stack
       screenOptions={{
         headerShown: true,
-        headerTintColor: headerInk,
+        headerTintColor: act.palette.ink,
         headerShadowVisible: false,
         headerStyle: {
-          backgroundColor: headerCanvas,
+          backgroundColor: act.palette.canvas,
         },
       }}>
       <Stack.Screen
@@ -61,7 +43,7 @@ export default function DeedFeedLayout() {
           title: 'Deed Feed',
           headerTitle: 'Deed Feed',
           headerRight: () => (
-            <View style={styles.headerWrap}>
+            <View className="items-center justify-center pr-3">
               <DeedFeedFriendsHeaderButton />
             </View>
           ),

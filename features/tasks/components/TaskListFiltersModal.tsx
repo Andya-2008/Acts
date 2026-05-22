@@ -4,6 +4,9 @@ import { Modal, Pressable, ScrollView, View } from 'react-native';
 import type { TaskListFiltersState } from '@/features/tasks/utils/taskListFilters';
 import { DEFAULT_TASK_LIST_FILTERS } from '@/features/tasks/utils/taskListFilters';
 import { AppButton, AppText } from '@/shared/components/ui';
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
+import { filterChipStyle, modalAnimationType } from '@/shared/utils/accessibilityMotion';
 import type { TaskCadence, TaskDifficultyLevel } from '@/shared/types/task';
 
 const CADENCES: { id: TaskCadence; label: string }[] = [
@@ -33,13 +36,30 @@ type Props = {
 };
 
 export function TaskListFiltersModal({ visible, onClose, filters, onChange, categoryOptions }: Props) {
+  const act = useActAppearance();
+  const reduceMotion = useReduceMotion();
   const sortedCategories = useMemo(() => [...categoryOptions].sort((a, b) => a.localeCompare(b)), [categoryOptions]);
 
-  const chip = (selected: boolean) =>
-    `rounded-full border px-3 py-2 ${selected ? 'border-acts-green bg-acts-green-soft' : 'border-acts-border bg-acts-surface'}`;
+  const filterChip = (label: string, selected: boolean, onPress: () => void) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${label} filter${selected ? ', on' : ', off'}`}
+      onPress={onPress}
+      className="rounded-full border px-3 py-2"
+      style={filterChipStyle(act.palette, selected)}>
+      <AppText variant="caption" className={selected ? 'font-bold text-acts-ink' : 'text-acts-ink'}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType={modalAnimationType(reduceMotion, 'slide')}
+      transparent
+      onRequestClose={onClose}>
       <View className="flex-1 justify-end">
         <Pressable className="absolute bottom-0 left-0 right-0 top-0 bg-black/40" onPress={onClose} accessibilityLabel="Dismiss" />
         <View className="max-h-[85%] rounded-t-3xl bg-acts-canvas px-5 pb-8 pt-4">
@@ -57,38 +77,26 @@ export function TaskListFiltersModal({ visible, onClose, filters, onChange, cate
               Time
             </AppText>
             <View className="mb-5 flex-row flex-wrap gap-2">
-              {CADENCES.map(({ id, label }) => {
-                const selected = filters.cadences.includes(id);
-                return (
-                  <Pressable
-                    key={id}
-                    onPress={() => onChange({ ...filters, cadences: toggleInList(filters.cadences, id) })}
-                    className={chip(selected)}>
-                    <AppText variant="caption" className={selected ? 'font-semibold text-acts-green' : 'text-acts-ink'}>
-                      {label}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+              {CADENCES.map(({ id, label }) => (
+                <View key={id}>
+                  {filterChip(label, filters.cadences.includes(id), () =>
+                    onChange({ ...filters, cadences: toggleInList(filters.cadences, id) }),
+                  )}
+                </View>
+              ))}
             </View>
 
             <AppText variant="label" className="mb-2 text-acts-muted">
               Difficulty
             </AppText>
             <View className="mb-5 flex-row flex-wrap gap-2">
-              {DIFFICULTIES.map(({ id, label }) => {
-                const selected = filters.difficulties.includes(id);
-                return (
-                  <Pressable
-                    key={id}
-                    onPress={() => onChange({ ...filters, difficulties: toggleInList(filters.difficulties, id) })}
-                    className={chip(selected)}>
-                    <AppText variant="caption" className={selected ? 'font-semibold text-acts-green' : 'text-acts-ink'}>
-                      {label}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+              {DIFFICULTIES.map(({ id, label }) => (
+                <View key={id}>
+                  {filterChip(label, filters.difficulties.includes(id), () =>
+                    onChange({ ...filters, difficulties: toggleInList(filters.difficulties, id) }),
+                  )}
+                </View>
+              ))}
             </View>
 
             <AppText variant="label" className="mb-2 text-acts-muted">
@@ -101,16 +109,9 @@ export function TaskListFiltersModal({ visible, onClose, filters, onChange, cate
                   { id: 'todo' as const, label: 'To do' },
                   { id: 'done' as const, label: 'Done' },
                 ] as const
-              ).map(({ id, label }) => {
-                const selected = filters.completion === id;
-                return (
-                  <Pressable key={id} onPress={() => onChange({ ...filters, completion: id })} className={chip(selected)}>
-                    <AppText variant="caption" className={selected ? 'font-semibold text-acts-green' : 'text-acts-ink'}>
-                      {label}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+              ).map(({ id, label }) => (
+                <View key={id}>{filterChip(label, filters.completion === id, () => onChange({ ...filters, completion: id }))}</View>
+              ))}
             </View>
 
             <AppText variant="label" className="mb-2 text-acts-muted">
@@ -123,16 +124,9 @@ export function TaskListFiltersModal({ visible, onClose, filters, onChange, cate
                   { id: 'needs' as const, label: 'Photo suggested' },
                   { id: 'optional' as const, label: 'No photo prompt' },
                 ] as const
-              ).map(({ id, label }) => {
-                const selected = filters.photo === id;
-                return (
-                  <Pressable key={id} onPress={() => onChange({ ...filters, photo: id })} className={chip(selected)}>
-                    <AppText variant="caption" className={selected ? 'font-semibold text-acts-green' : 'text-acts-ink'}>
-                      {label}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+              ).map(({ id, label }) => (
+                <View key={id}>{filterChip(label, filters.photo === id, () => onChange({ ...filters, photo: id }))}</View>
+              ))}
             </View>
 
             {sortedCategories.length > 0 ? (
@@ -141,22 +135,13 @@ export function TaskListFiltersModal({ visible, onClose, filters, onChange, cate
                   Category
                 </AppText>
                 <View className="mb-5 flex-row flex-wrap gap-2">
-                  {sortedCategories.map((cat) => {
-                    const selected = filters.categories.includes(cat);
-                    return (
-                      <Pressable
-                        key={cat}
-                        onPress={() => onChange({ ...filters, categories: toggleInList(filters.categories, cat) })}
-                        className={chip(selected)}>
-                        <AppText
-                          variant="caption"
-                          className={selected ? 'font-semibold text-acts-green' : 'text-acts-ink'}
-                          numberOfLines={1}>
-                          {cat}
-                        </AppText>
-                      </Pressable>
-                    );
-                  })}
+                  {sortedCategories.map((cat) => (
+                    <View key={cat}>
+                      {filterChip(cat, filters.categories.includes(cat), () =>
+                        onChange({ ...filters, categories: toggleInList(filters.categories, cat) }),
+                      )}
+                    </View>
+                  ))}
                 </View>
               </>
             ) : null}

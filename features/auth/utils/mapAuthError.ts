@@ -2,11 +2,11 @@ import { FirebaseError } from 'firebase/app';
 
 const codeMap: Record<string, string> = {
   'permission-denied':
-    'Firestore blocked this write. Common causes: (1) Firebase Console → App Check → Firestore: if enforcement is Enforced, switch to Off or Monitor until the app registers App Check (rules deploy alone will not fix that). (2) Deploy these rules to the same project as EXPO_PUBLIC_FIREBASE_PROJECT_ID: `firebase deploy --only firestore:rules`, or paste `firestore.rules` into Firebase → Firestore → Rules and publish. (3) Confirm you are still signed in.',
+    "We couldn't save your reaction (permission denied). Pull to refresh, then try again. If it still fails, force-quit Acts and reopen so the latest app code loads.",
   'storage/unauthorized':
-    'Upload was blocked by Storage rules. Deploy this repo’s rules: `firebase deploy --only storage` (or paste `storage.rules` into Firebase Console → Storage → Rules → Publish). Task photos use `task_photos/{your uid}/{taskDocId}.jpg`; profile photos use `profile_pictures/{your uid}.png`.',
+    "We couldn't upload that file. Check your connection and try again.",
   'auth/email-already-in-use':
-    'That email is already registered. Use Sign in with this email instead. If you already tried and saw “Profile not found,” your Firebase login exists but Acts never saved a profile—sign up with a different email, or delete that user under Firebase Authentication → Users and try again.',
+    'That email is already registered. Sign in instead, or use a different email to create a new account.',
   'auth/invalid-email': 'That email address looks invalid.',
   'auth/weak-password': 'Choose a stronger password.',
   'auth/user-disabled': 'This account has been disabled.',
@@ -34,9 +34,17 @@ export function mapAuthError(error: unknown): string {
       LOGIN_USERNAME_NOT_FOUND: 'No Acts user has that username.',
       LOGIN_USERNAME_NO_EMAIL:
         'That username cannot sign in yet. Sign in with your email once so Acts can link this username, then try again.',
-      GOOGLE_EMAIL_REQUIRED: 'This Google account has no email on file. Use a different Google account or email sign-up.',
+      GOOGLE_EMAIL_REQUIRED:
+        'This Google account has no email on file. Use a different Google account or email sign-up.',
+      GOOGLE_PROFILE_SETUP_FAILED:
+        'Signed in with Google, but we could not create your Acts profile. Check your connection and try again.',
       PROFILE_EMAIL_REQUIRED_FOR_USERNAME_CLAIM:
         'Cannot save profile without an email. Try again or contact support if this persists.',
+      FEED_REACTIONS_DISABLED:
+        'Reactions are turned off for this deed. The author can enable them from the post menu (⋯).',
+      FEED_REACTIONS_VIEWER_OFF:
+        'Reactions are off in your privacy settings. Turn them on under Settings → Privacy.',
+      DEED_POST_NOT_FOUND: 'This deed post is no longer available. Pull to refresh the feed.',
     };
     if (loginIdMsg[error.message]) {
       return loginIdMsg[error.message]!;

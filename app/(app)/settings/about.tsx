@@ -1,30 +1,51 @@
 import Constants from 'expo-constants';
-import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Alert, Linking, Pressable, View } from 'react-native';
 
+import {
+  getPrivacyPolicyUrl,
+  getSupportUrl,
+  getTermsOfServiceUrl,
+  openLegalUrl,
+} from '@/shared/config/legalUrls';
 import { AppText, Screen } from '@/shared/components/ui';
 
 const DEVELOPER = 'Andrew Hyun';
 const CONTACT_EMAIL = 'andrewhyun@live.com';
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
+function openLink(url: string, label: string) {
+  void openLegalUrl(url).catch(() => {
+    Alert.alert('Could not open link', `${label} is not available right now.`);
+  });
+}
+
 export default function SettingsAboutScreen() {
   const rows: { text: string; onPress?: () => void; muted?: boolean }[] = [
     { text: `Developed by ${DEVELOPER}` },
     {
+      text: 'Support',
+      onPress: () => openLink(getSupportUrl(), 'Support'),
+      muted: true,
+    },
+    {
       text: 'Terms of Service',
-      onPress: () => Linking.openURL('https://example.com/terms').catch(() => {}),
+      onPress: () => openLink(getTermsOfServiceUrl(), 'Terms of Service'),
       muted: true,
     },
     { text: `Version Number: v${APP_VERSION}` },
     {
       text: `Contact Email: ${CONTACT_EMAIL}`,
-      onPress: () => Linking.openURL(`mailto:${CONTACT_EMAIL}`).catch(() => {}),
+      onPress: () => {
+        void Linking.openURL(`mailto:${CONTACT_EMAIL}`).catch(() => {
+          Alert.alert('Email', CONTACT_EMAIL);
+        });
+      },
     },
     {
       text: 'Privacy Policy',
-      onPress: () => Linking.openURL('https://example.com/privacy').catch(() => {}),
+      onPress: () => openLink(getPrivacyPolicyUrl(), 'Privacy Policy'),
       muted: true,
     },
     { text: 'Built with React Native, Expo, and Firebase' },

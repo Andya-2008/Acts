@@ -27,7 +27,11 @@ import {
   useMyDeedPostsQuery,
   useUpdateDeedPostAuthorSettingsMutation,
 } from '@/features/deed-feed/hooks/useDeedPostsQueries';
+import { getBlockedUidSet } from '@/features/safety/blockedUids';
+import { useBlockUserMutation, useSubmitDeedReportMutation } from '@/features/safety/useSafetyMutations';
 import { resolveDeedPostAvatar, resolveDeedPostCardBackground } from '@/features/deed-feed/utils/deedPostDisplay';
+import { deedReactionKindsForViewer } from '@/features/shop/shopCatalog';
+import { viewerMayPostDeedComments } from '@/features/shop/shopEntitlements';
 import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import type { DeedPostAuthorSettingsPatch } from '@/features/deed-feed/services/deedPostRepository';
@@ -43,9 +47,15 @@ export default function DeedFeedScreen() {
   const uid = useAuthStore((s) => s.user?.uid);
   const user = useAuthStore((s) => s.user);
   const { data: viewerUserInfo } = useUserInfoQuery(uid);
+  const blockedUidSet = useMemo(() => getBlockedUidSet(viewerUserInfo), [viewerUserInfo]);
   const friendUidsQuery = useFriendUidsQuery(uid);
   const friendUids = friendUidsQuery.data ?? [];
   const friendsListReady = friendUidsQuery.isFetched;
+  /** Friend uids used for deed queries — excludes blocked users so their posts are not read from Firestore. */
+  const friendUidsForFeed = useMemo(
+    () => friendUids.filter((id) => !blockedUidSet.has(id)),
+    [friendUids, blockedUidSet],
+  );
 
   const {
     data: friendPosts,
@@ -54,32 +64,61 @@ export default function DeedFeedScreen() {
     error: friendFeedErr,
     refetch: refetchFriendFeed,
     isRefetching: refetchingFriends,
-  } = useFriendsDeedPostsQuery(uid, friendUids, friendsListReady);
+  } = useFriendsDeedPostsQuery(uid, friendUidsForFeed, friendsListReady);
   const {
     data: myPosts,
     isPending: myPostsPending,
     refetch: refetchMine,
     isRefetching: refetchingMine,
   } = useMyDeedPostsQuery(uid);
+  const visibleFriendPosts = useMemo(
+    () => (friendPosts ?? []).filter((p) => !blockedUidSet.has(p.authorUid)),
+    [friendPosts, blockedUidSet],
+  );
   const deleteMutation = useDeleteDeedPostMutation();
   const authorSettingsMutation = useUpdateDeedPostAuthorSettingsMutation();
+  const blockMutation = useBlockUserMutation(uid);
+  const reportMutation = useSubmitDeedReportMutation();
   const [settingsPostId, setSettingsPostId] = useState<string | null>(null);
 
   const settingsPost = useMemo(() => {
     if (!settingsPostId) {
       return null;
     }
-    return [...(friendPosts ?? []), ...(myPosts ?? [])].find((p) => p.id === settingsPostId) ?? null;
-  }, [settingsPostId, friendPosts, myPosts]);
+    return [...(visibleFriendPosts ?? []), ...(myPosts ?? [])].find((p) => p.id === settingsPostId) ?? null;
+  }, [settingsPostId, visibleFriendPosts, myPosts]);
+
+  const viewerMayComment = useMemo(
+    () => viewerMayPostDeedComments(viewerUserInfo?.ShopPurchasedIds),
+    [viewerUserInfo?.ShopPurchasedIds],
+  );
+
+  const viewerActs = useMemo(() => mergeActsDefaults(viewerUserInfo?.ActsSettings), [viewerUserInfo]);
+  const viewerReactionsAllowed = viewerActs.reactionsEnabled !== false;
+  const viewerReactionKinds = useMemo(
+    () => deedReactionKindsForViewer(viewerUserInfo?.ShopPurchasedIds),
+    [viewerUserInfo?.ShopPurchasedIds],
+  );
+  const viewerReactionKindSet = useMemo(() => new Set(viewerReactionKinds), [viewerReactionKinds]);
 
   const reactionPostIds = useMemo(() => {
-    const ids = [...(friendPosts ?? []).map((p) => p.id), ...(myPosts ?? []).map((p) => p.id)];
-    return [...new Set(ids)];
-  }, [friendPosts, myPosts]);
+    const out: string[] = [];
+    for (const p of visibleFriendPosts ?? []) {
+      if (p.feedReactionsEnabled !== false) {
+        out.push(p.id);
+      }
+    }
+    for (const p of myPosts ?? []) {
+      if (p.feedReactionsEnabled !== false) {
+        out.push(p.id);
+      }
+    }
+    return [...new Set(out)];
+  }, [visibleFriendPosts, myPosts]);
 
   const commentPostIds = useMemo(() => {
     const out: string[] = [];
-    for (const p of friendPosts ?? []) {
+    for (const p of visibleFriendPosts ?? []) {
       if (p.feedCommentsEnabled !== false) {
         out.push(p.id);
       }
@@ -90,7 +129,7 @@ export default function DeedFeedScreen() {
       }
     }
     return [...new Set(out)];
-  }, [friendPosts, myPosts]);
+  }, [visibleFriendPosts, myPosts]);
 
   const { data: reactionByPostId, refetch: refetchReactions } = useDeedPostReactionsQuery(uid, reactionPostIds);
   const { data: commentsByPostId, refetch: refetchComments, isRefetching: refetchingComments } =
@@ -99,12 +138,9 @@ export default function DeedFeedScreen() {
   const addCommentMutation = useAddDeedCommentMutation(uid);
   const deleteCommentMutation = useDeleteDeedCommentMutation(uid);
 
-  const viewerActs = useMemo(() => mergeActsDefaults(viewerUserInfo?.ActsSettings), [viewerUserInfo]);
-  const viewerReactionsAllowed = viewerActs.reactionsEnabled !== false;
-
   const authorUidsForAvatars = useMemo(() => {
     const s = new Set<string>();
-    for (const p of friendPosts ?? []) {
+    for (const p of visibleFriendPosts ?? []) {
       if (p.authorUid) {
         s.add(p.authorUid);
       }
@@ -118,7 +154,7 @@ export default function DeedFeedScreen() {
       s.add(uid);
     }
     return [...s];
-  }, [friendPosts, myPosts, uid]);
+  }, [visibleFriendPosts, myPosts, uid]);
   const { data: authorPicByUid, refetch: refetchAuthorPics, isRefetching: refetchingAuthorPics } =
     useDeedFeedAuthorAvatarsQuery(authorUidsForAvatars);
   const viewerFallbackAvatar =
@@ -126,14 +162,24 @@ export default function DeedFeedScreen() {
 
   const onToggleReaction = useCallback(
     (postId: string, kind: DeedReactionKind) => {
+      if (!viewerReactionsAllowed) {
+        Alert.alert('Reactions off', mapAuthError(new Error('FEED_REACTIONS_VIEWER_OFF')));
+        return;
+      }
       const cur = reactionByPostId?.[postId]?.mine ?? null;
       const next = cur === kind ? null : kind;
+      if (next != null && !viewerReactionKindSet.has(next)) {
+        Alert.alert('Reaction locked', 'Unlock more reactions in the Kindness Arcade shop.');
+        return;
+      }
       setReactionMutation.mutate(
         { postId, kind: next },
-        { onError: (e) => Alert.alert('Could not react', mapAuthError(e)) },
+        {
+          onError: (e) => Alert.alert('Could not react', mapAuthError(e)),
+        },
       );
     },
-    [reactionByPostId, setReactionMutation],
+    [reactionByPostId, setReactionMutation, viewerReactionKindSet, viewerReactionsAllowed],
   );
 
   const refetchAll = useCallback(() => {
@@ -187,12 +233,81 @@ export default function DeedFeedScreen() {
     [uid, deleteMutation],
   );
 
+  const submitReportForPost = useCallback(
+    (post: DeedPost, reason: string) => {
+      if (!uid) {
+        return;
+      }
+      reportMutation.mutate(
+        { reporterUid: uid, postId: post.id, authorUid: post.authorUid, reason },
+        {
+          onSuccess: () => Alert.alert('Thanks', 'We received your report.'),
+          onError: (e) => Alert.alert('Could not submit', mapAuthError(e)),
+        },
+      );
+    },
+    [uid, reportMutation],
+  );
+
+  const promptReportReason = useCallback(
+    (post: DeedPost) => {
+      Alert.alert('Report post', 'What best describes the issue?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Spam', onPress: () => submitReportForPost(post, 'Spam') },
+        { text: 'Harassment', onPress: () => submitReportForPost(post, 'Harassment') },
+        { text: 'Inappropriate photo', onPress: () => submitReportForPost(post, 'Inappropriate photo') },
+        { text: 'Other', onPress: () => submitReportForPost(post, 'Other') },
+      ]);
+    },
+    [submitReportForPost],
+  );
+
+  const confirmBlockAuthor = useCallback(
+    (authorUid: string) => {
+      Alert.alert(
+        'Block this person?',
+        'You will not see their deed posts, and any friendship or pending friend request between you will be removed. You can unblock them anytime in Settings → Privacy.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: () =>
+              blockMutation.mutate(authorUid, {
+                onSuccess: () =>
+                  Alert.alert('Blocked', 'Their posts are hidden and they are no longer on your friend list.'),
+                onError: (e) => Alert.alert('Could not block', mapAuthError(e)),
+              }),
+          },
+        ],
+      );
+    },
+    [blockMutation],
+  );
+
+  const openFriendPostMenu = useCallback(
+    (post: DeedPost) => {
+      if (!uid || post.authorUid === uid) {
+        return;
+      }
+      Alert.alert('Post options', undefined, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Report…', onPress: () => promptReportReason(post) },
+        { text: 'Block user', style: 'destructive', onPress: () => confirmBlockAuthor(post.authorUid) },
+      ]);
+    },
+    [uid, promptReportReason, confirmBlockAuthor],
+  );
+
   const renderFriendItem: ListRenderItem<DeedPost> = useCallback(
     ({ item }) => {
       const reactionBusy =
         setReactionMutation.isPending && setReactionMutation.variables?.postId === item.id;
       const avatarUri = resolveDeedPostAvatar(item, authorPicByUid, uid, viewerFallbackAvatar);
-      const showReactions = Boolean(uid && item.feedReactionsEnabled !== false && viewerReactionsAllowed);
+      const showReactionSection = Boolean(uid);
+      const postReactionsEnabled = item.feedReactionsEnabled !== false;
+      const canReactOnPost = postReactionsEnabled && viewerReactionsAllowed;
+      const reactionBlockedReason = !postReactionsEnabled ? ('post' as const) : !viewerReactionsAllowed ? ('viewer' as const) : undefined;
       const showComments = Boolean(uid && item.feedCommentsEnabled !== false);
       return (
         <AppCard className="mb-4 overflow-hidden p-0" cardBackgroundColor={resolveDeedPostCardBackground(item)}>
@@ -201,6 +316,9 @@ export default function DeedFeedScreen() {
             createdAt={item.createdAt}
             avatarUri={avatarUri}
             authorUid={item.authorUid}
+            onOpenMenu={
+              uid && item.authorUid && item.authorUid !== uid ? () => openFriendPostMenu(item) : undefined
+            }
           />
           <Image source={{ uri: item.photoUrl }} className="aspect-[4/3] w-full bg-acts-canvas" resizeMode="cover" />
           <View className="p-4">
@@ -209,11 +327,14 @@ export default function DeedFeedScreen() {
                 {item.caption}
               </AppText>
             ) : null}
-            {showReactions ? (
+            {showReactionSection ? (
               <DeedPostReactionRow
                 postId={item.id}
+                kinds={viewerReactionKinds}
                 summary={reactionByPostId?.[item.id]}
                 busy={reactionBusy}
+                canReact={canReactOnPost}
+                blockedReason={reactionBlockedReason}
                 onToggle={onToggleReaction}
               />
             ) : null}
@@ -222,7 +343,8 @@ export default function DeedFeedScreen() {
                 postId={item.id}
                 postAuthorUid={item.authorUid}
                 viewerUid={uid}
-                comments={commentsByPostId?.[item.id] ?? []}
+                viewerCanPostComments={viewerMayComment}
+                comments={(commentsByPostId?.[item.id] ?? []).filter((c) => !blockedUidSet.has(c.authorUid))}
                 onSend={(text) =>
                   addCommentMutation.mutate(
                     { postId: item.id, text },
@@ -250,11 +372,15 @@ export default function DeedFeedScreen() {
       reactionByPostId,
       commentsByPostId,
       onToggleReaction,
+      viewerReactionKinds,
       viewerReactionsAllowed,
+      viewerMayComment,
       setReactionMutation.isPending,
       setReactionMutation.variables,
       addCommentMutation,
       deleteCommentMutation,
+      openFriendPostMenu,
+      blockedUidSet,
     ],
   );
 
@@ -277,7 +403,14 @@ export default function DeedFeedScreen() {
         ) : null}
         {list.map((post) => {
           const avatarUri = resolveDeedPostAvatar(post, authorPicByUid, uid, viewerFallbackAvatar);
-          const showReactions = post.feedReactionsEnabled !== false && viewerReactionsAllowed;
+          const showReactionSection = Boolean(uid);
+          const postReactionsEnabled = post.feedReactionsEnabled !== false;
+          const canReactOnPost = postReactionsEnabled && viewerReactionsAllowed;
+          const reactionBlockedReason = !postReactionsEnabled
+            ? ('post' as const)
+            : !viewerReactionsAllowed
+              ? ('viewer' as const)
+              : undefined;
           const showComments = post.feedCommentsEnabled !== false;
           const reactionBusy =
             setReactionMutation.isPending && setReactionMutation.variables?.postId === post.id;
@@ -300,11 +433,14 @@ export default function DeedFeedScreen() {
                     {post.caption}
                   </AppText>
                 ) : null}
-                {showReactions ? (
+                {showReactionSection ? (
                   <DeedPostReactionRow
                     postId={post.id}
+                    kinds={viewerReactionKinds}
                     summary={reactionByPostId?.[post.id]}
                     busy={reactionBusy}
+                    canReact={canReactOnPost}
+                    blockedReason={reactionBlockedReason}
                     onToggle={onToggleReaction}
                   />
                 ) : null}
@@ -313,6 +449,7 @@ export default function DeedFeedScreen() {
                     postId={post.id}
                     postAuthorUid={post.authorUid}
                     viewerUid={uid}
+                    viewerCanPostComments={viewerMayComment}
                     comments={commentsByPostId?.[post.id] ?? []}
                     onSend={(text) =>
                       addCommentMutation.mutate(
@@ -334,7 +471,7 @@ export default function DeedFeedScreen() {
                   <AppButton
                     title="Card options"
                     variant="secondary"
-                    className="min-w-[120px]"
+                    className="min-w-[120px] shrink-0"
                     disabled={
                       deleteMutation.isPending ||
                       (authorSettingsMutation.isPending && authorSettingsMutation.variables?.postId === post.id)
@@ -345,7 +482,7 @@ export default function DeedFeedScreen() {
                   <AppButton
                     title="Remove from feed"
                     variant="ghost"
-                    className="min-w-[120px]"
+                    className="min-w-[120px] shrink-0"
                     disabled={
                       authorSettingsMutation.isPending ||
                       (deleteMutation.isPending && deleteMutation.variables?.postId === post.id)
@@ -359,9 +496,12 @@ export default function DeedFeedScreen() {
           );
         })}
         {!myPostsPending && list.length === 0 ? (
-          <View>
-            <AppText variant="body" className="mb-3 text-acts-muted">
-              Nothing here yet.
+          <AppCard className="border-acts-border/70 bg-acts-surface p-4">
+            <AppText variant="subtitle" className="mb-2 text-acts-ink">
+              Share a deed
+            </AppText>
+            <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+              When you finish an act with a photo on Tasks, you can post it here so friends can celebrate with you.
             </AppText>
             <AppButton
               title="Go to Tasks"
@@ -369,7 +509,7 @@ export default function DeedFeedScreen() {
               className="self-start"
               onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
             />
-          </View>
+          </AppCard>
         ) : null}
       </View>
     );
@@ -387,7 +527,9 @@ export default function DeedFeedScreen() {
     reactionByPostId,
     commentsByPostId,
     onToggleReaction,
+    viewerReactionKinds,
     viewerReactionsAllowed,
+    viewerMayComment,
     setReactionMutation.isPending,
     setReactionMutation.variables,
     addCommentMutation,
@@ -427,58 +569,96 @@ export default function DeedFeedScreen() {
   }
 
   const listEmpty =
-    friendsListReady && !friendFeedPending && (friendPosts ?? []).length === 0 ? (
+    friendsListReady && !friendFeedPending && (visibleFriendPosts ?? []).length === 0 ? (
       friendUids.length === 0 ? (
         <View className="px-1 py-6">
-          <AppText variant="body" className="mb-4 text-center text-acts-ink">
-            Add friends to see their deeds here.
-          </AppText>
-          <AppButton
-            title="Find friends"
-            variant="secondary"
-            className="mb-3 w-full"
-            onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
-          />
-          <AppButton
-            title="Go to Tasks"
-            className="w-full"
-            onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
-          />
+          <AppCard className="mb-4 border-acts-border/80 bg-acts-surface p-4">
+            <AppText variant="subtitle" className="mb-2 text-acts-ink">
+              Your feed starts with friends
+            </AppText>
+            <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+              {`Add people on Acts to see their shared deeds here. You can search by username, match people from your contacts, or send an invite.`}
+            </AppText>
+            <AppButton
+              title="Find friends"
+              variant="secondary"
+              className="mb-3 w-full"
+              onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
+            />
+            <AppButton
+              title="Go to Tasks"
+              className="w-full"
+              onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
+            />
+          </AppCard>
         </View>
       ) : (
         <View className="px-1 py-6">
-          <AppText variant="body" className="mb-4 text-center text-acts-ink">
-            No friend deeds yet.
-          </AppText>
-          <AppButton
-            title="Your acts on Tasks"
-            className="w-full"
-            onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
-          />
+          <AppCard className="mb-4 border-acts-border/80 bg-acts-surface p-4">
+            <AppText variant="subtitle" className="mb-2 text-acts-ink">
+              No friend deeds yet
+            </AppText>
+            <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+              {`None of your friends have shared a deed photo recently. When they complete an act and share it to the feed, it will show up here.`}
+            </AppText>
+            <AppButton
+              title="Invite or nudge friends"
+              variant="secondary"
+              className="mb-3 w-full"
+              onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
+            />
+            <AppButton
+              title="Share your own deed"
+              className="w-full"
+              onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
+            />
+          </AppCard>
         </View>
       )
     ) : null;
+
+  const feedListHeader = useMemo(() => {
+    if (!friendsListReady || (friendFeedPending && (visibleFriendPosts ?? []).length === 0)) {
+      return (
+        <View className="mb-2">
+          <View className="items-center py-8">
+            <ActivityIndicator size="large" color="#E11D74" />
+            <AppText variant="caption" className="mt-3 text-center text-acts-muted">
+              Loading friend deeds…
+            </AppText>
+          </View>
+        </View>
+      );
+    }
+    return (
+      <View className="mb-3 px-1">
+        <AppCard className="mb-2 border-acts-green/30 bg-acts-green-soft/50 p-3">
+          <AppText variant="subtitle" className="mb-1 text-acts-ink">
+            Friend posts
+          </AppText>
+          <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+            {`This list is only people you are friends with on Acts. Use the header button or below to add friends and manage requests.`}
+          </AppText>
+          <AppButton
+            title="Friends & requests"
+            variant="secondary"
+            className="self-start"
+            onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
+          />
+        </AppCard>
+      </View>
+    );
+  }, [friendsListReady, friendFeedPending, visibleFriendPosts]);
 
   return (
     <Screen scroll={false}>
       <Fragment>
         <FlatList
           className="flex-1"
-          data={friendPosts ?? []}
+          data={visibleFriendPosts ?? []}
           keyExtractor={(item) => item.id}
           renderItem={renderFriendItem}
-          ListHeaderComponent={
-            <View className="mb-2">
-              {!friendsListReady || (friendFeedPending && (friendPosts ?? []).length === 0) ? (
-                <View className="items-center py-8">
-                  <ActivityIndicator size="large" color="#E11D74" />
-                  <AppText variant="caption" className="mt-3 text-center text-acts-muted">
-                    Loading friend deeds…
-                  </AppText>
-                </View>
-              ) : null}
-            </View>
-          }
+          ListHeaderComponent={feedListHeader}
           ListEmptyComponent={listEmpty}
           ListFooterComponent={myPostsSection}
           contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}

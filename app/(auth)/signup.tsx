@@ -7,8 +7,11 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { Alert, Image, Platform, Pressable, View } from 'react-native';
 
 import { registerNewUser } from '@/features/auth/services/authService';
+import { markPostSignupFriendsGatePending } from '@/features/friends/friendsGetStartedStorage';
 import { AuthBrandingHeader } from '@/features/auth/components/AuthBrandingHeader';
+import { AuthMethodDivider } from '@/features/auth/components/AuthMethodDivider';
 import { GoogleSignInSection } from '@/features/auth/components/GoogleSignInSection';
+import { shouldShowGoogleAuthOnAuthScreens } from '@/shared/config/googleAuthEnv';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { signupSchema, type SignupFormValues } from '@/features/auth/validation/authSchemas';
 import { AppButton, AppCard, AppText, AppTextField, FadeInView, Screen } from '@/shared/components/ui';
@@ -94,7 +97,8 @@ export default function SignupScreen() {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      await registerNewUser(values);
+      const user = await registerNewUser(values);
+      await markPostSignupFriendsGatePending(user.uid);
       router.replace('/(app)');
     } catch (error) {
       setSubmitError(mapAuthError(error));
@@ -273,13 +277,12 @@ export default function SignupScreen() {
 
           <AppButton title="Create account" loading={isSubmitting} onPress={onSubmit} />
 
-          <View className="my-6 flex-row items-center gap-3">
-            <View className="h-px flex-1 bg-acts-border" />
-            <AppText variant="caption">or</AppText>
-            <View className="h-px flex-1 bg-acts-border" />
-          </View>
-
-          <GoogleSignInSection />
+          {shouldShowGoogleAuthOnAuthScreens() ? (
+            <>
+              <AuthMethodDivider />
+              <GoogleSignInSection intent="sign-up" />
+            </>
+          ) : null}
         </AppCard>
 
         <View className="mt-8 flex-row flex-wrap items-center justify-center gap-1">

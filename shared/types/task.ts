@@ -24,8 +24,14 @@ export type ActTask = {
   deedFeedPostId: string | null;
   cadence: TaskCadence;
   sortKey: number;
+  /** Calendar period this catalog act was assigned for (daily / weekly / monthly home roster). */
+  assignedPeriodKey?: string | null;
   createdAt: Timestamp | null;
   completedAt: Timestamp | null;
+  /** Seeds actually granted on last completion (for correct undo + weekend bonus). */
+  lastCompletionSeeds?: number | null;
+  /** Lifetime XP delta granted on last completion (for correct undo + weekend bonus). */
+  lastCompletionXp?: number | null;
 };
 
 export type TaskCatalogEntry = Omit<ActTask, 'id' | 'createdAt' | 'completedAt' | 'photoUrl' | 'deedFeedPostId'>;

@@ -1,7 +1,8 @@
-import { Platform, Text, View } from 'react-native';
+import { Text, useWindowDimensions, View } from 'react-native';
 
-import { AppText } from '@/shared/components/ui';
 import { ACTS_SCRIPT_FONT_FAMILY } from '@/shared/config/fonts';
+import { actsTheme } from '@/shared/theme/actsTheme';
+import { AppText } from '@/shared/components/ui';
 
 type AuthBrandingHeaderProps = {
   /** Short line under the wordmark (e.g. “Welcome back”). */
@@ -11,20 +12,25 @@ type AuthBrandingHeaderProps = {
 };
 
 export function AuthBrandingHeader({ headline, subtitle }: AuthBrandingHeaderProps) {
+  const { width: winW } = useWindowDimensions();
+  const targetW = Math.min(300, Math.max(200, winW - 48));
+  const fontSize = Math.round(Math.min(78, Math.max(48, targetW * 0.26)));
+  /** Great Vibes has tall ascenders; tight lineHeight clips the top of letters (e.g. “a”). */
+  const lineHeight = Math.round(fontSize * 1.45);
+  const wordmarkPadTop = Math.round(fontSize * 0.12);
+
   return (
-    <View className="mb-10 items-center px-2">
+    <View className="mb-10 items-center px-2" style={{ paddingTop: wordmarkPadTop }}>
       <Text
         accessibilityRole="header"
         accessibilityLabel="Acts"
-        className="text-acts-green"
+        allowFontScaling={false}
         style={{
           fontFamily: ACTS_SCRIPT_FONT_FAMILY,
-          fontSize: Platform.select({ ios: 52, android: 50, default: 50 }),
-          lineHeight: Platform.select({ ios: 60, android: 58, default: 58 }),
-          letterSpacing: 0.5,
-          textShadowColor: 'rgba(91, 107, 232, 0.28)',
-          textShadowOffset: { width: 0, height: 2 },
-          textShadowRadius: 8,
+          fontSize,
+          lineHeight,
+          color: actsTheme.colors.ink,
+          textAlign: 'center',
         }}>
         Acts
       </Text>

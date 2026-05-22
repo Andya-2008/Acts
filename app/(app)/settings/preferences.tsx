@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 
 import { ThreeChoiceRow, YesNoRow } from '@/features/settings/components/SettingsRows';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import type { ActsAppSettings } from '@/shared/types/actsSettings';
-import { AppText, Screen } from '@/shared/components/ui';
+import { ActsTextInput, AppText, Screen } from '@/shared/components/ui';
+import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 export default function SettingsPreferencesScreen() {
@@ -44,7 +45,7 @@ export default function SettingsPreferencesScreen() {
             <AppText variant="subtitle" className="mb-2 text-acts-ink">
               Time Commitment
             </AppText>
-            <TextInput
+            <ActsTextInput
               value={minutes}
               onChangeText={setMinutes}
               onEndEditing={() => {
@@ -54,7 +55,8 @@ export default function SettingsPreferencesScreen() {
               }}
               keyboardType="number-pad"
               placeholderTextColor="#9CA3AF"
-              className="rounded-xl border border-acts-border bg-acts-surface px-3 py-2 text-base text-acts-ink"
+              className="rounded-xl border border-acts-border bg-acts-surface text-acts-ink"
+              style={getActsTextInputBoxStyle({ horizontalPadding: 12 })}
             />
           </View>
           <AppText variant="caption" className="ml-2 pb-2 text-acts-muted">

@@ -20,6 +20,34 @@ function variantColor(variant: Variant, palette: ActAppearancePalette): string {
   }
 }
 
+/** Map `text-acts-*` classes to the live palette (Tailwind vars + explicit color for reliability). */
+function resolveTextColor(className: string | undefined, variant: Variant, palette: ActAppearancePalette): string {
+  if (className) {
+    if (/\btext-white\b/.test(className)) {
+      return '#FFFFFF';
+    }
+    if (/\btext-acts-ink\b/.test(className)) {
+      return palette.ink;
+    }
+    if (/\btext-acts-muted\b/.test(className)) {
+      return palette.muted;
+    }
+    if (/\btext-acts-green\b/.test(className)) {
+      return palette.green;
+    }
+    if (/\btext-acts-blue\b/.test(className)) {
+      return palette.blue;
+    }
+    if (/\btext-acts-danger\b/.test(className)) {
+      return palette.danger;
+    }
+    if (/\btext-acts-border\b/.test(className)) {
+      return palette.border;
+    }
+  }
+  return variantColor(variant, palette);
+}
+
 const variantLayout: Record<Variant, string> = {
   title: 'text-2xl font-semibold tracking-tight',
   subtitle: 'text-base font-medium',
@@ -45,10 +73,11 @@ export function AppText({
   ...rest
 }: AppTextProps) {
   const act = useActAppearance();
-  const color = variantColor(variant, act.palette);
+  const color = resolveTextColor(className, variant, act.palette);
 
   return (
     <Text
+      allowFontScaling
       maxFontSizeMultiplier={act.maxFontSizeMultiplier}
       className={`${variantLayout[variant]} ${className ?? ''}`}
       style={[paletteColor ? { color } : null, style]}

@@ -42,3 +42,15 @@ export function periodKeyForDate(cadence: TaskCadence, d: Date): string | null {
 export function currentPeriodKey(cadence: TaskCadence, now: Date = new Date()): string | null {
   return periodKeyForDate(cadence, now);
 }
+
+export function currentRosterPeriodKeys(now: Date = new Date()): {
+  daily: string | null;
+  weekly: string | null;
+  monthly: string | null;
+} {
+  return {
+    daily: periodKeyForDate('daily', now),
+    weekly: periodKeyForDate('weekly', now),
+    monthly: periodKeyForDate('monthly', now),
+  };
+}

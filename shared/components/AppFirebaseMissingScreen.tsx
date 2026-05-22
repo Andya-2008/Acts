@@ -42,8 +42,12 @@ export function AppFirebaseMissingScreen() {
           </AppText>
         </Pressable>
 
-        <AppText variant="caption" className="text-acts-muted">
+        <AppText variant="caption" className="mb-2 text-acts-muted">
           Firebase → Project settings → Your apps → Web.
+        </AppText>
+        <AppText variant="caption" className="text-acts-muted">
+          If you installed an EAS build (TestFlight, preview IPA), add the same EXPO_PUBLIC_FIREBASE_* values under
+          Expo → Environment variables for that build profile, then rebuild.
         </AppText>
       </View>
     </Screen>

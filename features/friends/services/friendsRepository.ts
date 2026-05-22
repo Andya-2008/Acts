@@ -6,6 +6,7 @@ import {
   serverTimestamp,
   writeBatch,
   type Firestore,
+  type WriteBatch,
 } from 'firebase/firestore';
 
 import { normalizeUsernameKey } from '@/shared/utils/usernameKey';
@@ -323,5 +324,36 @@ export async function removeFriend(myUid: string, friendUid: string): Promise<vo
   const batch = writeBatch(db);
   batch.delete(friendEdgeRef(db, myUid, friendUid));
   batch.delete(friendEdgeRef(db, friendUid, myUid));
+  await batch.commit();
+}
+
+/** Queues deletes for mutual `friends` edges and any pending request docs between two users. */
+export function applyMutualFriendshipClearToBatch(batch: WriteBatch, db: Firestore, aUid: string, bUid: string): void {
+  const a = aUid.trim();
+  const b = bUid.trim();
+  if (!a || !b || a === b) {
+    return;
+  }
+  batch.delete(friendEdgeRef(db, a, b));
+  batch.delete(friendEdgeRef(db, b, a));
+  batch.delete(incomingRef(db, a, b));
+  batch.delete(outgoingRef(db, b, a));
+  batch.delete(outgoingRef(db, a, b));
+  batch.delete(incomingRef(db, b, a));
+}
+
+/**
+ * Removes mutual `friends` edges and any pending request pair between two users.
+ * Used when blocking so the relationship does not stay in a “friends but blocked” state.
+ */
+export async function clearMutualFriendEdgesAndRequestsBetween(aUid: string, bUid: string): Promise<void> {
+  const a = aUid.trim();
+  const b = bUid.trim();
+  if (!a || !b || a === b) {
+    return;
+  }
+  const db = getFirebaseFirestore();
+  const batch = writeBatch(db);
+  applyMutualFriendshipClearToBatch(batch, db, a, b);
   await batch.commit();
 }

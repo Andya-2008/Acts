@@ -9,13 +9,14 @@ import {
   signInWithCredential,
   type User,
 } from 'firebase/auth';
-import { doc, deleteDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import {
   assertUsernameAvailableForRegistration,
   createUserInfoForEmailPasswordSignup,
   ensureUserInfoForGoogleUser,
 } from '@/features/auth/services/userInfoService';
+import { purgeUserFirebaseData } from '@/features/auth/services/purgeUserFirebaseData';
 import { resolveIdentifierToAuthEmail } from '@/features/auth/services/resolveLoginIdentifier';
 import { formatDobForUserInfo } from '@/features/auth/utils/formatDob';
 import type { SignupFormValues } from '@/features/auth/validation/authSchemas';
@@ -79,23 +80,17 @@ export async function signOutCurrentUser(): Promise<void> {
 }
 
 /**
- * Best-effort account teardown for local development: deletes `userInfo/{uid}`, deletes the Auth user, then signs out
- * so client session state clears immediately. Subcollections under `userInfo` and the `usernames` claim may require
- * manual cleanup in Firebase Console.
+ * Permanently deletes the user's Firestore data, Storage files, lookup docs, deed posts, and social graph,
+ * then deletes the Firebase Auth user and signs out.
  */
-export async function deleteDeveloperAccount(): Promise<void> {
+export async function deleteAccount(): Promise<void> {
   const auth = getFirebaseAuth();
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Not signed in.');
   }
-  const db = getFirebaseFirestore();
   const uid = user.uid;
-  try {
-    await deleteDoc(doc(db, firestoreCollections.userInfo, uid));
-  } catch {
-    /* profile missing or blocked — still attempt Auth deletion */
-  }
+  await purgeUserFirebaseData(uid);
   await deleteUser(user);
   await signOut(auth);
 }

@@ -52,11 +52,19 @@ export function useEnsureAssignedTasksMutation(uid: string | undefined) {
 export function useToggleTaskCompleteMutation(uid: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ taskId, completed }: { taskId: string; completed: boolean }) => {
+    mutationFn: async ({
+      taskId,
+      completed,
+      completionLedger,
+    }: {
+      taskId: string;
+      completed: boolean;
+      completionLedger?: { seeds: number; xp: number } | null;
+    }) => {
       if (!uid) {
         throw new Error('Not signed in');
       }
-      await setTaskCompleted(uid, taskId, completed);
+      await setTaskCompleted(uid, taskId, completed, completionLedger ?? null);
     },
     onSuccess: async () => {
       if (uid) {

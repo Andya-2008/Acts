@@ -1,15 +1,54 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Alert, View } from 'react-native';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
-import { FriendsOrMeRow, YesNoRow } from '@/features/settings/components/SettingsRows';
+import { FriendsOrMeRow, ThreeChoiceRow, YesNoRow } from '@/features/settings/components/SettingsRows';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { mergeActsDefaults } from '@/shared/types/actsSettings';
-import type { ActsAppSettings } from '@/shared/types/actsSettings';
-import { AppButton, AppText, Screen } from '@/shared/components/ui';
+import { useUnblockUserMutation } from '@/features/safety/useSafetyMutations';
+import {
+  mergeActsDefaults,
+  PROFILE_STAT_VISIBILITY_OPTIONS,
+  type ActsAppSettings,
+  type ProfileStatVisibility,
+} from '@/shared/types/actsSettings';
+import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
 import { getFirebaseAuth } from '@/shared/services/firebase/client';
 import { useAuthStore } from '@/shared/stores/authStore';
+
+function BlockedAccountRow({ viewerUid, blockedUid }: { viewerUid: string; blockedUid: string }) {
+  const { data } = useUserInfoQuery(blockedUid);
+  const unblock = useUnblockUserMutation(viewerUid);
+  const full = [data?.First, data?.Last].filter(Boolean).join(' ').trim();
+  const u = data?.Username?.trim();
+  const title = full.length > 0 ? full : u ? `@${u.replace(/^@+/, '')}` : 'Acts member';
+
+  return (
+    <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
+      <View className="min-w-0 flex-1 pr-2">
+        <AppText variant="subtitle" className="text-acts-ink" numberOfLines={1}>
+          {title}
+        </AppText>
+        <AppText variant="caption" className="text-acts-muted" numberOfLines={1}>
+          {`ID ${blockedUid.slice(0, 8)}…`}
+        </AppText>
+      </View>
+      <AppButton
+        title="Unblock"
+        variant="secondary"
+        className="shrink-0"
+        loading={unblock.isPending}
+        disabled={unblock.isPending}
+        accessibilityLabel={`Unblock ${title}`}
+        onPress={() =>
+          unblock.mutate(blockedUid, {
+            onError: (e) => Alert.alert('Could not unblock', e instanceof Error ? e.message : 'Try again later.'),
+          })
+        }
+      />
+    </View>
+  );
+}
 
 export default function SettingsPrivacyScreen() {
   const uid = useAuthStore((s) => s.user?.uid);
@@ -18,6 +57,13 @@ export default function SettingsPrivacyScreen() {
   const mutation = useMergeActsSettingsMutation(uid);
   const base = mergeActsDefaults(userInfo?.ActsSettings);
   const [pwBusy, setPwBusy] = useState(false);
+  const blockedUids = useMemo(() => {
+    const raw = userInfo?.BlockedUids;
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return [...new Set(raw.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim()))];
+  }, [userInfo?.BlockedUids]);
 
   const patch = (p: Partial<ActsAppSettings>) => {
     void mutation.mutateAsync(p);
@@ -72,6 +118,10 @@ export default function SettingsPrivacyScreen() {
         <AppText variant="title" className="mb-2 text-acts-ink">
           Profile Visibility
         </AppText>
+        <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+          Your bio (Account settings) is always public to every signed-in Acts member, including people who are not
+          your friends. The options below do not change bio visibility.
+        </AppText>
 
         <FriendsOrMeRow
           label="Deed Feed"
@@ -79,10 +129,41 @@ export default function SettingsPrivacyScreen() {
           onPick={(v) => patch({ deedFeedVisibility: v })}
           disabled={mutation.isPending}
         />
+        <AppText variant="caption" className="-mt-1 mb-3 text-acts-muted">
+          New accounts default to friends-only on the deed feed. You can widen this anytime.
+        </AppText>
         <FriendsOrMeRow
           label="Task History"
           value={base.taskHistoryVisibility}
           onPick={(v) => patch({ taskHistoryVisibility: v })}
+          disabled={mutation.isPending}
+        />
+        <ThreeChoiceRow
+          label="Service rank"
+          value={base.profileServiceRankVisibility}
+          options={PROFILE_STAT_VISIBILITY_OPTIONS}
+          onPick={(v) => patch({ profileServiceRankVisibility: v as ProfileStatVisibility })}
+          disabled={mutation.isPending}
+        />
+        <ThreeChoiceRow
+          label="Streak"
+          value={base.profileStreakVisibility}
+          options={PROFILE_STAT_VISIBILITY_OPTIONS}
+          onPick={(v) => patch({ profileStreakVisibility: v as ProfileStatVisibility })}
+          disabled={mutation.isPending}
+        />
+        <ThreeChoiceRow
+          label="Lifetime XP"
+          value={base.profileXpVisibility}
+          options={PROFILE_STAT_VISIBILITY_OPTIONS}
+          onPick={(v) => patch({ profileXpVisibility: v as ProfileStatVisibility })}
+          disabled={mutation.isPending}
+        />
+        <ThreeChoiceRow
+          label="Acts completed"
+          value={base.profileActsCompletedVisibility}
+          options={PROFILE_STAT_VISIBILITY_OPTIONS}
+          onPick={(v) => patch({ profileActsCompletedVisibility: v as ProfileStatVisibility })}
           disabled={mutation.isPending}
         />
         <YesNoRow
@@ -98,11 +179,35 @@ export default function SettingsPrivacyScreen() {
           disabled={mutation.isPending}
         />
         <YesNoRow
-          label="Reactions"
+          label="React on deed posts"
           value={base.reactionsEnabled}
           onPick={(v) => patch({ reactionsEnabled: v })}
           disabled={mutation.isPending}
         />
+        <AppText variant="caption" className="mb-4 -mt-2 leading-5 text-acts-muted">
+          Turning this off hides your react buttons; everyone can still see cheers on posts.
+        </AppText>
+
+        <AppText variant="title" className="mt-8 mb-2 text-acts-ink">
+          Blocked accounts
+        </AppText>
+        <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+          {`Blocking also ends any friendship or pending request with that person. Their deed posts stay out of your feed until you unblock them.`}
+        </AppText>
+        {uid && blockedUids.length === 0 ? (
+          <AppCard className="mb-2 p-4">
+            <AppText variant="body" className="text-acts-muted">
+              No blocked accounts.
+            </AppText>
+          </AppCard>
+        ) : null}
+        {uid && blockedUids.length > 0 ? (
+          <View className="mb-2">
+            {blockedUids.map((id) => (
+              <BlockedAccountRow key={id} viewerUid={uid} blockedUid={id} />
+            ))}
+          </View>
+        ) : null}
       </View>
     </Screen>
   );

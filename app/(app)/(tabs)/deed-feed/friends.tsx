@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, type Href } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, Share, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Pressable, Share, View } from 'react-native';
 
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { useContactsOnActsMatches } from '@/features/friends/hooks/useContactsOnActsMatches';
@@ -17,8 +17,11 @@ import {
 } from '@/features/friends/hooks/useFriendsQueries';
 import { syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
 import type { FriendListItem } from '@/features/friends/services/friendsRepository';
+import { getBlockedUidSet } from '@/features/safety/blockedUids';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { getInviteShareMessage } from '@/shared/config/appInvite';
+import { ActsTextInput, AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 function friendRequestDisplayName(
@@ -73,28 +76,54 @@ function IncomingRow({
   busy: boolean;
 }) {
   const { data, isPending } = useUserInfoQuery(fromUid);
-  const handle = data?.Username ? `@${data.Username}` : isPending ? '…' : fromUid.slice(0, 8);
-  const title = friendRequestDisplayName(data, fromUid, isPending);
-  const showHandleLine = handle !== title;
+  const fullName = [data?.First, data?.Last].filter(Boolean).join(' ').trim();
+  const rawUsername = data?.Username?.trim();
+  const usernameHandle = rawUsername ? `@${rawUsername.replace(/^@+/, '')}` : null;
+  const primaryLine =
+    fullName.length > 0
+      ? fullName
+      : usernameHandle ?? (isPending ? '…' : fromUid.slice(0, 8));
+  const profileLabel = fullName.length > 0 && usernameHandle ? `${fullName} (${usernameHandle})` : primaryLine;
+
+  const openProfile = () => router.push(`/(app)/profile/${fromUid}` as Href);
+
   return (
-    <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
+    <View className="mb-3 rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
       <Pressable
-        className="min-w-0 flex-1 pr-2"
-        onPress={() => router.push(`/(app)/profile/${fromUid}` as Href)}
+        className="flex-row items-center"
+        onPress={openProfile}
         accessibilityRole="button"
-        accessibilityLabel={`Open profile for ${title}`}>
-        <AppText variant="subtitle" className="text-acts-ink">
-          {title}
-        </AppText>
-        {showHandleLine ? (
-          <AppText variant="caption" className="text-acts-muted">
-            {handle}
+        accessibilityLabel={`Open profile for ${profileLabel}`}>
+        <RowAvatar uri={data?.profilePicUrl} />
+        <View className="min-w-0 flex-1">
+          <AppText variant="subtitle" className="text-acts-ink" numberOfLines={2}>
+            {primaryLine}
           </AppText>
-        ) : null}
+          {fullName.length > 0 && usernameHandle ? (
+            <AppText variant="caption" className="mt-0.5 text-acts-muted" numberOfLines={1}>
+              {usernameHandle}
+            </AppText>
+          ) : null}
+        </View>
       </Pressable>
-      <View className="flex-row gap-2">
-        <AppButton title="Decline" variant="secondary" disabled={busy} onPress={onDecline} />
-        <AppButton title="Accept" disabled={busy} onPress={onAccept} />
+      <View className="mt-3 flex-row gap-2">
+        <AppButton
+          title="Decline"
+          variant="secondary"
+          size="compact"
+          className="flex-1"
+          disabled={busy}
+          accessibilityLabel={`Decline friend request from ${profileLabel}`}
+          onPress={onDecline}
+        />
+        <AppButton
+          title="Accept"
+          size="compact"
+          className="flex-1"
+          disabled={busy}
+          accessibilityLabel={`Accept friend request from ${profileLabel}`}
+          onPress={onAccept}
+        />
       </View>
     </View>
   );
@@ -114,21 +143,31 @@ function OutgoingRow({
   const title = friendRequestDisplayName(data, toUid, isPending);
   const showHandleLine = handle !== title;
   return (
-    <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-acts-border/60 bg-acts-surface px-4 py-3">
-      <RowAvatar uri={data?.profilePicUrl} />
+    <View className="mb-3 rounded-2xl border border-acts-border/60 bg-acts-surface px-4 py-3">
       <Pressable
-        className="min-w-0 flex-1 pr-2"
+        className="flex-row items-center"
         onPress={() => router.push(`/(app)/profile/${toUid}` as Href)}
         accessibilityRole="button"
         accessibilityLabel={`Open profile for ${title}`}>
-        <AppText variant="subtitle" className="text-acts-ink">
-          {title}
-        </AppText>
-        <AppText variant="caption" className="text-acts-muted">
-          {showHandleLine ? `Pending · ${handle}` : 'Pending'}
-        </AppText>
+        <RowAvatar uri={data?.profilePicUrl} />
+        <View className="min-w-0 flex-1">
+          <AppText variant="subtitle" className="text-acts-ink" numberOfLines={2}>
+            {title}
+          </AppText>
+          <AppText variant="caption" className="mt-0.5 text-acts-muted" numberOfLines={1}>
+            {showHandleLine ? `Pending · ${handle}` : 'Pending'}
+          </AppText>
+        </View>
       </Pressable>
-      <AppButton title="Cancel" variant="secondary" disabled={busy} onPress={onCancel} />
+      <AppButton
+        title="Cancel request"
+        variant="secondary"
+        size="compact"
+        className="mt-3"
+        disabled={busy}
+        accessibilityLabel={`Cancel friend request to ${title}`}
+        onPress={onCancel}
+      />
     </View>
   );
 }
@@ -145,21 +184,31 @@ function FriendRow({
   const { data } = useUserInfoQuery(f.friendUid);
   const displayName = [f.First, f.Last].filter(Boolean).join(' ') || 'Friend';
   return (
-    <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-acts-border/60 bg-acts-surface px-4 py-3">
-      <RowAvatar uri={data?.profilePicUrl} />
+    <View className="mb-3 rounded-2xl border border-acts-border/60 bg-acts-surface px-4 py-3">
       <Pressable
-        className="min-w-0 flex-1 pr-2"
+        className="flex-row items-center"
         onPress={() => router.push(`/(app)/profile/${f.friendUid}` as Href)}
         accessibilityRole="button"
         accessibilityLabel={`Open profile for ${displayName}`}>
-        <AppText variant="subtitle" className="text-acts-ink">
-          {displayName}
-        </AppText>
-        <AppText variant="caption" className="text-acts-muted">
-          @{f.Username}
-        </AppText>
+        <RowAvatar uri={data?.profilePicUrl} />
+        <View className="min-w-0 flex-1">
+          <AppText variant="subtitle" className="text-acts-ink" numberOfLines={2}>
+            {displayName}
+          </AppText>
+          <AppText variant="caption" className="mt-0.5 text-acts-muted" numberOfLines={1}>
+            @{f.Username}
+          </AppText>
+        </View>
       </Pressable>
-      <AppButton title="Remove" variant="secondary" disabled={busy} onPress={onRemove} />
+      <AppButton
+        title="Remove"
+        variant="secondary"
+        size="compact"
+        className="mt-3"
+        disabled={busy}
+        accessibilityLabel={`Remove ${displayName} from friends`}
+        onPress={onRemove}
+      />
     </View>
   );
 }
@@ -178,6 +227,16 @@ export default function FriendsScreen() {
   const cancelMutation = useCancelOutgoingFriendRequestMutation(uid);
   const removeMutation = useRemoveFriendMutation(uid);
   const contactsOnActs = useContactsOnActsMatches(uid);
+  const { data: myUserInfo } = useUserInfoQuery(uid);
+  const blockedUidSet = useMemo(() => getBlockedUidSet(myUserInfo), [myUserInfo]);
+  const visibleFriends = useMemo(
+    () => (friends.data ?? []).filter((f) => !blockedUidSet.has(f.friendUid)),
+    [friends.data, blockedUidSet],
+  );
+  const visibleContactMatches = useMemo(
+    () => contactsOnActs.matches.filter((m) => !blockedUidSet.has(m.uid)),
+    [contactsOnActs.matches, blockedUidSet],
+  );
 
   useEffect(() => {
     if (!uid) {
@@ -235,7 +294,7 @@ export default function FriendsScreen() {
 
   const onInviteShare = useCallback(() => {
     void Share.share({
-      message: 'Join me on Acts — kindness as a habit. https://acts.app',
+      message: getInviteShareMessage(),
       title: 'Acts',
     });
   }, []);
@@ -250,8 +309,11 @@ export default function FriendsScreen() {
 
   return (
     <Screen scroll>
-      <AppText variant="title" className="mb-4">
+      <AppText variant="title" className="mb-2">
         Friends
+      </AppText>
+      <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+        {`Add people you trust to see their deed photos, react, and comment. Search by username, match contacts who are already on Acts, or share an invite.`}
       </AppText>
 
       {localError ? (
@@ -264,7 +326,7 @@ export default function FriendsScreen() {
         Add by username
       </AppText>
       <AppCard className="mb-6">
-        <TextInput
+        <ActsTextInput
           value={usernameInput}
           onChangeText={setUsernameInput}
           autoCapitalize="none"
@@ -272,11 +334,20 @@ export default function FriendsScreen() {
           placeholder="username (no @ required)"
           placeholderTextColor="#9CA3AF"
           editable={!busy}
+          accessibilityLabel="Friend username"
+          accessibilityHint="Enter at least three characters, then send a friend request"
           onSubmitEditing={onSendByUsername}
           returnKeyType="send"
-          className="mb-3 rounded-2xl border border-acts-border bg-acts-surface px-4 py-3.5 text-base text-acts-ink"
+          className="mb-3 rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
+          style={getActsTextInputBoxStyle()}
         />
-        <AppButton title="Send friend request" loading={sendMutation.isPending} disabled={busy} onPress={onSendByUsername} />
+        <AppButton
+          title="Send friend request"
+          loading={sendMutation.isPending}
+          disabled={busy}
+          accessibilityLabel="Send friend request by username"
+          onPress={onSendByUsername}
+        />
       </AppCard>
 
       <AppText variant="label" className="mb-2">
@@ -288,6 +359,7 @@ export default function FriendsScreen() {
           variant="secondary"
           loading={contactsOnActs.loading}
           disabled={contactsOnActs.loading}
+          accessibilityLabel="Find friends from contacts on this device"
           onPress={() => void contactsOnActs.loadMatches()}
         />
         {contactsOnActs.permissionDenied ? (
@@ -302,7 +374,7 @@ export default function FriendsScreen() {
         ) : null}
         {contactsOnActs.matches.length > 0 ? (
           <View className="mt-4 gap-3">
-            {contactsOnActs.matches.map((m) => (
+            {visibleContactMatches.map((m) => (
               <View
                 key={`contact:${m.uid}:${m.matchedVia}:${m.contactLabel}`}
                 className="flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
@@ -318,7 +390,9 @@ export default function FriendsScreen() {
                 <AppButton
                   title="Request"
                   variant="secondary"
+                  className="shrink-0"
                   disabled={busy}
+                  accessibilityLabel={`Send friend request to ${[m.first, m.last].filter(Boolean).join(' ').trim() || m.contactLabel}`}
                   onPress={() =>
                     sendMutation.mutate(m.username, {
                       onError: (e) => setLocalError(mapAuthError(e)),
@@ -334,8 +408,18 @@ export default function FriendsScreen() {
         contactsOnActs.matches.length === 0 &&
         !contactsOnActs.permissionDenied &&
         !contactsOnActs.loadError ? (
-          <AppText variant="caption" className="mt-3 text-acts-muted">
-            No matches.
+          <AppText variant="caption" className="mt-3 leading-5 text-acts-muted">
+            {`None of your contacts matched an Acts account yet. Ask friends to set a username in Profile, then use “Add by username” above — or try scanning again after they join.`}
+          </AppText>
+        ) : null}
+        {contactsOnActs.searched &&
+        !contactsOnActs.loading &&
+        contactsOnActs.matches.length > 0 &&
+        visibleContactMatches.length === 0 &&
+        !contactsOnActs.permissionDenied &&
+        !contactsOnActs.loadError ? (
+          <AppText variant="caption" className="mt-3 leading-5 text-acts-muted">
+            Matches are hidden because you blocked those accounts. You can unblock them in Settings → Privacy.
           </AppText>
         ) : null}
       </AppCard>
@@ -344,7 +428,12 @@ export default function FriendsScreen() {
         Invite others
       </AppText>
       <AppCard className="mb-6">
-        <AppButton title="Share invite" variant="secondary" onPress={onInviteShare} />
+        <AppButton
+          title="Share invite"
+          variant="secondary"
+          accessibilityLabel="Share Acts invite link"
+          onPress={onInviteShare}
+        />
       </AppCard>
 
       <AppText variant="label" className="mb-2">
@@ -412,28 +501,56 @@ export default function FriendsScreen() {
         </AppCard>
       )}
 
-      {(friends.isPending || (friends.data?.length ?? 0) > 0) && (
-        <>
-          <AppText variant="label" className="mb-2">
-            Your friends
+      <AppText variant="label" className="mb-2">
+        Your friends
+      </AppText>
+      {friends.isPending ? (
+        <View className="mb-6 items-center py-4">
+          <ActivityIndicator color="#E11D74" />
+        </View>
+      ) : visibleFriends.length > 0 ? (
+        <View className="mb-6">
+          {visibleFriends.map((f) => (
+            <FriendRow
+              key={`friend:${f.friendUid}`}
+              f={f}
+              busy={busy}
+              onRemove={() => confirmRemoveFriend(f)}
+            />
+          ))}
+        </View>
+      ) : (friends.data ?? []).length > 0 ? (
+        <AppCard className="mb-8 p-4">
+          <AppText variant="subtitle" className="mb-2 text-acts-ink">
+            No friends to show here
           </AppText>
-          {friends.isPending ? (
-            <View className="items-center py-4 pb-8">
-              <ActivityIndicator color="#E11D74" />
-            </View>
-          ) : (
-            <View className="pb-8">
-              {(friends.data ?? []).map((f) => (
-                <FriendRow
-                  key={`friend:${f.friendUid}`}
-                  f={f}
-                  busy={busy}
-                  onRemove={() => confirmRemoveFriend(f)}
-                />
-              ))}
-            </View>
-          )}
-        </>
+          <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+            {`Blocking removes someone from your friend list, but your app may need a moment to refresh. Pull to refresh, or unblock people in Settings → Privacy if you want to send a new request.`}
+          </AppText>
+          <AppButton
+            title="Open Privacy"
+            variant="secondary"
+            className="self-start"
+            accessibilityLabel="Open privacy settings"
+            onPress={() => router.push('/(app)/settings/privacy' as Href)}
+          />
+        </AppCard>
+      ) : (
+        <AppCard className="mb-8">
+          <AppText variant="subtitle" className="mb-2 text-acts-ink">
+            No friends yet
+          </AppText>
+          <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+            When someone accepts your request, they will appear here and their deeds will show on the Deed Feed tab.
+          </AppText>
+          <AppButton
+            title="Open Deed Feed"
+            variant="secondary"
+            className="self-start"
+            accessibilityLabel="Open deed feed tab"
+            onPress={() => router.push('/(app)/(tabs)/deed-feed' as Href)}
+          />
+        </AppCard>
       )}
     </Screen>
   );

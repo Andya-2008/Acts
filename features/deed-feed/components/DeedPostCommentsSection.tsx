@@ -1,9 +1,12 @@
 import { useCallback, useState } from 'react';
-import { Image, Pressable, TextInput, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, type Href } from 'expo-router';
 
+import { formatRelativeFeedTime } from '@/features/deed-feed/utils/formatRelativeFeedTime';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { AppButton, AppText } from '@/shared/components/ui';
+import { ActsTextInput, AppButton, AppText } from '@/shared/components/ui';
+import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import type { DeedComment } from '@/shared/types/deedComment';
 
 const MAX = 500;
@@ -13,7 +16,7 @@ function formatTime(c: DeedComment): string {
     return '';
   }
   try {
-    return c.createdAt.toDate().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    return formatRelativeFeedTime(c.createdAt.toDate());
   } catch {
     return '';
   }
@@ -84,6 +87,8 @@ type DeedPostCommentsSectionProps = {
   postId: string;
   postAuthorUid: string;
   viewerUid: string;
+  /** When false, comments are read-only for this viewer until they unlock commenting in the shop. */
+  viewerCanPostComments: boolean;
   comments: DeedComment[];
   onSend: (text: string) => void;
   onDelete: (commentId: string) => void;
@@ -95,6 +100,7 @@ export function DeedPostCommentsSection({
   postId,
   postAuthorUid,
   viewerUid,
+  viewerCanPostComments,
   comments,
   onSend,
   onDelete,
@@ -118,9 +124,19 @@ export function DeedPostCommentsSection({
         Comments
       </AppText>
       {comments.length === 0 ? (
-        <AppText variant="caption" className="mb-3 text-acts-muted">
-          No comments yet.
-        </AppText>
+        <View className="mb-4 rounded-2xl border border-dashed border-acts-border/80 bg-acts-canvas/60 px-3 py-4">
+          <View className="mb-2 flex-row items-center gap-2">
+            <Ionicons name="chatbubbles-outline" size={20} color="#8B6F82" accessibilityIgnoresInvertColors />
+            <AppText variant="subtitle" className="text-acts-ink">
+              Start the thread
+            </AppText>
+          </View>
+          <AppText variant="caption" className="leading-5 text-acts-muted">
+            {viewerCanPostComments
+              ? 'Be the first to leave a note of encouragement — short and kind works best.'
+              : 'Comments are visible here once people reply. Unlock posting from the shop to join the conversation.'}
+          </AppText>
+        </View>
       ) : (
         <View className="mb-3">
           {comments.map((c) => (
@@ -135,27 +151,49 @@ export function DeedPostCommentsSection({
           ))}
         </View>
       )}
-      <TextInput
-        value={draft}
-        onChangeText={(t) => setDraft(t.slice(0, MAX))}
-        placeholder="Write a comment…"
-        placeholderTextColor="#9CA3AF"
-        multiline
-        editable={!sendBusy}
-        className="mb-2 min-h-[44px] rounded-2xl border border-acts-border bg-acts-surface px-3 py-2.5 text-base text-acts-ink"
-      />
-      <View className="flex-row items-center justify-between">
-        <AppText variant="caption" className="text-acts-muted">
-          {draft.length}/{MAX}
-        </AppText>
-        <AppButton
-          title="Send"
-          className="min-w-[100px]"
-          disabled={sendBusy || !draft.trim()}
-          loading={sendBusy}
-          onPress={submit}
-        />
-      </View>
+      {viewerCanPostComments ? (
+        <>
+          <ActsTextInput
+            value={draft}
+            onChangeText={(t) => setDraft(t.slice(0, MAX))}
+            placeholder="Write a comment…"
+            placeholderTextColor="#9CA3AF"
+            multiline
+            textAlignVertical="top"
+            editable={!sendBusy}
+            accessibilityLabel="Comment on this deed"
+            accessibilityHint={`Up to ${MAX} characters`}
+            className="mb-2 min-h-[48px] rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
+            style={getActsTextInputBoxStyle({ horizontalPadding: 12 })}
+          />
+          <View className="flex-row items-center justify-between">
+            <AppText variant="caption" className="text-acts-muted">
+              {draft.length}/{MAX}
+            </AppText>
+            <AppButton
+              title="Send"
+              className="min-w-[100px]"
+              disabled={sendBusy || !draft.trim()}
+              loading={sendBusy}
+              accessibilityLabel="Send comment"
+              onPress={submit}
+            />
+          </View>
+        </>
+      ) : (
+        <View className="rounded-2xl border border-acts-border/70 bg-acts-canvas/90 px-3 py-3">
+          <AppText variant="caption" className="text-acts-muted">
+            Unlock commenting once in the shop to cheer friends with text replies.
+          </AppText>
+          <AppButton
+            title="Open shop"
+            variant="secondary"
+            className="mt-2 self-start"
+            accessibilityLabel="Open Kindness Arcade shop to unlock commenting"
+            onPress={() => router.push('/(app)/shop' as Href)}
+          />
+        </View>
+      )}
     </View>
   );
 }

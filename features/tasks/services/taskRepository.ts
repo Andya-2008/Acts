@@ -1,7 +1,9 @@
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -11,12 +13,18 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 
-import { LEGACY_TASK_DOC_IDS, sliceAutoAssignableFromCatalog } from '@/features/tasks/constants/taskCatalog';
-import { currentPeriodKey, periodKeyForDate } from '@/features/tasks/utils/taskPeriodKeys';
+import { autoAssignPerCadenceFromPurchases } from '@/features/shop/shopEntitlements';
+import { LEGACY_TASK_DOC_IDS, pickCatalogForCadence } from '@/features/tasks/constants/taskCatalog';
+import { catalogEntryMatchesUser } from '@/features/tasks/utils/taskEligibility';
+import { currentPeriodKey, currentRosterPeriodKeys, periodKeyForDate } from '@/features/tasks/utils/taskPeriodKeys';
+import { mergeActsSettings } from '@/features/user-profile/services/userInfoRepository';
 import { deleteTaskPhotoObject, uploadTaskPhoto } from '@/shared/services/firebase/storageUploads';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
 import type { ActTask, TaskCadence, TaskCatalogEntry, TaskDifficultyLevel } from '@/shared/types/task';
+import type { UserInfoRead } from '@/shared/types/userInfo';
+import { mergeActsDefaults, type TaskRosterPeriodKeys } from '@/shared/types/actsSettings';
+import { preferredDifficultyLevelFromActs } from '@/shared/utils/preferredTaskDifficulty';
 
 const CADENCES: TaskCadence[] = ['daily', 'weekly', 'monthly', 'anytime'];
 
@@ -155,8 +163,20 @@ function parseTaskDoc(id: string, data: Record<string, unknown>): ActTask {
         : null,
     cadence: parseCadence(data.cadence ?? data['length']),
     sortKey: typeof data.sortKey === 'number' ? data.sortKey : 0,
+    assignedPeriodKey:
+      typeof data.assignedPeriodKey === 'string' && data.assignedPeriodKey.trim().length > 0
+        ? data.assignedPeriodKey.trim()
+        : null,
     createdAt: (data.createdAt as ActTask['createdAt']) ?? null,
     completedAt: (data.completedAt as ActTask['completedAt']) ?? null,
+    lastCompletionSeeds:
+      typeof data.lastCompletionSeeds === 'number' && !Number.isNaN(data.lastCompletionSeeds)
+        ? Math.max(0, Math.floor(data.lastCompletionSeeds))
+        : null,
+    lastCompletionXp:
+      typeof data.lastCompletionXp === 'number' && !Number.isNaN(data.lastCompletionXp)
+        ? Math.max(0, Math.floor(data.lastCompletionXp))
+        : null,
   };
 }
 
@@ -170,6 +190,7 @@ async function fetchTasksRaw(uid: string): Promise<ActTask[]> {
 
 export async function fetchTasksForUser(uid: string): Promise<ActTask[]> {
   const catalog = await fetchTaskCatalogFromFirestore();
+  await reconcilePeriodRosters(uid, catalog);
   await applyCadenceResetsForUser(uid, catalog);
   return fetchTasksRaw(uid);
 }
@@ -210,13 +231,25 @@ export async function applyCadenceResetsForUser(uid: string, catalog?: TaskCatal
     if (t.completedAt == null) {
       continue;
     }
-    const doneKey = periodKeyForDate(t.cadence, t.completedAt.toDate());
     const curKey = currentPeriodKey(t.cadence, now);
-    if (!doneKey || !curKey || doneKey === curKey) {
+    if (!curKey) {
+      continue;
+    }
+    if (t.assignedPeriodKey && t.assignedPeriodKey !== curKey) {
+      continue;
+    }
+    const doneKey = periodKeyForDate(t.cadence, t.completedAt.toDate());
+    if (!doneKey || doneKey === curKey) {
       continue;
     }
 
-    batch.update(doc(col, t.id), { completedAt: null, photoUrl: null, deedFeedPostId: null });
+    batch.update(doc(col, t.id), {
+      completedAt: null,
+      photoUrl: null,
+      deedFeedPostId: null,
+      lastCompletionSeeds: deleteField(),
+      lastCompletionXp: deleteField(),
+    });
     resets.push({ id: t.id, hadPhoto: Boolean(t.photoUrl) });
     count += 1;
     if (count >= 400) {
@@ -263,22 +296,84 @@ export async function clearAllTaskPhotosForUser(uid: string): Promise<void> {
   await flush();
 }
 
+const ROSTER_CADENCES = ['daily', 'weekly', 'monthly'] as const;
+
+function catalogTaskPayload(
+  t: TaskCatalogEntry,
+  assignedPeriodKey: string,
+): Record<string, unknown> {
+  return {
+    taskId: t.taskId,
+    textShort: t.textShort,
+    textLong: t.textLong,
+    active: t.active,
+    category: t.category,
+    difficulty: t.difficulty,
+    minAge: t.minAge,
+    maxAge: t.maxAge,
+    traits: t.traits,
+    materials: t.materials,
+    picture: t.picture,
+    photoUrl: null,
+    deedFeedPostId: null,
+    cadence: t.cadence,
+    sortKey: t.sortKey,
+    assignedPeriodKey,
+    createdAt: serverTimestamp(),
+    completedAt: null,
+  };
+}
+
+/** Keep completed memories / deed links when a calendar period ends. */
+function preserveCatalogTaskAcrossPeriods(t: ActTask): boolean {
+  return t.completedAt != null || Boolean(t.photoUrl) || Boolean(t.deedFeedPostId);
+}
+
 /**
- * Ensures legacy starter docs are removed and missing **home-roster** catalog acts exist.
- * Does **not** delete user task docs just because they fall outside the current top slice (that wiped progress).
- * Adds up to nine catalog acts (three per cadence) when absent, then removes **stale** catalog rows that are not in the
- * current period roster only if they were never started (no completion, photo, or deed post).
+ * When a daily / weekly / monthly period ends: drop that period's active roster acts and assign a
+ * fresh random set (per user). Completed acts with photos or deed posts are kept for Memories.
  */
-export async function ensureAssignedTasks(uid: string): Promise<void> {
-  const catalog = await fetchTaskCatalogFromFirestore();
-  await applyCadenceResetsForUser(uid, catalog);
+export async function reconcilePeriodRosters(
+  uid: string,
+  catalog?: TaskCatalogEntry[],
+): Promise<void> {
+  const cat = catalog ?? (await fetchTaskCatalogFromFirestore());
+  const catalogIds = catalogCadenceTaskIds(cat);
   const db = getFirebaseFirestore();
   const col = tasksCollection(db, uid);
   const snap = await getDocs(col);
+  const now = new Date();
+  const periodNow = currentRosterPeriodKeys(now);
+
+  const userSnap = await getDoc(doc(db, firestoreCollections.userInfo, uid));
+  const userData = userSnap.exists() ? (userSnap.data() as UserInfoRead) : null;
+  const purchased = userData?.ShopPurchasedIds;
+  const acts = mergeActsDefaults(userData?.ActsSettings);
+  const perCadence = autoAssignPerCadenceFromPurchases(purchased);
+  const sliceOptions = {
+    uid,
+    preferredDifficultyLevel: preferredDifficultyLevelFromActs(acts.preferredDifficulty),
+  };
+  const catalogFiltered = cat.filter((e) => catalogEntryMatchesUser(e, userData ?? undefined));
+
+  const stored = acts.taskRosterPeriodKeys ?? {};
+  const nextStored: TaskRosterPeriodKeys = { ...stored };
+  let periodKeysChanged = false;
+
+  let batch = writeBatch(db);
+  let ops = 0;
+
+  const flush = async () => {
+    if (ops === 0) {
+      return;
+    }
+    await batch.commit();
+    batch = writeBatch(db);
+    ops = 0;
+  };
+
   const existingIds = new Set(snap.docs.map((d) => d.id));
 
-  const batch = writeBatch(db);
-  let ops = 0;
   for (const id of LEGACY_TASK_DOC_IDS) {
     if (existingIds.has(id)) {
       batch.delete(doc(col, id));
@@ -286,69 +381,88 @@ export async function ensureAssignedTasks(uid: string): Promise<void> {
     }
   }
 
-  const assignable = sliceAutoAssignableFromCatalog(catalog);
+  for (const cadence of ROSTER_CADENCES) {
+    const curKey = periodNow[cadence];
+    if (!curKey) {
+      continue;
+    }
 
-  for (const t of assignable) {
-    if (!existingIds.has(t.taskId)) {
-      batch.set(doc(col, t.taskId), {
-        taskId: t.taskId,
-        textShort: t.textShort,
-        textLong: t.textLong,
-        active: t.active,
-        category: t.category,
-        difficulty: t.difficulty,
-        minAge: t.minAge,
-        maxAge: t.maxAge,
-        traits: t.traits,
-        materials: t.materials,
-        picture: t.picture,
-        photoUrl: null,
-        deedFeedPostId: null,
-        cadence: t.cadence,
-        sortKey: t.sortKey,
-        createdAt: serverTimestamp(),
-        completedAt: null,
-      });
+    const cap = cadence === 'daily' ? perCadence.daily : cadence === 'weekly' ? perCadence.weekly : perCadence.monthly;
+    const picks = pickCatalogForCadence(catalogFiltered, cadence, now, cap, sliceOptions);
+    const periodChanged = stored[cadence] !== curKey;
+
+    if (periodChanged) {
+      nextStored[cadence] = curKey;
+      periodKeysChanged = true;
+    }
+
+    for (const d of snap.docs) {
+      const t = parseTaskDoc(d.id, d.data());
+      if (t.cadence !== cadence || !catalogIds.has(t.taskId)) {
+        continue;
+      }
+      if (t.assignedPeriodKey === curKey) {
+        continue;
+      }
+      if (preserveCatalogTaskAcrossPeriods(t)) {
+        continue;
+      }
+      batch.delete(doc(col, d.id));
       ops += 1;
+      existingIds.delete(d.id);
+      if (ops >= 400) {
+        await flush();
+      }
+    }
+
+    for (const t of picks) {
+      if (existingIds.has(t.taskId)) {
+        continue;
+      }
+      batch.set(doc(col, t.taskId), catalogTaskPayload(t, curKey));
+      ops += 1;
+      existingIds.add(t.taskId);
+      if (ops >= 400) {
+        await flush();
+      }
     }
   }
 
-  const catalogIdSet = new Set(catalog.map((t) => t.taskId));
-  const assignableIds = new Set(assignable.map((t) => t.taskId));
+  await flush();
 
-  for (const d of snap.docs) {
-    const t = parseTaskDoc(d.id, d.data());
-    if (!catalogIdSet.has(t.taskId)) {
-      continue;
-    }
-    if (assignableIds.has(t.taskId)) {
-      continue;
-    }
-    if (t.completedAt != null) {
-      continue;
-    }
-    if (t.photoUrl) {
-      continue;
-    }
-    if (t.deedFeedPostId) {
-      continue;
-    }
-    batch.delete(doc(col, d.id));
-    ops += 1;
+  if (periodKeysChanged) {
+    await mergeActsSettings(uid, { taskRosterPeriodKeys: nextStored });
   }
-
-  if (ops === 0) {
-    return;
-  }
-  await batch.commit();
 }
 
-export async function setTaskCompleted(uid: string, taskId: string, completed: boolean): Promise<void> {
+/** @see reconcilePeriodRosters */
+export async function ensureAssignedTasks(uid: string): Promise<void> {
+  await reconcilePeriodRosters(uid);
+}
+
+export async function setTaskCompleted(
+  uid: string,
+  taskId: string,
+  completed: boolean,
+  ledger?: { seeds: number; xp: number } | null,
+): Promise<void> {
   const db = getFirebaseFirestore();
   const ref = doc(tasksCollection(db, uid), taskId);
-  await updateDoc(ref, {
-    completedAt: completed ? serverTimestamp() : null,
-  });
+  if (completed) {
+    const seeds = Math.max(0, Math.floor(ledger?.seeds ?? 0));
+    const xp = Math.max(0, Math.floor(ledger?.xp ?? 0));
+    await updateDoc(ref, {
+      completedAt: serverTimestamp(),
+      lastCompletionSeeds: seeds,
+      lastCompletionXp: xp,
+    });
+  } else {
+    await updateDoc(ref, {
+      completedAt: null,
+      lastCompletionSeeds: deleteField(),
+      lastCompletionXp: deleteField(),
+    });
+  }
 }
 
 export async function updateTaskPhotoUrl(uid: string, taskId: string, photoUrl: string | null): Promise<void> {

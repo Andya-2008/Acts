@@ -3,12 +3,12 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CurrencyPill } from '@/shared/components/CurrencyPill';
+import { SeedsXpShopHeader } from '@/shared/components/SeedsXpShopHeader';
 import { AppText } from '@/shared/components/ui';
-
-const headerCanvas = '#FFF7FB';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 
 export default function TasksTabLayout() {
+  const act = useActAppearance();
   const pathname = usePathname();
   const isMemories = pathname.includes('memories');
   const insets = useSafeAreaInsets();
@@ -20,14 +20,12 @@ export default function TasksTabLayout() {
 
   return (
     <View className="flex-1 bg-acts-canvas">
-      <View style={{ paddingTop: insets.top, backgroundColor: headerCanvas }}>
+      <View style={{ paddingTop: insets.top, backgroundColor: act.palette.canvas }}>
         <View className="flex-row items-center justify-between px-4 pb-2 pt-1">
           <AppText variant="title" className="flex-1 text-acts-ink" numberOfLines={1}>
             {headerTitle}
           </AppText>
-          <View className="pl-2">
-            <CurrencyPill />
-          </View>
+          <SeedsXpShopHeader />
         </View>
       </View>
       <View className="flex-row gap-2 border-b border-acts-border bg-acts-canvas px-4 py-2">
@@ -35,7 +33,7 @@ export default function TasksTabLayout() {
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected: !isMemories }}
-            className={`flex-1 items-center rounded-2xl py-2.5 ${!isMemories ? 'bg-acts-green-soft' : 'bg-transparent'}`}>
+            className={`mx-0.5 flex-1 items-center overflow-visible rounded-2xl py-2.5 ${!isMemories ? 'bg-acts-green-soft' : 'bg-transparent'}`}>
             <AppText variant="subtitle" className={!isMemories ? 'font-semibold text-acts-green' : 'text-acts-muted'}>
               Tasks
             </AppText>
@@ -45,7 +43,7 @@ export default function TasksTabLayout() {
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected: isMemories }}
-            className={`flex-1 items-center rounded-2xl py-2.5 ${isMemories ? 'bg-acts-green-soft' : 'bg-transparent'}`}>
+            className={`mx-0.5 flex-1 items-center overflow-visible rounded-2xl py-2.5 ${isMemories ? 'bg-acts-green-soft' : 'bg-transparent'}`}>
             <AppText variant="subtitle" className={isMemories ? 'font-semibold text-acts-green' : 'text-acts-muted'}>
               Memories
             </AppText>

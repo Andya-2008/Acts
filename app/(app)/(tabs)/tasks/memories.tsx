@@ -11,18 +11,27 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreateDeedPostMutation } from '@/features/deed-feed/hooks/useDeedPostsQueries';
 import { authorDisplayNameForDeed } from '@/features/deed-feed/utils/authorDisplayName';
 import { useTasksQuery } from '@/features/tasks/hooks/useTasksQueries';
+import { ServiceRankUpOverlay, type ServiceRankUpPayload } from '@/features/user-profile/components/ServiceRankUpOverlay';
+import { computeLifetimeRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
+import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
+import { grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { AppButton, AppText, FadeInView, Screen } from '@/shared/components/ui';
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+import { modalAnimationType } from '@/shared/utils/accessibilityMotion';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useCurrencyStore } from '@/shared/stores/currencyStore';
 import { HEARTS_FOR_DEED_FEED_SHARE } from '@/shared/utils/deedFeedReward';
+import { XP_FOR_DEED_FEED_SHARE } from '@/shared/utils/xpRewards';
+import { weekendDoubleEarnedAmount, weekendDoubleXpDelta } from '@/shared/utils/weekendDouble';
 import type { ActTask } from '@/shared/types/task';
 
 function formatCompletedAt(task: ActTask): string {
@@ -51,7 +60,9 @@ function completedTimeMs(task: ActTask): number {
 }
 
 export default function TaskMemoriesScreen() {
+  const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const uid = useAuthStore((s) => s.user?.uid);
   const user = useAuthStore((s) => s.user);
   const { data: userInfo } = useUserInfoQuery(uid);
@@ -59,6 +70,7 @@ export default function TaskMemoriesScreen() {
   const { width: winW, height: winH } = useWindowDimensions();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [rankUpPayload, setRankUpPayload] = useState<ServiceRankUpPayload | null>(null);
   const createDeedPostMutation = useCreateDeedPostMutation();
 
   const memories = useMemo(() => {
@@ -92,11 +104,23 @@ export default function TaskMemoriesScreen() {
         },
         { onError: (e) => setShareError(mapAuthError(e)), onSuccess: () => {
           setShareError(null);
-          useCurrencyStore.getState().adjustBalance(HEARTS_FOR_DEED_FEED_SHARE);
+          const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE);
+          const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE);
+          useCurrencyStore.getState().adjustBalance(hearts);
+          if (uid) {
+            const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
+            const transition = computeLifetimeRankPromotionTransition(prevXp, xpGrant);
+            void grantLifetimeXp(uid, xpGrant).then(() => {
+              void queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) });
+              if (transition) {
+                setRankUpPayload(transition);
+              }
+            });
+          }
         } },
       );
     },
-    [uid, user, userInfo, createDeedPostMutation],
+    [uid, user, userInfo, createDeedPostMutation, queryClient],
   );
 
   const renderItem: ListRenderItem<ActTask> = useCallback(
@@ -113,15 +137,7 @@ export default function TaskMemoriesScreen() {
               resizeMode="cover"
             />
           </Pressable>
-        ) : (
-          <View
-            className="w-full justify-center border-b border-t border-acts-border/60 bg-acts-green-soft/40"
-            style={{ height: Math.min(200, photoBlockHeight * 0.45) }}>
-            <AppText variant="caption" className="px-5 text-center text-acts-muted">
-              No photo for this act
-            </AppText>
-          </View>
-        )}
+        ) : null}
         <View className="border-b border-acts-border/50 px-5 pb-4 pt-4">
           <AppText variant="subtitle" className="text-acts-ink">
             {item.textShort}
@@ -228,7 +244,11 @@ export default function TaskMemoriesScreen() {
         removeClippedSubviews={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       />
-      <Modal visible={previewUri != null} transparent animationType="fade" onRequestClose={() => setPreviewUri(null)}>
+      <Modal
+        visible={previewUri != null}
+        transparent
+        animationType={modalAnimationType(reduceMotion, 'fade')}
+        onRequestClose={() => setPreviewUri(null)}>
         <SafeAreaView className="flex-1 bg-black" edges={['top', 'bottom', 'left', 'right']}>
           <Pressable
             className="flex-1"
@@ -244,6 +264,7 @@ export default function TaskMemoriesScreen() {
           </Pressable>
         </SafeAreaView>
       </Modal>
+      <ServiceRankUpOverlay payload={rankUpPayload} onClose={() => setRankUpPayload(null)} />
     </Screen>
   );
 }

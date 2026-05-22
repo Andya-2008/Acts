@@ -1,47 +1,75 @@
 import * as Google from 'expo-auth-session/providers/google';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  GoogleSignInButton,
+  type GoogleSignInButtonIntent,
+} from '@/features/auth/components/GoogleSignInButton';
 import { signInWithGoogleIdToken } from '@/features/auth/services/authService';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
-import { AppButton, AppText } from '@/shared/components/ui';
+import { AppText } from '@/shared/components/ui';
+import { getGoogleIdTokenClientIds } from '@/shared/config/googleAuthEnv';
 import {
-  getGoogleIdTokenClientIds,
-  isGoogleSignInConfigured,
-  isGoogleWebClientConfigured,
-} from '@/shared/config/googleAuthEnv';
+  getGoogleOAuthClientIdsForAuthRequest,
+  getGoogleOAuthRedirectUri,
+} from '@/shared/utils/googleOAuthRedirectUri';
 
-function GoogleSignInInner() {
-  const ids = getGoogleIdTokenClientIds();
+type GoogleSignInSectionProps = {
+  intent?: GoogleSignInButtonIntent;
+};
+
+const GOOGLE_SIGN_IN_FAILED =
+  'We could not complete Google sign-in. Please try again or sign in with email and password.';
+
+function mapGoogleError(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes('redirect_uri_mismatch') ||
+    lower.includes('redirect uri') ||
+    lower.includes('finish signing in') ||
+    lower.includes('something went wrong')
+  ) {
+    return GOOGLE_SIGN_IN_FAILED;
+  }
+  return mapAuthError(new Error(message));
+}
+
+export function GoogleSignInSection({ intent = 'sign-in' }: GoogleSignInSectionProps) {
+  const ids = useMemo(() => getGoogleOAuthClientIdsForAuthRequest(getGoogleIdTokenClientIds()), []);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const lastProcessedIdToken = useRef<string | null>(null);
+
+  const redirectUri = useMemo(() => getGoogleOAuthRedirectUri(), []);
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
     {
       webClientId: ids.webClientId,
       iosClientId: ids.iosClientId,
       androidClientId: ids.androidClientId,
+      redirectUri,
       selectAccount: true,
     },
     { scheme: 'acts', path: 'oauthredirect' },
   );
 
   useEffect(() => {
-    if (__DEV__ && request?.redirectUri) {
-      // Add this exact URI to Google Cloud → Web client → Authorized redirect URIs (often `com.FrogCOO.Acts:/oauthredirect` for dev builds).
-      console.warn('[Acts Google Auth] redirectUri → register on Web OAuth client:', request.redirectUri);
+    if (__DEV__ && redirectUri) {
+      console.warn('[Acts Google Auth] redirect URI:', redirectUri);
     }
-  }, [request?.redirectUri]);
+  }, [redirectUri]);
 
   useEffect(() => {
     if (!response) {
       return;
     }
     if (response.type === 'error') {
-      setLocalError(mapAuthError(new Error(response.error?.message ?? 'Google sign-in failed')));
+      setLocalError(mapGoogleError(response.error?.message ?? 'Google sign-in failed'));
+      return;
+    }
+    if (response.type === 'dismiss' || response.type === 'cancel') {
       return;
     }
     if (response.type !== 'success') {
@@ -50,7 +78,10 @@ function GoogleSignInInner() {
     const idToken =
       (response.params.id_token as string | undefined) ?? response.authentication?.idToken;
     if (!idToken) {
-      setLocalError('Google did not return an ID token. Check your Web client ID in Firebase.');
+      if (response.params.code && !response.authentication?.idToken) {
+        return;
+      }
+      setLocalError(GOOGLE_SIGN_IN_FAILED);
       return;
     }
     if (lastProcessedIdToken.current === idToken) {
@@ -82,6 +113,28 @@ function GoogleSignInInner() {
     };
   }, [response, router]);
 
+  const handlePress = () => {
+    setLocalError(null);
+    if (!request) {
+      setLocalError('Google sign-in is still starting up. Wait a moment and try again.');
+      return;
+    }
+    setBusy(true);
+    void (async () => {
+      try {
+        const result = await promptAsync();
+        if (result.type === 'error') {
+          setLocalError(mapGoogleError(result.error?.message ?? 'Google sign-in failed'));
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Google sign-in failed';
+        setLocalError(mapGoogleError(msg));
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
   return (
     <>
       {localError ? (
@@ -89,50 +142,7 @@ function GoogleSignInInner() {
           {localError}
         </AppText>
       ) : null}
-      <AppButton
-        title="Continue with Google"
-        variant="secondary"
-        disabled={!request}
-        loading={busy}
-        onPress={() => {
-          setLocalError(null);
-          void promptAsync();
-        }}
-      />
+      <GoogleSignInButton intent={intent} loading={busy} onPress={handlePress} />
     </>
   );
-}
-
-function GoogleNativeClientHint() {
-  if (Platform.OS === 'ios' && isGoogleWebClientConfigured() && !process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim()) {
-    return (
-      <AppText variant="caption" className="mt-2 text-acts-muted">
-        Add EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID to .env (see Google Cloud OAuth).
-      </AppText>
-    );
-  }
-  if (
-    Platform.OS === 'android' &&
-    isGoogleWebClientConfigured() &&
-    !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim()
-  ) {
-    return (
-      <AppText variant="caption" className="mt-2 text-acts-muted">
-        Add EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID to .env (see Google Cloud OAuth).
-      </AppText>
-    );
-  }
-  return null;
-}
-
-export function GoogleSignInSection() {
-  if (!isGoogleWebClientConfigured()) {
-    return null;
-  }
-
-  if (!isGoogleSignInConfigured()) {
-    return <GoogleNativeClientHint />;
-  }
-
-  return <GoogleSignInInner />;
 }

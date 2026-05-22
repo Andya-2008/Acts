@@ -5,7 +5,11 @@ import { useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
+import { AchievementUnlockHost } from '@/features/achievements/components/AchievementUnlockHost';
+import { FirstRunTutorialHost } from '@/features/tutorial/components/FirstRunTutorialHost';
+import { WeekendDoublePromoHost } from '@/features/promotions/components/WeekendDoublePromoHost';
 import { useHeartPointsFirestoreSync } from '@/features/user-profile/hooks/useHeartPointsFirestoreSync';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { SwipeableTabSlot } from '@/shared/components/SwipeableTabSlot';
@@ -40,8 +44,9 @@ export default function TabsLayout() {
   const tabBarHeight = Platform.OS === 'ios' ? 52 + tabBarPadBottom : 48 + tabBarPadBottom;
 
   return (
-    <Tabs>
-      <SwipeableTabSlot />
+    <FriendsGateGuard>
+      <Tabs>
+        <SwipeableTabSlot />
       <TabList
         style={[
           styles.tabList,
@@ -112,6 +117,10 @@ export default function TabsLayout() {
         </TabTrigger>
       </TabList>
     </Tabs>
+    <AchievementUnlockHost />
+    <WeekendDoublePromoHost />
+    <FirstRunTutorialHost />
+    </FriendsGateGuard>
   );
 }
 

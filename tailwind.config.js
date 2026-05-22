@@ -6,18 +6,17 @@ module.exports = {
     extend: {
       colors: {
         acts: {
-          canvas: '#FFF7FB',
-          surface: '#FFFFFF',
-          muted: '#8B6F82',
-          ink: '#2D1528',
-          /** Primary accent (vibrant pink — app uses `acts-green` class name for history) */
-          green: '#E11D74',
-          'green-soft': '#FCE3F0',
-          /** Bluish accent */
-          blue: '#5B6BE8',
-          'blue-soft': '#E8ECFF',
-          border: '#F1C9E0',
-          danger: '#DC2626',
+          canvas: 'rgb(var(--color-acts-canvas) / <alpha-value>)',
+          surface: 'rgb(var(--color-acts-surface) / <alpha-value>)',
+          muted: 'rgb(var(--color-acts-muted) / <alpha-value>)',
+          ink: 'rgb(var(--color-acts-ink) / <alpha-value>)',
+          /** Primary accent (class name `acts-green` is historical) */
+          green: 'rgb(var(--color-acts-green) / <alpha-value>)',
+          'green-soft': 'rgb(var(--color-acts-green-soft) / <alpha-value>)',
+          blue: 'rgb(var(--color-acts-blue) / <alpha-value>)',
+          'blue-soft': 'rgb(var(--color-acts-blue-soft) / <alpha-value>)',
+          border: 'rgb(var(--color-acts-border) / <alpha-value>)',
+          danger: 'rgb(var(--color-acts-danger) / <alpha-value>)',
         },
       },
       borderRadius: {

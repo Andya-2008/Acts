@@ -1,8 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+import { modalAnimationType } from '@/shared/utils/accessibilityMotion';
 import {
   ActivityIndicator,
+  Animated,
   Image,
   Modal,
   Pressable,
@@ -12,6 +16,8 @@ import {
 
 import { AppButton, AppText } from '@/shared/components/ui';
 import type { ActTask, TaskCadence } from '@/shared/types/task';
+import type { TaskCheckThemeId } from '@/features/cosmetics/taskCheckThemes';
+import { TASK_CHECK_THEMES } from '@/features/cosmetics/taskCheckThemes';
 
 import type { TaskRewardCardRect } from './TaskRewardFly';
 
@@ -120,6 +126,8 @@ type TaskRowProps = {
   /** Share this act's memory photo to the community deed feed (mobile). */
   onShareToDeedFeed?: (task: ActTask) => void;
   deedFeedShareTaskId?: string | null;
+  /** Checkbox chrome from shop / ActsSettings (`default` when omitted). */
+  taskCheckThemeId?: TaskCheckThemeId;
 };
 
 export function TaskRow({
@@ -133,10 +141,14 @@ export function TaskRow({
   photoActionTaskId,
   onShareToDeedFeed,
   deedFeedShareTaskId,
+  taskCheckThemeId = 'default',
 }: TaskRowProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
   const cardMeasureRef = useRef<View>(null);
+  const reduceMotion = useReduceMotion();
+  const checkScale = useRef(new Animated.Value(1)).current;
+  const prevDone = useRef(task.completedAt != null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const done = task.completedAt != null;
   const hasLongText = Boolean(task.textLong?.trim());
@@ -144,6 +156,30 @@ export function TaskRow({
   const deedFeedBusyThis = deedFeedShareTaskId === task.id;
   const showMemoryActions =
     done && Boolean(onPickTaskPhotoFromLibrary && onPickTaskPhotoFromCamera);
+  const theme = TASK_CHECK_THEMES[taskCheckThemeId] ?? TASK_CHECK_THEMES.default;
+  const themedRow =
+    theme.cardBorder != null &&
+    theme.cardBg != null &&
+    theme.cardBorderDone != null &&
+    theme.cardBgDone != null;
+
+  useEffect(() => {
+    const wasDone = prevDone.current;
+    prevDone.current = done;
+    if (!wasDone && done) {
+      if (reduceMotion) {
+        checkScale.setValue(1);
+      } else {
+        checkScale.setValue(0.86);
+        Animated.spring(checkScale, {
+          toValue: 1,
+          friction: 5,
+          tension: 140,
+          useNativeDriver: true,
+        }).start();
+      }
+    }
+  }, [done, checkScale, reduceMotion]);
 
   const body = (
     <>
@@ -367,34 +403,41 @@ export function TaskRow({
     <View
       ref={cardMeasureRef}
       collapsable={false}
-      className={`mb-3 flex-row items-start rounded-3xl border px-4 py-3.5 ${
-        done ? 'border-acts-green/40 bg-acts-green-soft' : 'border-acts-border/70 bg-acts-surface'
+      className={`mb-3 flex-row items-start rounded-3xl px-4 py-3.5 ${
+        themedRow
+          ? `border-2 ${done ? `${theme.cardBorderDone} ${theme.cardBgDone}` : `${theme.cardBorder} ${theme.cardBg}`}`
+          : `border ${done ? 'border-acts-green/40 bg-acts-green-soft' : 'border-acts-border/70 bg-acts-surface'}`
       } ${busy ? 'opacity-60' : ''} ${hideForRewardFly ? 'opacity-0' : ''}`}
       pointerEvents={hideForRewardFly ? 'none' : 'auto'}>
       <View collapsable={false} className="mr-3">
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: done }}
-          accessibilityLabel={done ? 'Mark as not done' : 'Mark as done'}
-          disabled={busy}
-          onPress={() => {
-            const node = cardMeasureRef.current;
-            if (node) {
-              node.measureInWindow((x, y, w, h) => {
-                onToggleComplete({ card: { x, y, width: w, height: h } });
-              });
-            } else {
-              onToggleComplete();
-            }
-          }}
-          hitSlop={12}
-          className="pt-0.5">
-          <Ionicons
-            name={done ? 'checkmark-circle' : 'ellipse-outline'}
-            size={26}
-            color={done ? '#E11D74' : '#8B6F82'}
-          />
-        </Pressable>
+        <View
+          className={`rounded-full border-2 p-0.5 ${done ? `${theme.ringBorderDone} ${theme.ringBgDone}` : `${theme.ringBorder} ${theme.ringBg}`}`}>
+          <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: done }}
+              accessibilityLabel={done ? 'Mark as not done' : 'Mark as done'}
+              disabled={busy}
+              onPress={() => {
+                const node = cardMeasureRef.current;
+                if (node) {
+                  node.measureInWindow((x, y, w, h) => {
+                    onToggleComplete({ card: { x, y, width: w, height: h } });
+                  });
+                } else {
+                  onToggleComplete();
+                }
+              }}
+              hitSlop={12}
+              className="items-center justify-center rounded-full">
+              <Ionicons
+                name={done ? theme.doneIcon : theme.emptyIcon}
+                size={26}
+                color={done ? theme.doneColor : theme.emptyColor}
+              />
+            </Pressable>
+          </Animated.View>
+        </View>
       </View>
 
       <View className="min-w-0 flex-1">{body}</View>
@@ -402,7 +445,7 @@ export function TaskRow({
       <Modal
         visible={photoPreviewOpen}
         transparent
-        animationType="fade"
+        animationType={modalAnimationType(reduceMotion, 'fade')}
         onRequestClose={() => setPhotoPreviewOpen(false)}>
         <Pressable
           accessibilityRole="button"
