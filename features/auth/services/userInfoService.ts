@@ -59,14 +59,39 @@ function sanitizeUsernameBase(raw: string): string {
   return cleaned.length >= 3 ? cleaned : '';
 }
 
-/** Derive a username base from Google profile data (before uniqueness suffixing). */
-export function deriveUsernameBaseFromGoogleUser(user: User): string {
-  const fromDisplay = user.displayName ? sanitizeUsernameBase(user.displayName.replace(/\s+/g, '_')) : '';
+export type OAuthDisplayNameParts = {
+  givenName?: string | null;
+  familyName?: string | null;
+};
+
+function displayNameFromOAuthParts(
+  user: User,
+  nameParts?: OAuthDisplayNameParts | null,
+): string {
+  const fromParts = [nameParts?.givenName, nameParts?.familyName].filter(Boolean).join(' ').trim();
+  if (fromParts.length > 0) {
+    return fromParts;
+  }
+  return user.displayName?.trim() ?? '';
+}
+
+/** Derive a username base from OAuth profile data (before uniqueness suffixing). */
+export function deriveUsernameBaseFromOAuthUser(
+  user: User,
+  nameParts?: OAuthDisplayNameParts | null,
+): string {
+  const display = displayNameFromOAuthParts(user, nameParts);
+  const fromDisplay = display ? sanitizeUsernameBase(display.replace(/\s+/g, '_')) : '';
   if (fromDisplay) {
     return fromDisplay;
   }
   const emailLocal = user.email?.split('@')[0] ?? 'user';
   return sanitizeUsernameBase(emailLocal.replace(/\./g, '_')) || `user_${user.uid.slice(0, 8)}`;
+}
+
+/** @deprecated Use {@link deriveUsernameBaseFromOAuthUser}. */
+export function deriveUsernameBaseFromGoogleUser(user: User): string {
+  return deriveUsernameBaseFromOAuthUser(user);
 }
 
 export async function assertUsernameAvailableForRegistration(username: string): Promise<void> {
@@ -163,7 +188,7 @@ export async function ensureUserInfoForGoogleUser(user: User): Promise<void> {
 
   const { first, last } = splitDisplayName(user.displayName ?? '');
   const email = user.email.trim();
-  const baseKey = deriveUsernameBaseFromGoogleUser(user);
+  const baseKey = deriveUsernameBaseFromOAuthUser(user);
 
   for (let attempt = 0; attempt < 32; attempt += 1) {
     const usernameKey = attempt === 0 ? baseKey : `${baseKey}${attempt}`;
@@ -210,4 +235,109 @@ export async function ensureUserInfoForGoogleUser(user: User): Promise<void> {
   }
 
   throw new Error('Could not reserve a unique username for this Google account.');
+}
+
+export async function ensureUserInfoForAppleUser(
+  user: User,
+  nameParts?: OAuthDisplayNameParts | null,
+): Promise<void> {
+  const db = getFirebaseFirestore();
+  const userRef = doc(db, firestoreCollections.userInfo, user.uid);
+  const existing = await getDoc(userRef);
+
+  if (existing.exists()) {
+    const prev = existing.data() as UserInfoDoc;
+    const updates: Partial<UserInfoDoc> = {};
+    if (user.email) {
+      updates.Email = user.email;
+    }
+    const display = displayNameFromOAuthParts(user, nameParts);
+    if (display) {
+      const { first, last } = splitDisplayName(display);
+      if (!prev.First?.trim() && first) {
+        updates.First = first;
+      }
+      if (!prev.Last?.trim() && last) {
+        updates.Last = last;
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await updateDoc(userRef, updates);
+    }
+    const mergedEmail = String(updates.Email ?? prev.Email ?? '')
+      .trim()
+      .toLowerCase();
+    const usernameKey = prev.Username;
+    if (mergedEmail.includes('@') && usernameKey) {
+      try {
+        await updateDoc(doc(db, firestoreCollections.usernames, usernameKey), {
+          userId: user.uid,
+          authEmail: mergedEmail,
+        });
+      } catch {
+        /* best-effort */
+      }
+    }
+    try {
+      await syncRegisteredContactKeysFromUserInfo(user.uid);
+    } catch {
+      /* best-effort */
+    }
+    return;
+  }
+
+  if (!user.email?.trim()) {
+    throw new Error('APPLE_EMAIL_REQUIRED');
+  }
+
+  const display = displayNameFromOAuthParts(user, nameParts);
+  const { first, last } = splitDisplayName(display);
+  const email = user.email.trim();
+  const baseKey = deriveUsernameBaseFromOAuthUser(user, nameParts);
+
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const usernameKey = attempt === 0 ? baseKey : `${baseKey}${attempt}`;
+    if (usernameKey.length < 3) {
+      continue;
+    }
+    try {
+      await assertUsernameKeyAvailable(db, usernameKey);
+      const payload: UserInfoDoc = {
+        DOB: '',
+        'Date Joined': serverTimestamp(),
+        Email: email,
+        First: first,
+        Last: last,
+        Phone: '',
+        Traits: [],
+        UserConfig: false,
+        Username: usernameKey,
+        profilePicUrl: null,
+        HeartPoints: 0,
+        LifetimeXP: 0,
+        ShopPurchasedIds: [],
+      };
+      await commitUserInfoWithUsernameClaim(db, user.uid, usernameKey, payload);
+      try {
+        await registerContactKeysForProfile(user.uid, {
+          Email: email,
+          Phone: '',
+          Username: usernameKey,
+          First: first,
+          Last: last,
+        });
+      } catch {
+        /* best-effort */
+      }
+      await markPostSignupFriendsGatePending(user.uid);
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'USERNAME_TAKEN') {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error('Could not reserve a unique username for this Apple account.');
 }

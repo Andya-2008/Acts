@@ -128,3 +128,11 @@ export function getFirebaseWebConfig(): FirebaseWebConfig {
 
   return parsed.data;
 }
+
+/**
+ * Get Sentry DSN for crash reporting (optional)
+ * Set EXPO_PUBLIC_SENTRY_DSN in .env to enable error tracking
+ */
+export function getSentryDsn(): string | null {
+  return process.env.EXPO_PUBLIC_SENTRY_DSN || null;
+}

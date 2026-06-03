@@ -1,16 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, router } from 'expo-router';
-import { Pressable } from 'react-native';
 
+import { HeaderBackIconButton } from '@/shared/components/HeaderIconButton';
+import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 
 function SettingsRootBackButton() {
-  const act = useActAppearance();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Back"
-      hitSlop={12}
+    <HeaderBackIconButton
       onPress={() => {
         if (router.canGoBack()) {
           router.back();
@@ -18,19 +14,13 @@ function SettingsRootBackButton() {
           router.replace('/(app)/(tabs)/profile');
         }
       }}
-      className="-ml-1 rounded-lg p-1 active:opacity-70">
-      <Ionicons name="chevron-back" size={28} color={act.palette.ink} />
-    </Pressable>
+    />
   );
 }
 
 function SettingsChildBackButton() {
-  const act = useActAppearance();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Back"
-      hitSlop={12}
+    <HeaderBackIconButton
       onPress={() => {
         if (router.canGoBack()) {
           router.back();
@@ -38,9 +28,7 @@ function SettingsChildBackButton() {
           router.replace('/(app)/settings');
         }
       }}
-      className="-ml-1 rounded-lg p-1 active:opacity-70">
-      <Ionicons name="chevron-back" size={28} color={act.palette.ink} />
-    </Pressable>
+    />
   );
 }
 
@@ -48,14 +36,7 @@ export default function SettingsLayout() {
   const act = useActAppearance();
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: true,
-        headerTintColor: act.palette.ink,
-        headerShadowVisible: false,
-        headerStyle: { backgroundColor: act.palette.canvas },
-        headerBackTitle: '',
-      }}>
+    <Stack screenOptions={{ ...stackHeaderChrome(act), headerShown: true }}>
       <Stack.Screen
         name="index"
         options={{
@@ -64,6 +45,13 @@ export default function SettingsLayout() {
         }}
       />
       <Stack.Screen name="account" options={{ title: 'Account Info' }} />
+      <Stack.Screen
+        name="personalization"
+        options={{
+          title: 'Personalization',
+          headerLeft: () => <SettingsChildBackButton />,
+        }}
+      />
       <Stack.Screen
         name="appearance"
         options={{

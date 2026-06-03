@@ -77,7 +77,6 @@ export type ShopPurchaseItem = {
     | 'taskTheme'
     | 'deedReactionPack'
     | 'appearancePreset'
-    | 'deedCommentUnlock'
     | 'extraRosterDaily'
     | 'extraRosterWeekly'
     | 'extraRosterMonthly';

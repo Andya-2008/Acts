@@ -1,49 +1,47 @@
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
   ListRenderItem,
+  Pressable,
   RefreshControl,
   View,
+  type ViewToken,
 } from 'react-native';
 import { router, type Href } from 'expo-router';
 
-import { DeedPostCardSettingsModal } from '@/features/deed-feed/components/DeedPostCardSettingsModal';
+import { DeedFeedTopBar } from '@/features/deed-feed/components/DeedFeedTopBar';
 import { DeedPostCommentsSection } from '@/features/deed-feed/components/DeedPostCommentsSection';
 import { DeedPostHeader } from '@/features/deed-feed/components/DeedPostHeader';
 import { DeedPostReactionRow } from '@/features/deed-feed/components/DeedPostReactionRow';
 import { useDeedFeedAuthorAvatarsQuery } from '@/features/deed-feed/hooks/useDeedFeedAuthorAvatarsQuery';
+import { useDeedFeedSeen } from '@/features/deed-feed/hooks/useDeedFeedSeen';
 import {
   useAddDeedCommentMutation,
   useDeedPostCommentsQuery,
   useDeleteDeedCommentMutation,
 } from '@/features/deed-feed/hooks/useDeedCommentQueries';
 import { useDeedPostReactionsQuery, useSetDeedReactionMutation } from '@/features/deed-feed/hooks/useDeedReactionQueries';
-import {
-  useDeleteDeedPostMutation,
-  useFriendsDeedPostsQuery,
-  useMyDeedPostsQuery,
-  useUpdateDeedPostAuthorSettingsMutation,
-} from '@/features/deed-feed/hooks/useDeedPostsQueries';
+import { useFriendsDeedPostsQuery } from '@/features/deed-feed/hooks/useDeedPostsQueries';
 import { getBlockedUidSet } from '@/features/safety/blockedUids';
 import { useBlockUserMutation, useSubmitDeedReportMutation } from '@/features/safety/useSafetyMutations';
 import { resolveDeedPostAvatar, resolveDeedPostCardBackground } from '@/features/deed-feed/utils/deedPostDisplay';
 import { deedReactionKindsForViewer } from '@/features/shop/shopCatalog';
-import { viewerMayPostDeedComments } from '@/features/shop/shopEntitlements';
 import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
-import type { DeedPostAuthorSettingsPatch } from '@/features/deed-feed/services/deedPostRepository';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import type { DeedCardTintId } from '@/shared/constants/deedPostCardTints';
-import { AppButton, AppCard, AppText, FadeInView, Screen } from '@/shared/components/ui';
+import { AppButton, AppCard, AppText, FadeInView, Screen, TitleWithInfo } from '@/shared/components/ui';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import type { DeedPost } from '@/shared/types/deedPost';
 import type { DeedReactionKind } from '@/shared/types/deedReaction';
 
 export default function DeedFeedScreen() {
+  const act = useActAppearance();
   const uid = useAuthStore((s) => s.user?.uid);
   const user = useAuthStore((s) => s.user);
   const { data: viewerUserInfo } = useUserInfoQuery(uid);
@@ -65,33 +63,44 @@ export default function DeedFeedScreen() {
     refetch: refetchFriendFeed,
     isRefetching: refetchingFriends,
   } = useFriendsDeedPostsQuery(uid, friendUidsForFeed, friendsListReady);
-  const {
-    data: myPosts,
-    isPending: myPostsPending,
-    refetch: refetchMine,
-    isRefetching: refetchingMine,
-  } = useMyDeedPostsQuery(uid);
   const visibleFriendPosts = useMemo(
     () => (friendPosts ?? []).filter((p) => !blockedUidSet.has(p.authorUid)),
     [friendPosts, blockedUidSet],
   );
-  const deleteMutation = useDeleteDeedPostMutation();
-  const authorSettingsMutation = useUpdateDeedPostAuthorSettingsMutation();
+
+  // "Already seen" feed filtering — the main feed surfaces only posts you haven't
+  // viewed yet; "Show all posts" reveals the rest for the current session.
+  const { seenSnapshot, ready: seenReady, markSeen } = useDeedFeedSeen(uid);
+  const [showAllPosts, setShowAllPosts] = useState(false);
+  const feedPosts = useMemo(() => {
+    if (showAllPosts || !seenReady) {
+      return visibleFriendPosts;
+    }
+    return visibleFriendPosts.filter((p) => !seenSnapshot.has(p.id));
+  }, [visibleFriendPosts, seenSnapshot, seenReady, showAllPosts]);
+  const allCaughtUp =
+    friendsListReady &&
+    !friendFeedPending &&
+    seenReady &&
+    !showAllPosts &&
+    visibleFriendPosts.length > 0 &&
+    feedPosts.length === 0;
+
+  const markSeenRef = useRef(markSeen);
+  useEffect(() => {
+    markSeenRef.current = markSeen;
+  }, [markSeen]);
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const ids = viewableItems
+      .filter((v) => v.isViewable && (v.item as DeedPost | undefined)?.id)
+      .map((v) => (v.item as DeedPost).id);
+    if (ids.length > 0) {
+      markSeenRef.current(ids);
+    }
+  }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 55, minimumViewTime: 350 }).current;
   const blockMutation = useBlockUserMutation(uid);
   const reportMutation = useSubmitDeedReportMutation();
-  const [settingsPostId, setSettingsPostId] = useState<string | null>(null);
-
-  const settingsPost = useMemo(() => {
-    if (!settingsPostId) {
-      return null;
-    }
-    return [...(visibleFriendPosts ?? []), ...(myPosts ?? [])].find((p) => p.id === settingsPostId) ?? null;
-  }, [settingsPostId, visibleFriendPosts, myPosts]);
-
-  const viewerMayComment = useMemo(
-    () => viewerMayPostDeedComments(viewerUserInfo?.ShopPurchasedIds),
-    [viewerUserInfo?.ShopPurchasedIds],
-  );
 
   const viewerActs = useMemo(() => mergeActsDefaults(viewerUserInfo?.ActsSettings), [viewerUserInfo]);
   const viewerReactionsAllowed = viewerActs.reactionsEnabled !== false;
@@ -108,13 +117,8 @@ export default function DeedFeedScreen() {
         out.push(p.id);
       }
     }
-    for (const p of myPosts ?? []) {
-      if (p.feedReactionsEnabled !== false) {
-        out.push(p.id);
-      }
-    }
     return [...new Set(out)];
-  }, [visibleFriendPosts, myPosts]);
+  }, [visibleFriendPosts]);
 
   const commentPostIds = useMemo(() => {
     const out: string[] = [];
@@ -123,13 +127,8 @@ export default function DeedFeedScreen() {
         out.push(p.id);
       }
     }
-    for (const p of myPosts ?? []) {
-      if (p.feedCommentsEnabled !== false) {
-        out.push(p.id);
-      }
-    }
     return [...new Set(out)];
-  }, [visibleFriendPosts, myPosts]);
+  }, [visibleFriendPosts]);
 
   const { data: reactionByPostId, refetch: refetchReactions } = useDeedPostReactionsQuery(uid, reactionPostIds);
   const { data: commentsByPostId, refetch: refetchComments, isRefetching: refetchingComments } =
@@ -145,16 +144,11 @@ export default function DeedFeedScreen() {
         s.add(p.authorUid);
       }
     }
-    for (const p of myPosts ?? []) {
-      if (p.authorUid) {
-        s.add(p.authorUid);
-      }
-    }
     if (uid) {
       s.add(uid);
     }
     return [...s];
-  }, [visibleFriendPosts, myPosts, uid]);
+  }, [visibleFriendPosts, uid]);
   const { data: authorPicByUid, refetch: refetchAuthorPics, isRefetching: refetchingAuthorPics } =
     useDeedFeedAuthorAvatarsQuery(authorUidsForAvatars);
   const viewerFallbackAvatar =
@@ -169,7 +163,7 @@ export default function DeedFeedScreen() {
       const cur = reactionByPostId?.[postId]?.mine ?? null;
       const next = cur === kind ? null : kind;
       if (next != null && !viewerReactionKindSet.has(next)) {
-        Alert.alert('Reaction locked', 'Unlock more reactions in the Kindness Arcade shop.');
+        Alert.alert('Reaction locked', 'Unlock more reactions in the Kindness Arcade.');
         return;
       }
       setReactionMutation.mutate(
@@ -184,54 +178,12 @@ export default function DeedFeedScreen() {
 
   const refetchAll = useCallback(() => {
     void refetchFriendFeed();
-    void refetchMine();
     void refetchReactions();
     void refetchComments();
     void refetchAuthorPics();
-  }, [refetchFriendFeed, refetchMine, refetchReactions, refetchComments, refetchAuthorPics]);
+  }, [refetchFriendFeed, refetchReactions, refetchComments, refetchAuthorPics]);
 
-  const isRefetching = refetchingFriends || refetchingMine || refetchingAuthorPics || refetchingComments;
-
-  const saveAuthorPatch = useCallback(
-    (patch: DeedPostAuthorSettingsPatch) => {
-      if (!uid || !settingsPostId) {
-        return;
-      }
-      authorSettingsMutation.mutate(
-        { uid, postId: settingsPostId, patch },
-        { onError: (e) => Alert.alert('Could not save', mapAuthError(e)) },
-      );
-    },
-    [uid, settingsPostId, authorSettingsMutation],
-  );
-
-  const handlePickCardTint = useCallback(
-    (cardTintId: DeedCardTintId | null) => {
-      saveAuthorPatch({ cardTintId });
-    },
-    [saveAuthorPatch],
-  );
-
-  const confirmDelete = useCallback(
-    (post: DeedPost) => {
-      if (!uid) {
-        return;
-      }
-      Alert.alert('Remove post?', 'This removes the post from the feed.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () =>
-            deleteMutation.mutate(
-              { uid, postId: post.id },
-              { onError: (e) => Alert.alert('Could not remove', mapAuthError(e)) },
-            ),
-        },
-      ]);
-    },
-    [uid, deleteMutation],
-  );
+  const isRefetching = refetchingFriends || refetchingAuthorPics || refetchingComments;
 
   const submitReportForPost = useCallback(
     (post: DeedPost, reason: string) => {
@@ -320,10 +272,13 @@ export default function DeedFeedScreen() {
               uid && item.authorUid && item.authorUid !== uid ? () => openFriendPostMenu(item) : undefined
             }
           />
-          <Image source={{ uri: item.photoUrl }} className="aspect-[4/3] w-full bg-acts-canvas" resizeMode="cover" />
+          <Image source={{ uri: item.photoUrl }} className="aspect-square w-full bg-acts-canvas" resizeMode="cover" />
           <View className="p-4">
             {item.caption.trim().length > 0 ? (
               <AppText variant="body" className="mb-1 text-acts-ink">
+                <AppText variant="body" className="font-semibold text-acts-ink">
+                  {(item.authorDisplayName.trim() || 'Friend') + '  '}
+                </AppText>
                 {item.caption}
               </AppText>
             ) : null}
@@ -343,7 +298,6 @@ export default function DeedFeedScreen() {
                 postId={item.id}
                 postAuthorUid={item.authorUid}
                 viewerUid={uid}
-                viewerCanPostComments={viewerMayComment}
                 comments={(commentsByPostId?.[item.id] ?? []).filter((c) => !blockedUidSet.has(c.authorUid))}
                 onSend={(text) =>
                   addCommentMutation.mutate(
@@ -374,7 +328,6 @@ export default function DeedFeedScreen() {
       onToggleReaction,
       viewerReactionKinds,
       viewerReactionsAllowed,
-      viewerMayComment,
       setReactionMutation.isPending,
       setReactionMutation.variables,
       addCommentMutation,
@@ -384,161 +337,10 @@ export default function DeedFeedScreen() {
     ],
   );
 
-  const myPostsSection = useMemo(() => {
-    if (!uid) {
-      return null;
-    }
-    const list = myPosts ?? [];
-    const settingsBusyFor = (postId: string) =>
-      authorSettingsMutation.isPending && authorSettingsMutation.variables?.postId === postId;
-    return (
-      <View className="mt-8 border-t border-acts-border/60 pt-6">
-        <AppText variant="subtitle" className="mb-1 text-acts-ink">
-          Your shared deeds
-        </AppText>
-        {myPostsPending && list.length === 0 ? (
-          <View className="items-center py-4">
-            <ActivityIndicator size="small" color="#E11D74" />
-          </View>
-        ) : null}
-        {list.map((post) => {
-          const avatarUri = resolveDeedPostAvatar(post, authorPicByUid, uid, viewerFallbackAvatar);
-          const showReactionSection = Boolean(uid);
-          const postReactionsEnabled = post.feedReactionsEnabled !== false;
-          const canReactOnPost = postReactionsEnabled && viewerReactionsAllowed;
-          const reactionBlockedReason = !postReactionsEnabled
-            ? ('post' as const)
-            : !viewerReactionsAllowed
-              ? ('viewer' as const)
-              : undefined;
-          const showComments = post.feedCommentsEnabled !== false;
-          const reactionBusy =
-            setReactionMutation.isPending && setReactionMutation.variables?.postId === post.id;
-          return (
-            <AppCard key={post.id} className="mb-3 overflow-hidden p-0" cardBackgroundColor={resolveDeedPostCardBackground(post)}>
-              <DeedPostHeader
-                displayName={post.authorDisplayName}
-                createdAt={post.createdAt}
-                avatarUri={avatarUri}
-                authorUid={post.authorUid}
-              />
-              <Image
-                source={{ uri: post.photoUrl }}
-                className="aspect-[4/3] w-full bg-acts-canvas"
-                resizeMode="cover"
-              />
-              <View className="p-4">
-                {post.caption.trim().length > 0 ? (
-                  <AppText variant="body" className="mb-3 text-acts-ink" numberOfLines={4}>
-                    {post.caption}
-                  </AppText>
-                ) : null}
-                {showReactionSection ? (
-                  <DeedPostReactionRow
-                    postId={post.id}
-                    kinds={viewerReactionKinds}
-                    summary={reactionByPostId?.[post.id]}
-                    busy={reactionBusy}
-                    canReact={canReactOnPost}
-                    blockedReason={reactionBlockedReason}
-                    onToggle={onToggleReaction}
-                  />
-                ) : null}
-                {showComments ? (
-                  <DeedPostCommentsSection
-                    postId={post.id}
-                    postAuthorUid={post.authorUid}
-                    viewerUid={uid}
-                    viewerCanPostComments={viewerMayComment}
-                    comments={commentsByPostId?.[post.id] ?? []}
-                    onSend={(text) =>
-                      addCommentMutation.mutate(
-                        { postId: post.id, text },
-                        { onError: (e) => Alert.alert('Could not comment', mapAuthError(e)) },
-                      )
-                    }
-                    onDelete={(commentId) =>
-                      deleteCommentMutation.mutate(
-                        { postId: post.id, commentId },
-                        { onError: (e) => Alert.alert('Could not delete', mapAuthError(e)) },
-                      )
-                    }
-                    sendBusy={addCommentMutation.isPending && addCommentMutation.variables?.postId === post.id}
-                    deleteBusy={deleteCommentMutation.isPending}
-                  />
-                ) : null}
-                <View className="mt-3 flex-row flex-wrap gap-2">
-                  <AppButton
-                    title="Card options"
-                    variant="secondary"
-                    className="min-w-[120px] shrink-0"
-                    disabled={
-                      deleteMutation.isPending ||
-                      (authorSettingsMutation.isPending && authorSettingsMutation.variables?.postId === post.id)
-                    }
-                    loading={settingsBusyFor(post.id)}
-                    onPress={() => setSettingsPostId(post.id)}
-                  />
-                  <AppButton
-                    title="Remove from feed"
-                    variant="ghost"
-                    className="min-w-[120px] shrink-0"
-                    disabled={
-                      authorSettingsMutation.isPending ||
-                      (deleteMutation.isPending && deleteMutation.variables?.postId === post.id)
-                    }
-                    loading={deleteMutation.isPending && deleteMutation.variables?.postId === post.id}
-                    onPress={() => confirmDelete(post)}
-                  />
-                </View>
-              </View>
-            </AppCard>
-          );
-        })}
-        {!myPostsPending && list.length === 0 ? (
-          <AppCard className="border-acts-border/70 bg-acts-surface p-4">
-            <AppText variant="subtitle" className="mb-2 text-acts-ink">
-              Share a deed
-            </AppText>
-            <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-              When you finish an act with a photo on Tasks, you can post it here so friends can celebrate with you.
-            </AppText>
-            <AppButton
-              title="Go to Tasks"
-              variant="secondary"
-              className="self-start"
-              onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
-            />
-          </AppCard>
-        ) : null}
-      </View>
-    );
-  }, [
-    uid,
-    myPosts,
-    myPostsPending,
-    deleteMutation.isPending,
-    deleteMutation.variables,
-    authorSettingsMutation.isPending,
-    authorSettingsMutation.variables,
-    confirmDelete,
-    authorPicByUid,
-    viewerFallbackAvatar,
-    reactionByPostId,
-    commentsByPostId,
-    onToggleReaction,
-    viewerReactionKinds,
-    viewerReactionsAllowed,
-    viewerMayComment,
-    setReactionMutation.isPending,
-    setReactionMutation.variables,
-    addCommentMutation,
-    deleteCommentMutation,
-  ]);
-
   if (!uid) {
     return (
-      <Screen>
+      <Screen scroll={false} safeAreaEdges={['left', 'right', 'bottom']}>
+        <DeedFeedTopBar />
         <FadeInView>
           <View className="flex-1 justify-center py-12">
             <AppText variant="body" className="mb-2 text-center text-acts-ink">
@@ -552,12 +354,10 @@ export default function DeedFeedScreen() {
 
   if (friendFeedError) {
     return (
-      <Screen scroll>
+      <Screen scroll safeAreaEdges={['left', 'right', 'bottom']}>
+        <DeedFeedTopBar />
         <FadeInView>
-          <View>
-            <AppText variant="title" className="mb-2">
-              Deed Feed
-            </AppText>
+          <View className="px-4">
             <AppText variant="caption" className="mb-4 text-acts-danger">
               {mapAuthError(friendFeedErr)}
             </AppText>
@@ -568,17 +368,36 @@ export default function DeedFeedScreen() {
     );
   }
 
-  const listEmpty =
-    friendsListReady && !friendFeedPending && (visibleFriendPosts ?? []).length === 0 ? (
+  const listEmpty = allCaughtUp ? (
+    <View className="px-1 py-6">
+      <AppCard className="mb-4 items-center border-acts-green/30 bg-acts-green-soft/40 p-6">
+        <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-acts-green-soft">
+          <Ionicons name="checkmark-done" size={30} color={act.palette.green} />
+        </View>
+        <AppText variant="subtitle" className="mb-1 text-center text-acts-ink">
+          You're all caught up
+        </AppText>
+        <AppText variant="caption" className="mb-4 text-center leading-5 text-acts-muted">
+          You've seen every recent deed from your friends. Check back later, or revisit posts you've already seen.
+        </AppText>
+        <AppButton
+          title="Show all posts"
+          variant="secondary"
+          className="w-full"
+          accessibilityLabel="Show all friend posts again"
+          onPress={() => setShowAllPosts(true)}
+        />
+      </AppCard>
+    </View>
+  ) : friendsListReady && !friendFeedPending && (visibleFriendPosts ?? []).length === 0 ? (
       friendUids.length === 0 ? (
         <View className="px-1 py-6">
           <AppCard className="mb-4 border-acts-border/80 bg-acts-surface p-4">
-            <AppText variant="subtitle" className="mb-2 text-acts-ink">
-              Your feed starts with friends
-            </AppText>
-            <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-              {`Add people on Acts to see their shared deeds here. You can search by username, match people from your contacts, or send an invite.`}
-            </AppText>
+            <TitleWithInfo
+              title="Your feed starts with friends"
+              className="mb-4"
+              infoText="Add people on Acts to see their shared deeds here. You can search by username, match people from your contacts, or send an invite."
+            />
             <AppButton
               title="Find friends"
               variant="secondary"
@@ -595,12 +414,11 @@ export default function DeedFeedScreen() {
       ) : (
         <View className="px-1 py-6">
           <AppCard className="mb-4 border-acts-border/80 bg-acts-surface p-4">
-            <AppText variant="subtitle" className="mb-2 text-acts-ink">
-              No friend deeds yet
-            </AppText>
-            <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-              {`None of your friends have shared a deed photo recently. When they complete an act and share it to the feed, it will show up here.`}
-            </AppText>
+            <TitleWithInfo
+              title="No friend deeds yet"
+              className="mb-4"
+              infoText="None of your friends have shared a deed photo recently. When they complete an act and share it to the feed, it will show up here."
+            />
             <AppButton
               title="Invite or nudge friends"
               variant="secondary"
@@ -618,7 +436,7 @@ export default function DeedFeedScreen() {
     ) : null;
 
   const feedListHeader = useMemo(() => {
-    if (!friendsListReady || (friendFeedPending && (visibleFriendPosts ?? []).length === 0)) {
+    if (!friendsListReady || !seenReady || (friendFeedPending && (visibleFriendPosts ?? []).length === 0)) {
       return (
         <View className="mb-2">
           <View className="items-center py-8">
@@ -632,57 +450,62 @@ export default function DeedFeedScreen() {
     }
     return (
       <View className="mb-3 px-1">
-        <AppCard className="mb-2 border-acts-green/30 bg-acts-green-soft/50 p-3">
-          <AppText variant="subtitle" className="mb-1 text-acts-ink">
-            Friend posts
-          </AppText>
-          <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-            {`This list is only people you are friends with on Acts. Use the header button or below to add friends and manage requests.`}
-          </AppText>
-          <AppButton
-            title="Friends & requests"
-            variant="secondary"
-            className="self-start"
+        <View className="mb-3 flex-row gap-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open friends and requests"
             onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
-          />
-        </AppCard>
+            className="flex-1 flex-row items-center justify-center rounded-2xl border border-acts-green/35 bg-acts-green-soft/60 px-3 py-2.5 active:opacity-85">
+            <Ionicons name="people-outline" size={18} color={act.palette.green} />
+            <AppText variant="subtitle" className="ml-2 font-semibold text-acts-green">
+              Friends
+            </AppText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open your shared deeds"
+            onPress={() => router.push('/(app)/my-memories' as Href)}
+            className="flex-1 flex-row items-center justify-center rounded-2xl border border-acts-border bg-acts-surface px-3 py-2.5 active:opacity-85">
+            <Ionicons name="images-outline" size={18} color={act.palette.ink} />
+            <AppText variant="subtitle" className="ml-2 font-semibold text-acts-ink">
+              Your deeds
+            </AppText>
+          </Pressable>
+        </View>
+        {showAllPosts && visibleFriendPosts.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Show only new posts"
+            onPress={() => setShowAllPosts(false)}
+            className="mb-1 flex-row items-center self-start active:opacity-70">
+            <Ionicons name="checkmark-circle-outline" size={16} color={act.palette.muted} />
+            <AppText variant="caption" className="ml-1 text-acts-muted">
+              Showing all posts · Tap to show only new
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
     );
-  }, [friendsListReady, friendFeedPending, visibleFriendPosts]);
+  }, [act.palette.green, act.palette.ink, act.palette.muted, friendsListReady, seenReady, friendFeedPending, visibleFriendPosts, showAllPosts]);
 
   return (
-    <Screen scroll={false}>
-      <Fragment>
-        <FlatList
-          className="flex-1"
-          data={visibleFriendPosts ?? []}
-          keyExtractor={(item) => item.id}
-          renderItem={renderFriendItem}
-          ListHeaderComponent={feedListHeader}
-          ListEmptyComponent={listEmpty}
-          ListFooterComponent={myPostsSection}
-          contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetchAll()} tintColor="#E11D74" />
-          }
-          showsVerticalScrollIndicator={false}
-        />
-        <DeedPostCardSettingsModal
-          visible={settingsPost != null}
-          selectedTintId={settingsPost?.cardTintId ?? null}
-          reactionsOn={settingsPost?.feedReactionsEnabled !== false}
-          commentsOn={settingsPost?.feedCommentsEnabled !== false}
-          saving={authorSettingsMutation.isPending}
-          onClose={() => {
-            if (!authorSettingsMutation.isPending) {
-              setSettingsPostId(null);
-            }
-          }}
-          onPickTint={handlePickCardTint}
-          onChangeReactions={(on) => saveAuthorPatch({ feedReactionsEnabled: on })}
-          onChangeComments={(on) => saveAuthorPatch({ feedCommentsEnabled: on })}
-        />
-      </Fragment>
+    <Screen scroll={false} safeAreaEdges={['left', 'right', 'bottom']}>
+      <DeedFeedTopBar />
+      <FlatList
+        className="flex-1"
+        data={feedPosts}
+        keyExtractor={(item) => item.id}
+        renderItem={renderFriendItem}
+        ListHeaderComponent={feedListHeader}
+        ListEmptyComponent={listEmpty}
+        contentContainerStyle={{ paddingTop: 14, paddingBottom: 32, flexGrow: 1 }}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={() => void refetchAll()} tintColor="#E11D74" />
+        }
+        showsVerticalScrollIndicator={false}
+      />
     </Screen>
   );
 }

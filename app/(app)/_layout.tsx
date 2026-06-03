@@ -1,20 +1,17 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
+import { ActivityNotificationsSync } from '@/features/notifications/ActivityNotificationsSync';
 import { NotificationNavigationSync } from '@/features/notifications/NotificationNavigationSync';
 import { RetentionNotificationsSync } from '@/features/retention/RetentionNotificationsSync';
 import { HeaderBackLabel } from '@/shared/components/HeaderBackLabel';
+import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 function AppStackScreens() {
   const act = useActAppearance();
-  const lightHeader = {
-    headerShadowVisible: false as const,
-    headerStyle: { backgroundColor: act.palette.canvas },
-    headerTintColor: act.palette.ink,
-    headerTitleStyle: { color: act.palette.ink, fontWeight: '700' as const },
-  };
+  const lightHeader = stackHeaderChrome(act);
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
@@ -24,6 +21,10 @@ function AppStackScreens() {
         options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
       />
       <Stack.Screen name="personalization-choice" />
+      <Stack.Screen
+        name="my-memories"
+        options={{ ...lightHeader, headerShown: false, animation: 'slide_from_right' }}
+      />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="profile" />
@@ -46,6 +47,30 @@ function AppStackScreens() {
           animation: 'slide_from_right',
         }}
       />
+      <Stack.Screen
+        name="leaderboards"
+        options={{
+          ...lightHeader,
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          ...lightHeader,
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="challenges"
+        options={{
+          ...lightHeader,
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }
@@ -61,6 +86,7 @@ export default function AppGroupLayout() {
   return (
     <>
       <RetentionNotificationsSync />
+      <ActivityNotificationsSync />
       <NotificationNavigationSync />
       <FriendsGateGuard>
         <AppStackScreens />

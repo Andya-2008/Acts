@@ -12,7 +12,7 @@ import {
   type ActsAppSettings,
   type ProfileStatVisibility,
 } from '@/shared/types/actsSettings';
-import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { getFirebaseAuth } from '@/shared/services/firebase/client';
 import { useAuthStore } from '@/shared/stores/authStore';
 
@@ -20,8 +20,9 @@ function BlockedAccountRow({ viewerUid, blockedUid }: { viewerUid: string; block
   const { data } = useUserInfoQuery(blockedUid);
   const unblock = useUnblockUserMutation(viewerUid);
   const full = [data?.First, data?.Last].filter(Boolean).join(' ').trim();
-  const u = data?.Username?.trim();
-  const title = full.length > 0 ? full : u ? `@${u.replace(/^@+/, '')}` : 'Acts member';
+  const handle = data?.Username?.trim() ? `@${data.Username.trim().replace(/^@+/, '')}` : '';
+  const title = full.length > 0 ? full : handle || 'Acts member';
+  const subtitle = full.length > 0 ? handle : '';
 
   return (
     <View className="mb-3 flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
@@ -29,9 +30,11 @@ function BlockedAccountRow({ viewerUid, blockedUid }: { viewerUid: string; block
         <AppText variant="subtitle" className="text-acts-ink" numberOfLines={1}>
           {title}
         </AppText>
-        <AppText variant="caption" className="text-acts-muted" numberOfLines={1}>
-          {`ID ${blockedUid.slice(0, 8)}…`}
-        </AppText>
+        {subtitle ? (
+          <AppText variant="caption" className="text-acts-muted" numberOfLines={1}>
+            {subtitle}
+          </AppText>
+        ) : null}
       </View>
       <AppButton
         title="Unblock"
@@ -115,23 +118,20 @@ export default function SettingsPrivacyScreen() {
           className="mb-6"
         />
 
-        <AppText variant="title" className="mb-2 text-acts-ink">
-          Profile Visibility
-        </AppText>
-        <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-          Your bio (Account settings) is always public to every signed-in Acts member, including people who are not
-          your friends. The options below do not change bio visibility.
-        </AppText>
+        <TitleWithInfo
+          title="Profile Visibility"
+          variant="title"
+          className="mb-2"
+          infoText="Your bio (Account settings) is always public to every signed-in Acts member, including people who are not your friends. The options below do not change bio visibility."
+        />
 
         <FriendsOrMeRow
           label="Deed Feed"
           value={base.deedFeedVisibility}
           onPick={(v) => patch({ deedFeedVisibility: v })}
           disabled={mutation.isPending}
+          infoText="New accounts default to friends-only on the deed feed. You can widen this anytime."
         />
-        <AppText variant="caption" className="-mt-1 mb-3 text-acts-muted">
-          New accounts default to friends-only on the deed feed. You can widen this anytime.
-        </AppText>
         <FriendsOrMeRow
           label="Task History"
           value={base.taskHistoryVisibility}
@@ -183,17 +183,16 @@ export default function SettingsPrivacyScreen() {
           value={base.reactionsEnabled}
           onPick={(v) => patch({ reactionsEnabled: v })}
           disabled={mutation.isPending}
+          infoText="Turning this off hides your react buttons; everyone can still see cheers on posts."
+          showDivider={false}
         />
-        <AppText variant="caption" className="mb-4 -mt-2 leading-5 text-acts-muted">
-          Turning this off hides your react buttons; everyone can still see cheers on posts.
-        </AppText>
 
-        <AppText variant="title" className="mt-8 mb-2 text-acts-ink">
-          Blocked accounts
-        </AppText>
-        <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-          {`Blocking also ends any friendship or pending request with that person. Their deed posts stay out of your feed until you unblock them.`}
-        </AppText>
+        <TitleWithInfo
+          title="Blocked accounts"
+          variant="title"
+          className="mb-4 mt-8"
+          infoText="Blocking also ends any friendship or pending request with that person. Their deed posts stay out of your feed until you unblock them."
+        />
         {uid && blockedUids.length === 0 ? (
           <AppCard className="mb-2 p-4">
             <AppText variant="body" className="text-acts-muted">

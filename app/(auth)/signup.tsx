@@ -9,8 +9,8 @@ import { Alert, Image, Platform, Pressable, View } from 'react-native';
 import { registerNewUser } from '@/features/auth/services/authService';
 import { markPostSignupFriendsGatePending } from '@/features/friends/friendsGetStartedStorage';
 import { AuthBrandingHeader } from '@/features/auth/components/AuthBrandingHeader';
-import { AuthMethodDivider } from '@/features/auth/components/AuthMethodDivider';
-import { GoogleSignInSection } from '@/features/auth/components/GoogleSignInSection';
+import { AlternateSignInMethods } from '@/features/auth/components/AlternateSignInMethods';
+import { shouldShowAppleAuthOnAuthScreens } from '@/shared/config/appleAuthEnv';
 import { shouldShowGoogleAuthOnAuthScreens } from '@/shared/config/googleAuthEnv';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { signupSchema, type SignupFormValues } from '@/features/auth/validation/authSchemas';
@@ -277,11 +277,8 @@ export default function SignupScreen() {
 
           <AppButton title="Create account" loading={isSubmitting} onPress={onSubmit} />
 
-          {shouldShowGoogleAuthOnAuthScreens() ? (
-            <>
-              <AuthMethodDivider />
-              <GoogleSignInSection intent="sign-up" />
-            </>
+          {shouldShowGoogleAuthOnAuthScreens() || shouldShowAppleAuthOnAuthScreens() ? (
+            <AlternateSignInMethods intent="sign-up" />
           ) : null}
         </AppCard>
 

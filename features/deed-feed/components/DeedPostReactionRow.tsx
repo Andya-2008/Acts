@@ -58,7 +58,7 @@ export function DeedPostReactionRow({
   );
 
   return (
-    <View className="mt-3 border-t border-acts-border/50 pt-3">
+    <View className="mt-4 border-t border-acts-border/40 pt-4">
       <View className="mb-2 flex-row flex-wrap items-center justify-between gap-2">
         <AppText variant="caption" className="font-semibold text-acts-muted">
           React

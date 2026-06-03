@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, type Href } from 'expo-router';
+import { router, Stack, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, Share, View } from 'react-native';
 
@@ -20,7 +20,8 @@ import type { FriendListItem } from '@/features/friends/services/friendsReposito
 import { getBlockedUidSet } from '@/features/safety/blockedUids';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { getInviteShareMessage } from '@/shared/config/appInvite';
-import { ActsTextInput, AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { DeedFeedFriendsTopBar } from '@/features/deed-feed/components/DeedFeedFriendsTopBar';
+import { ActsTextInput, AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import { useAuthStore } from '@/shared/stores/authStore';
 
@@ -301,20 +302,24 @@ export default function FriendsScreen() {
 
   if (!uid) {
     return (
-      <Screen>
+      <Screen safeAreaEdges={['left', 'right', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <DeedFeedFriendsTopBar />
         <AppText variant="body">Sign in to use friends.</AppText>
       </Screen>
     );
   }
 
   return (
-    <Screen scroll>
-      <AppText variant="title" className="mb-2">
-        Friends
-      </AppText>
-      <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-        {`Add people you trust to see their deed photos, react, and comment. Search by username, match contacts who are already on Acts, or share an invite.`}
-      </AppText>
+    <Screen scroll safeAreaEdges={['left', 'right', 'bottom']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <DeedFeedFriendsTopBar />
+      <TitleWithInfo
+        title="Friends"
+        showTitle={false}
+        className="mb-4"
+        infoText="Add people you trust to see their deed photos, react, and comment. Search by username, match contacts who are already on Acts, or share an invite."
+      />
 
       {localError ? (
         <AppText variant="caption" className="mb-4 text-acts-danger">
@@ -350,9 +355,12 @@ export default function FriendsScreen() {
         />
       </AppCard>
 
-      <AppText variant="label" className="mb-2">
-        Contacts on Acts
-      </AppText>
+      <TitleWithInfo
+        title="Contacts on Acts"
+        variant="label"
+        className="mb-2"
+        infoText="Scan your contacts to find people already on Acts. If none match, ask friends to set a username in Profile and try again, or use Add by username above. Matches you blocked are hidden until you unblock them in Settings → Privacy."
+      />
       <AppCard className="mb-6">
         <AppButton
           title={contactsOnActs.loading ? 'Scanning contacts…' : 'Find friends from contacts'}
@@ -408,8 +416,8 @@ export default function FriendsScreen() {
         contactsOnActs.matches.length === 0 &&
         !contactsOnActs.permissionDenied &&
         !contactsOnActs.loadError ? (
-          <AppText variant="caption" className="mt-3 leading-5 text-acts-muted">
-            {`None of your contacts matched an Acts account yet. Ask friends to set a username in Profile, then use “Add by username” above — or try scanning again after they join.`}
+          <AppText variant="caption" className="mt-3 text-acts-muted">
+            No contacts matched an Acts account yet.
           </AppText>
         ) : null}
         {contactsOnActs.searched &&
@@ -418,8 +426,8 @@ export default function FriendsScreen() {
         visibleContactMatches.length === 0 &&
         !contactsOnActs.permissionDenied &&
         !contactsOnActs.loadError ? (
-          <AppText variant="caption" className="mt-3 leading-5 text-acts-muted">
-            Matches are hidden because you blocked those accounts. You can unblock them in Settings → Privacy.
+          <AppText variant="caption" className="mt-3 text-acts-muted">
+            Matches hidden (blocked accounts).
           </AppText>
         ) : null}
       </AppCard>
@@ -521,12 +529,11 @@ export default function FriendsScreen() {
         </View>
       ) : (friends.data ?? []).length > 0 ? (
         <AppCard className="mb-8 p-4">
-          <AppText variant="subtitle" className="mb-2 text-acts-ink">
-            No friends to show here
-          </AppText>
-          <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-            {`Blocking removes someone from your friend list, but your app may need a moment to refresh. Pull to refresh, or unblock people in Settings → Privacy if you want to send a new request.`}
-          </AppText>
+          <TitleWithInfo
+            title="No friends to show here"
+            className="mb-4"
+            infoText="Blocking removes someone from your friend list, but your app may need a moment to refresh. Pull to refresh, or unblock people in Settings → Privacy if you want to send a new request."
+          />
           <AppButton
             title="Open Privacy"
             variant="secondary"
@@ -537,12 +544,11 @@ export default function FriendsScreen() {
         </AppCard>
       ) : (
         <AppCard className="mb-8">
-          <AppText variant="subtitle" className="mb-2 text-acts-ink">
-            No friends yet
-          </AppText>
-          <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-            When someone accepts your request, they will appear here and their deeds will show on the Deed Feed tab.
-          </AppText>
+          <TitleWithInfo
+            title="No friends yet"
+            className="mb-4"
+            infoText="When someone accepts your request, they will appear here and their deeds will show on the Deed Feed tab."
+          />
           <AppButton
             title="Open Deed Feed"
             variant="secondary"

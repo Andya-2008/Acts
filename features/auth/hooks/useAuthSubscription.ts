@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 import { isFirebaseWebConfigConfigured } from '@/shared/config/env';
 import { getFirebaseAuth } from '@/shared/services/firebase/client';
+import { clearSentryUserContext, setSentryUserContext } from '@/shared/services/sentry';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useCurrencyStore } from '@/shared/stores/currencyStore';
 
@@ -25,6 +26,11 @@ export function useAuthSubscription(): void {
         useCurrencyStore.getState().resetSession();
       }
       lastUid = nextUid;
+      if (nextUser?.uid) {
+        setSentryUserContext(nextUser.uid, nextUser.email ?? undefined, nextUser.displayName ?? undefined);
+      } else {
+        clearSentryUserContext();
+      }
       setUser(nextUser);
       setAuthReady(true);
     });

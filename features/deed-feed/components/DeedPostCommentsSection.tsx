@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, type Href } from 'expo-router';
 
 import { formatRelativeFeedTime } from '@/features/deed-feed/utils/formatRelativeFeedTime';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
@@ -87,8 +86,6 @@ type DeedPostCommentsSectionProps = {
   postId: string;
   postAuthorUid: string;
   viewerUid: string;
-  /** When false, comments are read-only for this viewer until they unlock commenting in the shop. */
-  viewerCanPostComments: boolean;
   comments: DeedComment[];
   onSend: (text: string) => void;
   onDelete: (commentId: string) => void;
@@ -100,7 +97,6 @@ export function DeedPostCommentsSection({
   postId,
   postAuthorUid,
   viewerUid,
-  viewerCanPostComments,
   comments,
   onSend,
   onDelete,
@@ -132,9 +128,7 @@ export function DeedPostCommentsSection({
             </AppText>
           </View>
           <AppText variant="caption" className="leading-5 text-acts-muted">
-            {viewerCanPostComments
-              ? 'Be the first to leave a note of encouragement — short and kind works best.'
-              : 'Comments are visible here once people reply. Unlock posting from the shop to join the conversation.'}
+            Be the first to leave a note of encouragement — short and kind works best.
           </AppText>
         </View>
       ) : (
@@ -151,49 +145,32 @@ export function DeedPostCommentsSection({
           ))}
         </View>
       )}
-      {viewerCanPostComments ? (
-        <>
-          <ActsTextInput
-            value={draft}
-            onChangeText={(t) => setDraft(t.slice(0, MAX))}
-            placeholder="Write a comment…"
-            placeholderTextColor="#9CA3AF"
-            multiline
-            textAlignVertical="top"
-            editable={!sendBusy}
-            accessibilityLabel="Comment on this deed"
-            accessibilityHint={`Up to ${MAX} characters`}
-            className="mb-2 min-h-[48px] rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
-            style={getActsTextInputBoxStyle({ horizontalPadding: 12 })}
-          />
-          <View className="flex-row items-center justify-between">
-            <AppText variant="caption" className="text-acts-muted">
-              {draft.length}/{MAX}
-            </AppText>
-            <AppButton
-              title="Send"
-              className="min-w-[100px]"
-              disabled={sendBusy || !draft.trim()}
-              loading={sendBusy}
-              accessibilityLabel="Send comment"
-              onPress={submit}
-            />
-          </View>
-        </>
-      ) : (
-        <View className="rounded-2xl border border-acts-border/70 bg-acts-canvas/90 px-3 py-3">
-          <AppText variant="caption" className="text-acts-muted">
-            Unlock commenting once in the shop to cheer friends with text replies.
-          </AppText>
-          <AppButton
-            title="Open shop"
-            variant="secondary"
-            className="mt-2 self-start"
-            accessibilityLabel="Open Kindness Arcade shop to unlock commenting"
-            onPress={() => router.push('/(app)/shop' as Href)}
-          />
-        </View>
-      )}
+      <ActsTextInput
+        value={draft}
+        onChangeText={(t) => setDraft(t.slice(0, MAX))}
+        placeholder="Write a comment…"
+        placeholderTextColor="#9CA3AF"
+        multiline
+        textAlignVertical="top"
+        editable={!sendBusy}
+        accessibilityLabel="Comment on this deed"
+        accessibilityHint={`Up to ${MAX} characters`}
+        className="mb-2 min-h-[48px] rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
+        style={getActsTextInputBoxStyle({ horizontalPadding: 12 })}
+      />
+      <View className="flex-row items-center justify-between">
+        <AppText variant="caption" className="text-acts-muted">
+          {draft.length}/{MAX}
+        </AppText>
+        <AppButton
+          title="Send"
+          className="min-w-[100px]"
+          disabled={sendBusy || !draft.trim()}
+          loading={sendBusy}
+          accessibilityLabel="Send comment"
+          onPress={submit}
+        />
+      </View>
     </View>
   );
 }

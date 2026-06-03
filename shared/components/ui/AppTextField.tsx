@@ -8,7 +8,7 @@ import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMe
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 
 export type AppTextFieldProps = TextInputProps & {
-  label: string;
+  label?: string;
   errorMessage?: string;
 };
 
@@ -22,9 +22,11 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
 
   return (
     <View className="mb-4">
-      <AppText variant="label" className="mb-1.5">
-        {label}
-      </AppText>
+      {label ? (
+        <AppText variant="label" className="mb-1.5">
+          {label}
+        </AppText>
+      ) : null}
       <ActsTextInput
         ref={ref}
         placeholderTextColor={act.palette.muted}

@@ -49,3 +49,5 @@ scripts/acts-firebase-admin.json
 # generated native folders
 /ios
 /android
+
+.env.local

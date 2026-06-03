@@ -4,7 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import { YesNoRow } from '@/features/settings/components/SettingsRows';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { AppText, Screen } from '@/shared/components/ui';
+import { AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import {
   appearancePresetChipStyle,
@@ -32,12 +32,11 @@ export default function SettingsAppearanceScreen() {
   return (
     <Screen scroll>
       <View className="pb-8">
-        <AppText variant="title" className="mb-1 text-acts-ink">
-          Appearance
-        </AppText>
-        <AppText variant="caption" className="mb-6 text-acts-muted">
-          Syncs to your profile. Extra backdrops unlock in the Kindness Arcade shop.
-        </AppText>
+        <TitleWithInfo
+          title="Appearance"
+          showTitle={false}
+          infoText="Syncs to your profile. Extra backdrops unlock in the Kindness Arcade."
+        />
 
         <AppText variant="label" className="mb-2 text-acts-muted">
           Color theme
@@ -87,15 +86,14 @@ export default function SettingsAppearanceScreen() {
           value={base.appearanceComfortableText}
           onPick={(v) => void mutation.mutateAsync({ appearanceComfortableText: v })}
           disabled={mutation.isPending}
+          infoText="Works with iOS Settings → Accessibility → Larger Text. In-app text can scale up more when this is on."
         />
-        <AppText variant="caption" className="mb-4 -mt-1 leading-5 text-acts-muted">
-          Works with iOS Settings → Accessibility → Larger Text. In-app text can scale up more when this is on.
-        </AppText>
         <YesNoRow
           label="Roomier screen margins"
           value={base.appearanceSpaciousLayout}
           onPick={(v) => void mutation.mutateAsync({ appearanceSpaciousLayout: v })}
           disabled={mutation.isPending}
+          showDivider={false}
         />
       </View>
     </Screen>

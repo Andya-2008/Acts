@@ -72,6 +72,17 @@ module.exports = ({ config }) => {
   if (!plugins.includes('expo-dev-client')) {
     plugins.push('expo-dev-client');
   }
+  // Sentry native config (crash reporting). Sourcemap upload during EAS build is
+  // skipped automatically unless SENTRY_AUTH_TOKEN + org/project are provided.
+  if (!plugins.some((p) => p === '@sentry/react-native' || (Array.isArray(p) && p[0] === '@sentry/react-native'))) {
+    const sentryOrg = stripEnvValue(process.env.SENTRY_ORG);
+    const sentryProject = stripEnvValue(process.env.SENTRY_PROJECT);
+    plugins.push(
+      sentryOrg && sentryProject
+        ? ['@sentry/react-native', { organization: sentryOrg, project: sentryProject }]
+        : '@sentry/react-native',
+    );
+  }
 
   return {
     ...config,

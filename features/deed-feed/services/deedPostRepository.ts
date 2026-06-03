@@ -101,6 +101,11 @@ export async function fetchMyDeedPosts(uid: string, max = 30): Promise<DeedPost[
   return snap.docs.map((d) => parsePost(d.id, d.data()));
 }
 
+/** Deed posts authored by any user (used for the memories grid on a profile). */
+export async function fetchUserDeedPosts(authorUid: string, max = 30): Promise<DeedPost[]> {
+  return fetchMyDeedPosts(authorUid, max);
+}
+
 export async function createDeedPostWithPhoto(input: {
   uid: string;
   authorDisplayName: string;

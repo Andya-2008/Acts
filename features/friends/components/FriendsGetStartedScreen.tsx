@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Share, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { HeaderIconButton } from '@/shared/components/HeaderIconButton';
 
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import {
@@ -14,7 +16,7 @@ import {
 } from '@/features/friends/friendsGetStartedStorage';
 import { useContactsOnActsMatches } from '@/features/friends/hooks/useContactsOnActsMatches';
 import { useFriendUidsQuery, useSendFriendRequestMutation } from '@/features/friends/hooks/useFriendsQueries';
-import { AppButton, AppCard, AppText } from '@/shared/components/ui';
+import { AppButton, AppCard, AppText, TitleWithInfo } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useFriendsGateRefreshStore } from '@/shared/stores/friendsGateRefreshStore';
@@ -99,7 +101,6 @@ type FriendsGetStartedScreenProps = {
 export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenProps) {
   const uid = useAuthStore((s) => s.user?.uid);
   const act = useActAppearance();
-  const insets = useSafeAreaInsets();
   const friendsQuery = useFriendUidsQuery(uid);
   const [inviteDone, setInviteDone] = useState(false);
   const [contactDone, setContactDone] = useState(false);
@@ -199,23 +200,20 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
   const busy = sendMutation.isPending || gateChecking;
 
   const dismissHeader = (
-    <View
-      className="flex-row justify-start"
-      style={{ paddingTop: insets.top + 4, paddingLeft: Math.max(insets.left, 16) }}>
-      <Pressable
-        accessibilityRole="button"
+    <View className="flex-row justify-start px-4 pb-1 pt-1">
+      <HeaderIconButton
+        name="close"
+        size={28}
         accessibilityLabel="Skip for now"
-        hitSlop={12}
+        className="-ml-1"
         onPress={() => void onSkip()}
-        className="-ml-1 rounded-lg p-1 active:opacity-70">
-        <Ionicons name="close" size={28} color={act.palette.ink} />
-      </Pressable>
+      />
     </View>
   );
 
   if (!uid) {
     return (
-      <SafeAreaView className="flex-1 bg-acts-canvas" edges={['bottom', 'left', 'right']}>
+      <SafeAreaView className="flex-1 bg-acts-canvas" edges={['top', 'bottom', 'left', 'right']}>
         <View className="flex-1 px-5 py-8">
           <AppText variant="body" className="text-acts-muted">
             Sign in to continue.
@@ -227,7 +225,7 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
 
   if (gateChecking || !friendsQuery.isFetched) {
     return (
-      <SafeAreaView className="flex-1 bg-acts-canvas" edges={['bottom', 'left', 'right']}>
+      <SafeAreaView className="flex-1 bg-acts-canvas" edges={['top', 'bottom', 'left', 'right']}>
         {dismissHeader}
         <View className="flex-1 items-center justify-center gap-3 px-6">
           <ActivityIndicator size="large" color={act.palette.green} />
@@ -242,7 +240,7 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
   const stepDone = inviteDone || contactDone;
 
   return (
-    <SafeAreaView className="flex-1 bg-acts-canvas" edges={['bottom', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-acts-canvas" edges={['top', 'bottom', 'left', 'right']}>
       {dismissHeader}
       <ScrollView
         className="flex-1"
@@ -259,7 +257,8 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
             Invite a friend to finish signing up
           </AppText>
           <AppText variant="body" className="max-w-md text-center leading-6 text-acts-muted">
-            Acts is built for people you know. Share an invite link or add someone from your contacts to open the app.
+            Acts is built for people you know. Share an invite link or add someone from your contacts to
+            get started.
           </AppText>
         </View>
 
@@ -269,13 +268,13 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
           </AppText>
         ) : null}
 
-        <AppText variant="label" className="mb-2 text-acts-ink">
-          Option 1 · Share invite link
-        </AppText>
+        <TitleWithInfo
+          title="Option 1 · Share invite link"
+          variant="label"
+          className="mb-2"
+          infoText="Send your link by text, email, or social apps. You can add more friends before continuing."
+        />
         <AppCard className="mb-5">
-          <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-            Send your link by text, email, or social apps. You can add more friends before continuing.
-          </AppText>
           <AppButton
             title={inviteDone ? 'Share again' : 'Share invite link'}
             variant={inviteDone ? 'secondary' : 'primary'}
@@ -285,13 +284,13 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
           />
         </AppCard>
 
-        <AppText variant="label" className="mb-2 text-acts-ink">
-          Option 2 · Add from contacts
-        </AppText>
+        <TitleWithInfo
+          title="Option 2 · Add from contacts"
+          variant="label"
+          className="mb-2"
+          infoText="We only use contacts on your device to find people already on Acts. Tap Add friend next to someone to send a friend request."
+        />
         <AppCard className="mb-5">
-          <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-            We only use contacts on your device to find people already on Acts. Tap Add next to someone to send a friend request.
-          </AppText>
           <AppButton
             title={contactsOnActs.loading ? 'Scanning contacts…' : 'Find friends from contacts'}
             variant="secondary"

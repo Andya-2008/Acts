@@ -13,6 +13,7 @@ import {
   useSendFriendRequestToUidMutation,
 } from '@/features/friends/hooks/useFriendsQueries';
 import type { MutualFriendSummary } from '@/features/friends/services/friendsRepository';
+import { ProfileMemoriesSection } from '@/features/deed-feed/components/ProfileMemoriesSection';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { getServiceRankForLifetimeXp } from '@/features/user-profile/config/xpServiceRanks';
 import { computeCompletionStreak } from '@/features/user-profile/utils/computeCompletionStreak';
@@ -23,7 +24,8 @@ import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import type { UserInfoRead } from '@/shared/types/userInfo';
 import { normalizeProfileBio } from '@/shared/constants/profileBio';
 import { profileBioVisibleForViewer, profileStatVisibleForViewer } from '@/shared/utils/profileStatVisibility';
-import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { HeaderBackIconButton } from '@/shared/components/HeaderIconButton';
+import { AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { profileActionAccessibilityLabel } from '@/shared/utils/accessibilityMotion';
@@ -51,12 +53,8 @@ function displayName(info: UserInfoRead | null | undefined): string {
 }
 
 function ProfileStackBackButton() {
-  const act = useActAppearance();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Back"
-      hitSlop={12}
+    <HeaderBackIconButton
       onPress={() => {
         if (router.canGoBack()) {
           router.back();
@@ -64,9 +62,7 @@ function ProfileStackBackButton() {
           router.replace('/(app)/(tabs)/profile' as Href);
         }
       }}
-      className="-ml-1 rounded-lg p-1 active:opacity-70">
-      <Ionicons name="chevron-back" size={28} color={act.palette.ink} />
-    </Pressable>
+    />
   );
 }
 
@@ -440,14 +436,17 @@ export default function PublicProfileScreen() {
 
       {relationActionsReady && !isSelf && myUid ? (
         <View className="mt-6 border-t border-acts-border/60 pt-6">
-          <AppText variant="subtitle" className="mb-2 text-acts-ink">
-            Safety
-          </AppText>
+          <TitleWithInfo
+            title="Safety"
+            className="mb-2"
+            infoText={
+              isBlocked
+                ? 'You blocked this person. Their deed posts stay hidden until you unblock them. They are not on your friend list while blocked.'
+                : 'Blocking hides their deed posts and removes any friendship or pending request. You can unblock accounts in Settings → Privacy.'
+            }
+          />
           {isBlocked ? (
             <>
-              <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-                {`You blocked this person. Their deed posts stay hidden until you unblock them. They are not on your friend list while blocked.`}
-              </AppText>
               <AppButton
                 title="Unblock"
                 variant="secondary"
@@ -498,6 +497,14 @@ export default function PublicProfileScreen() {
             <MutualFriendsInstagramRow mutuals={mutualFriendsQuery.data!} />
           ) : null}
 
+          <ProfileMemoriesSection
+            authorUid={profileUid}
+            canView={acts.deedFeedVisibility !== 'only_me'}
+            lockedHint={`${profileName.replace(/^@/, '')} keeps their shared deeds private.`}
+            title="Deeds"
+          />
+
+          <View className="mt-8 border-t border-acts-border/60 pt-6" />
           <AppText variant="subtitle" className="mb-1 text-acts-ink">
             About them
           </AppText>

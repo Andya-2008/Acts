@@ -1,5 +1,195 @@
 [
   {
+    "taskId": "task_0000087",
+    "cadence": "daily",
+    "textShort": "Step outside and watch the sunrise or sunset.",
+    "textLong": "Acts can be for you, too. Step outside (or to a window) and actually watch the sky change as the sun comes up or goes down. Put your phone away for a few minutes and just take it in. If you want, snap a quick photo of the sky as your act memory.",
+    "active": true,
+    "category": "self-care",
+    "difficulty": 1,
+    "minAge": 6,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Nothing"
+    ],
+    "picture": true,
+    "sortKey": 368
+  },
+  {
+    "taskId": "task_0000088",
+    "cadence": "daily",
+    "textShort": "Send a friend a funny meme or video to make them laugh.",
+    "textLong": "Find something that genuinely made you laugh—a meme, a clip, or a silly photo—and send it to a friend just to brighten their day. No agenda, no reply needed; just a little joy passed along.",
+    "active": true,
+    "category": "community",
+    "difficulty": 1,
+    "minAge": 8,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Phone"
+    ],
+    "picture": false,
+    "sortKey": 367
+  },
+  {
+    "taskId": "task_0000089",
+    "cadence": "daily",
+    "textShort": "Take a 10-minute walk and notice three things you've never seen before.",
+    "textLong": "Head out for a short walk—around the block, campus, or a nearby path—and slow down enough to spot three things you have never noticed: a funny sign, a cool plant, a hidden detail on a building. It is a tiny adventure that resets your head. Snap a photo of one of your finds as your act memory.",
+    "active": true,
+    "category": "adventure",
+    "difficulty": 1,
+    "minAge": 6,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Nothing"
+    ],
+    "picture": true,
+    "sortKey": 366
+  },
+  {
+    "taskId": "task_0000090",
+    "cadence": "daily",
+    "textShort": "Water a plant—or talk to it!",
+    "textLong": "Give a plant a little love today: water it, move it toward the light, dust off its leaves, or just say hi. Caring for something living is a small, grounding act of kindness toward the world around you. Snap a photo of your plant as your act memory if you like.",
+    "active": true,
+    "category": "environmental",
+    "difficulty": 1,
+    "minAge": 6,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Water"
+    ],
+    "picture": true,
+    "sortKey": 365
+  },
+  {
+    "taskId": "task_0000091",
+    "cadence": "daily",
+    "textShort": "Write down three things that went well today.",
+    "textLong": "Before the day ends, jot down three things that went well—big or tiny. A good meal, a laugh, finishing a task, a kind word. Noticing the good on purpose makes more of it stand out tomorrow.",
+    "active": true,
+    "category": "self-care",
+    "difficulty": 1,
+    "minAge": 8,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Journal or notes app"
+    ],
+    "picture": false,
+    "sortKey": 364
+  },
+  {
+    "taskId": "task_0000092",
+    "cadence": "daily",
+    "textShort": "Spend 15 minutes on a hobby you keep \"not having time\" for.",
+    "textLong": "Pick that hobby you always say you will get back to—drawing, an instrument, a game, writing, building something—and give it 15 honest minutes today. No pressure to be productive or good; just enjoy it. Snap a photo of what you made or did as your act memory.",
+    "active": true,
+    "category": "self-care",
+    "difficulty": 2,
+    "minAge": 8,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Varies by hobby"
+    ],
+    "picture": true,
+    "sortKey": 363
+  },
+  {
+    "taskId": "task_0000093",
+    "cadence": "weekly",
+    "textShort": "Plan and cook a brand-new recipe.",
+    "textLong": "Pick a recipe you have never made, grab what you need, and cook it this week. It does not have to turn out perfectly—the fun is in trying something new in the kitchen. Take a photo of your finished dish as your act memory.",
+    "active": true,
+    "category": "creative",
+    "difficulty": 2,
+    "minAge": 10,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Ingredients"
+    ],
+    "picture": true,
+    "sortKey": 272
+  },
+  {
+    "taskId": "task_0000094",
+    "cadence": "weekly",
+    "textShort": "Have a screen-free evening—board game, puzzle, or a book.",
+    "textLong": "Pick one evening this week to put the screens away. Play a board game, do a puzzle, read, or just talk. Notice how different a night feels without scrolling. Snap a photo of how you spent it as your act memory.",
+    "active": true,
+    "category": "self-care",
+    "difficulty": 2,
+    "minAge": 8,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Board game, puzzle, or book"
+    ],
+    "picture": true,
+    "sortKey": 271
+  },
+  {
+    "taskId": "task_0000095",
+    "cadence": "weekly",
+    "textShort": "Host or join a game night with friends.",
+    "textLong": "Round up a few friends for a game night—board games, cards, video games, or trivia. Keep it easy and fun; the point is time together and a lot of laughing. When you are done, take a picture together afterward and save it as your act memory (faces only with everyone's permission).",
+    "active": true,
+    "category": "community",
+    "difficulty": 2,
+    "minAge": 8,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Games"
+    ],
+    "picture": true,
+    "sortKey": 270
+  },
+  {
+    "taskId": "task_0000096",
+    "cadence": "monthly",
+    "textShort": "Make something and give it away.",
+    "textLong": "Create something with your hands this month—art, baked goods, a craft, a playlist, anything—and give it away to someone with no strings attached. Making and giving is twice the joy. Take a photo of what you made as your act memory.",
+    "active": true,
+    "category": "creative",
+    "difficulty": 2,
+    "minAge": 8,
+    "maxAge": 999,
+    "traits": [
+      "Any"
+    ],
+    "materials": [
+      "Varies by project"
+    ],
+    "picture": true,
+    "sortKey": 162
+  },
+  {
     "taskId": "task_0000065",
     "cadence": "daily",
     "textShort": "Do today's Wordle or Connections with a friend—and take a picture together after!",

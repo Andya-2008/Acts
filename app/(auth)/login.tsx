@@ -8,8 +8,8 @@ import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { loginSchema, type LoginFormValues } from '@/features/auth/validation/authSchemas';
 import { signInWithIdentifier } from '@/features/auth/services/authService';
 import { AuthBrandingHeader } from '@/features/auth/components/AuthBrandingHeader';
-import { AuthMethodDivider } from '@/features/auth/components/AuthMethodDivider';
-import { GoogleSignInSection } from '@/features/auth/components/GoogleSignInSection';
+import { AlternateSignInMethods } from '@/features/auth/components/AlternateSignInMethods';
+import { shouldShowAppleAuthOnAuthScreens } from '@/shared/config/appleAuthEnv';
 import { shouldShowGoogleAuthOnAuthScreens } from '@/shared/config/googleAuthEnv';
 import { AppButton, AppCard, AppText, AppTextField, FadeInView, Screen } from '@/shared/components/ui';
 import { actsTheme } from '@/shared/theme/actsTheme';
@@ -49,7 +49,7 @@ export default function LoginScreen() {
   return (
     <Screen scroll scrollContentContainerStyle={{ justifyContent: 'center' }}>
       <FadeInView>
-        <AuthBrandingHeader headline="Welcome back" subtitle="Sign in." />
+        <AuthBrandingHeader headline="Welcome!" subtitle="Sign in." />
 
         <AppCard>
           <Controller
@@ -114,11 +114,8 @@ export default function LoginScreen() {
             </AppText>
           </Link>
 
-          {shouldShowGoogleAuthOnAuthScreens() ? (
-            <>
-              <AuthMethodDivider />
-              <GoogleSignInSection intent="sign-in" />
-            </>
+          {shouldShowGoogleAuthOnAuthScreens() || shouldShowAppleAuthOnAuthScreens() ? (
+            <AlternateSignInMethods intent="sign-in" />
           ) : null}
         </AppCard>
 

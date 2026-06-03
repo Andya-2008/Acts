@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton, AppText } from '@/shared/components/ui';
 import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
@@ -35,7 +35,7 @@ const SLIDES: Slide[] = [
   {
     icon: 'images-outline',
     title: 'Deed Feed',
-    body: 'Share completed acts with a photo so friends can cheer you on. React to their posts and join the conversation when you’ve unlocked comments in the shop.',
+    body: 'Share completed acts with a photo so friends can cheer you on. React to their posts and leave encouraging comments.',
   },
   {
     icon: 'person-circle-outline',
@@ -57,7 +57,6 @@ type FirstRunTutorialOverlayProps = {
 export function FirstRunTutorialOverlay({ visible, onComplete }: FirstRunTutorialOverlayProps) {
   const act = useActAppearance();
   const reduceMotion = useReduceMotion();
-  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
 
   const finish = useCallback(() => {
@@ -78,9 +77,9 @@ export function FirstRunTutorialOverlay({ visible, onComplete }: FirstRunTutoria
       animationType={reduceMotion ? 'none' : 'fade'}
       presentationStyle="fullScreen"
       onRequestClose={finish}>
-      <View className="flex-1" style={{ backgroundColor: act.palette.canvas, paddingTop: insets.top + 8 }}>
-        <View className="flex-row items-center justify-end px-4 pb-2">
-          <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel="Skip tutorial" hitSlop={12}>
+      <SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']} style={{ backgroundColor: act.palette.canvas }}>
+        <View className="flex-row items-center justify-end px-4 pb-2 pt-2">
+          <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel="Skip tutorial" hitSlop={12} className="rounded-lg px-2 py-1 active:opacity-70">
             <AppText variant="subtitle" className="text-acts-muted">
               Skip
             </AppText>
@@ -116,9 +115,7 @@ export function FirstRunTutorialOverlay({ visible, onComplete }: FirstRunTutoria
           </View>
         </View>
 
-        <View
-          className="flex-row items-center justify-between gap-3 border-t border-acts-border px-5 pt-3"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+        <View className="flex-row items-center justify-between gap-3 border-t border-acts-border px-5 pb-4 pt-3">
           <AppButton title="Back" variant="ghost" className="min-w-[100px]" disabled={step === 0} onPress={() => setStep((s) => Math.max(0, s - 1))} />
           <AppButton
             title={isLast ? 'Get started' : 'Next'}
@@ -133,7 +130,7 @@ export function FirstRunTutorialOverlay({ visible, onComplete }: FirstRunTutoria
             }}
           />
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

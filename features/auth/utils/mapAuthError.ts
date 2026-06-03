@@ -36,6 +36,10 @@ export function mapAuthError(error: unknown): string {
         'That username cannot sign in yet. Sign in with your email once so Acts can link this username, then try again.',
       GOOGLE_EMAIL_REQUIRED:
         'This Google account has no email on file. Use a different Google account or email sign-up.',
+      APPLE_EMAIL_REQUIRED:
+        'This Apple account has no email on file. In Apple ID settings, allow email sharing for Acts, or use email sign-up.',
+      APPLE_IDENTITY_TOKEN_MISSING:
+        'We could not complete Sign in with Apple. Please try again or sign in with email and password.',
       GOOGLE_PROFILE_SETUP_FAILED:
         'Signed in with Google, but we could not create your Acts profile. Check your connection and try again.',
       PROFILE_EMAIL_REQUIRED_FOR_USERNAME_CLAIM:
@@ -56,6 +60,9 @@ export function mapAuthError(error: unknown): string {
   if (error instanceof Error) {
     if (error.message === 'USERNAME_TAKEN') {
       return 'That username is already taken.';
+    }
+    if (error.message === 'ERR_REQUEST_CANCELED') {
+      return 'Sign-in was cancelled.';
     }
     return error.message;
   }

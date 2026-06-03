@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
-import { ThreeChoiceRow, YesNoRow } from '@/features/settings/components/SettingsRows';
+import { SettingsRowDivider, ThreeChoiceRow, YesNoRow } from '@/features/settings/components/SettingsRows';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
@@ -40,7 +40,7 @@ export default function SettingsPreferencesScreen() {
           disabled={mutation.isPending}
         />
 
-        <View className="flex-row items-end border-b border-acts-border py-3.5">
+        <View className="flex-row items-end py-3">
           <View className="min-w-0 flex-1">
             <AppText variant="subtitle" className="mb-2 text-acts-ink">
               Time Commitment
@@ -63,6 +63,7 @@ export default function SettingsPreferencesScreen() {
             minutes/day
           </AppText>
         </View>
+        <SettingsRowDivider />
 
         <YesNoRow
           label="Photo Comfort"
@@ -81,6 +82,7 @@ export default function SettingsPreferencesScreen() {
           ]}
           onPick={(k) => patch({ gender: k as ActsAppSettings['gender'] })}
           disabled={mutation.isPending}
+          showDivider={false}
         />
       </View>
     </Screen>

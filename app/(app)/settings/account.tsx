@@ -17,7 +17,7 @@ import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery
 import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
 import { PROFILE_BIO_MAX_LENGTH, normalizeProfileBio } from '@/shared/constants/profileBio';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
-import { AppButton, AppText, AppTextField, Screen } from '@/shared/components/ui';
+import { AppButton, AppText, AppTextField, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
@@ -228,8 +228,13 @@ export default function SettingsAccountScreen() {
         <AppTextField label="Birthday" value={dob} onChangeText={setDob} placeholder="MM/DD/YYYY" />
         <AppTextField label="Title" value={title} onChangeText={setTitle} placeholder="Optional" />
         <AppTextField label="City/State" value={cityState} onChangeText={setCityState} placeholder="Optional" />
+        <TitleWithInfo
+          title="Bio"
+          variant="subtitle"
+          className="mb-2"
+          infoText="Your bio is always public on your profile, including to people who are not your friends."
+        />
         <AppTextField
-          label="Bio"
           value={bio}
           onChangeText={(t) => setBio(t.slice(0, PROFILE_BIO_MAX_LENGTH))}
           placeholder="Short intro (public on your profile)"
@@ -239,11 +244,8 @@ export default function SettingsAccountScreen() {
           textAlignVertical="top"
           className="min-h-[88px]"
         />
-        <AppText variant="caption" className="-mt-2 mb-1 text-acts-muted">
-          {bio.length}/{PROFILE_BIO_MAX_LENGTH} · Visible to everyone on Acts
-        </AppText>
-        <AppText variant="caption" className="mb-4 text-acts-muted">
-          Your bio is always public on your profile, including to people who are not your friends.
+        <AppText variant="caption" className="mb-4 mt-1 text-acts-muted">
+          {bio.length}/{PROFILE_BIO_MAX_LENGTH}
         </AppText>
 
         <AppButton
@@ -263,12 +265,12 @@ export default function SettingsAccountScreen() {
         />
 
         <View className="mt-10 rounded-2xl border border-acts-danger/35 bg-acts-danger/5 px-4 py-4">
-          <AppText variant="subtitle" className="mb-2 text-acts-danger">
-            Delete account
-          </AppText>
-          <AppText variant="caption" className="mb-3 text-acts-muted">
-            {`Permanently removes your profile, tasks, friends, deed posts, photos, and sign-in. You will be signed out. If deletion fails, sign in again and retry (some accounts require a recent sign-in).`}
-          </AppText>
+          <TitleWithInfo
+            title="Delete account"
+            variant="subtitle"
+            className="mb-3"
+            infoText="Permanently removes your profile, tasks, friends, deed posts, photos, and sign-in. You will be signed out. If deletion fails, sign in again and retry (some accounts require a recent sign-in)."
+          />
           {deleteError ? (
             <AppText variant="caption" className="mb-3 text-acts-danger">
               {deleteError}

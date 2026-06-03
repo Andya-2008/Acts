@@ -107,7 +107,7 @@ DAILY ACTS
 
 DEED FEED
 • Share a photo when you complete an act so friends can celebrate with you.
-• React to friends’ posts and join the conversation (optional shop unlock for commenting).
+• React to friends’ posts and join the conversation with comments.
 
 FRIENDS
 • Add friends by username, invite link, or contacts on Acts.

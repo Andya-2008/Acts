@@ -1,17 +1,14 @@
 import { Link, Stack, usePathname, useSegments } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SeedsXpShopHeader } from '@/shared/components/SeedsXpShopHeader';
+import { ScreenTopSafeArea } from '@/shared/components/ScreenTopSafeArea';
 import { AppText } from '@/shared/components/ui';
-import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 
 export default function TasksTabLayout() {
-  const act = useActAppearance();
   const pathname = usePathname();
   const isMemories = pathname.includes('memories');
-  const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const headerTitle = useMemo(() => {
     const i = segments.lastIndexOf('tasks');
@@ -20,14 +17,14 @@ export default function TasksTabLayout() {
 
   return (
     <View className="flex-1 bg-acts-canvas">
-      <View style={{ paddingTop: insets.top, backgroundColor: act.palette.canvas }}>
+      <ScreenTopSafeArea>
         <View className="flex-row items-center justify-between px-4 pb-2 pt-1">
           <AppText variant="title" className="flex-1 text-acts-ink" numberOfLines={1}>
             {headerTitle}
           </AppText>
           <SeedsXpShopHeader />
         </View>
-      </View>
+      </ScreenTopSafeArea>
       <View className="flex-row gap-2 border-b border-acts-border bg-acts-canvas px-4 py-2">
         <Link href="/tasks" asChild replace>
           <Pressable

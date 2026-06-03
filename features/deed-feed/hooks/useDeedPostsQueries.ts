@@ -6,6 +6,7 @@ import {
   deleteDeedPostForViewer,
   fetchFriendsDeedPosts,
   fetchMyDeedPosts,
+  fetchUserDeedPosts,
   updateDeedPostAuthorSettings,
   updateDeedPostCardTint,
   type DeedPostAuthorSettingsPatch,
@@ -38,6 +39,18 @@ export function useMyDeedPostsQuery(uid: string | undefined) {
     queryFn: () => fetchMyDeedPosts(uid!, 30),
     enabled: Boolean(uid),
     staleTime: 15_000,
+  });
+}
+
+/** Deed posts authored by `authorUid` — used for the memories grid on a profile. */
+export function useUserDeedPostsQuery(authorUid: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: authorUid
+      ? deedPostsQueryKeys.byUser(authorUid)
+      : [...deedPostsQueryKeys.all, '__byuser_none__'],
+    queryFn: () => fetchUserDeedPosts(authorUid!, 30),
+    enabled: Boolean(authorUid) && enabled,
+    staleTime: 30_000,
   });
 }
 

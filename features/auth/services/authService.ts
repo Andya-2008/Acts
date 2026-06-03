@@ -6,16 +6,21 @@ import {
   updateProfile,
   deleteUser,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   type User,
 } from 'firebase/auth';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import {
   assertUsernameAvailableForRegistration,
   createUserInfoForEmailPasswordSignup,
+  ensureUserInfoForAppleUser,
   ensureUserInfoForGoogleUser,
+  type OAuthDisplayNameParts,
 } from '@/features/auth/services/userInfoService';
+import { createAppleSignInRawNonce, hashAppleSignInNonce } from '@/shared/utils/appleAuthNonce';
 import { purgeUserFirebaseData } from '@/features/auth/services/purgeUserFirebaseData';
 import { resolveIdentifierToAuthEmail } from '@/features/auth/services/resolveLoginIdentifier';
 import { formatDobForUserInfo } from '@/features/auth/utils/formatDob';
@@ -67,6 +72,40 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<void> {
   const credential = GoogleAuthProvider.credential(idToken);
   const { user } = await signInWithCredential(auth, credential);
   await ensureUserInfoForGoogleUser(user);
+}
+
+export async function signInWithApple(): Promise<void> {
+  const rawNonce = createAppleSignInRawNonce();
+  const hashedNonce = await hashAppleSignInNonce(rawNonce);
+
+  const appleCredential = await AppleAuthentication.signInAsync({
+    requestedScopes: [
+      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+      AppleAuthentication.AppleAuthenticationScope.EMAIL,
+    ],
+    nonce: hashedNonce,
+  });
+
+  if (!appleCredential.identityToken) {
+    throw new Error('APPLE_IDENTITY_TOKEN_MISSING');
+  }
+
+  const nameParts: OAuthDisplayNameParts | null = appleCredential.fullName
+    ? {
+        givenName: appleCredential.fullName.givenName,
+        familyName: appleCredential.fullName.familyName,
+      }
+    : null;
+
+  const provider = new OAuthProvider('apple.com');
+  const firebaseCredential = provider.credential({
+    idToken: appleCredential.identityToken,
+    rawNonce,
+  });
+
+  const auth = getFirebaseAuth();
+  const { user } = await signInWithCredential(auth, firebaseCredential);
+  await ensureUserInfoForAppleUser(user, nameParts);
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {

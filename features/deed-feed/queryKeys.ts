@@ -3,6 +3,7 @@ export const deedPostsQueryKeys = {
   friends: (viewerUid: string, friendsSortedKey: string) =>
     [...deedPostsQueryKeys.all, 'friends', viewerUid, friendsSortedKey] as const,
   mine: (uid: string) => [...deedPostsQueryKeys.all, 'mine', uid] as const,
+  byUser: (authorUid: string) => [...deedPostsQueryKeys.all, 'byUser', authorUid] as const,
   reactions: (viewerUid: string, postIdsKey: string) =>
     [...deedPostsQueryKeys.all, 'reactions', viewerUid, postIdsKey] as const,
   comments: (viewerUid: string, postIdsKey: string) =>

@@ -4,7 +4,7 @@ import { ThreeChoiceRow, YesNoRow } from '@/features/settings/components/Setting
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
-import { AppText, Screen } from '@/shared/components/ui';
+import { Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 const REMINDER_HOUR_OPTIONS = [
@@ -14,6 +14,15 @@ const REMINDER_HOUR_OPTIONS = [
   { key: '18', label: '6:00 PM' },
   { key: '21', label: '9:00 PM' },
 ];
+
+const NOTIFICATIONS_INTRO =
+  'Reminders run on this device. Allow notifications when prompted. Tapping a reminder opens Tasks.';
+
+const INCOMPLETE_NUDGE_INFO =
+  'Incomplete nudges fire three hours after your daily time (by 9 PM).';
+
+const FRIENDS_PUSH_INFO =
+  'Choose what you want to hear about. These show up in your Activity feed, and as alerts on this device while Acts is open.';
 
 export default function SettingsNotificationsScreen() {
   const uid = useAuthStore((s) => s.user?.uid);
@@ -35,14 +44,9 @@ export default function SettingsNotificationsScreen() {
   return (
     <Screen scroll>
       <View className="pb-8">
-        <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
-          Reminders run on this device. Allow notifications when prompted. Tapping a reminder opens
-          Tasks.
-        </AppText>
+        <TitleWithInfo title="Notifications" showTitle={false} infoText={NOTIFICATIONS_INTRO} />
 
-        <AppText variant="subtitle" className="mb-2 text-acts-ink">
-          Daily & streak
-        </AppText>
+        <TitleWithInfo title="Daily & streak" variant="subtitle" className="mb-2" />
         <YesNoRow
           label="Daily reminder"
           value={base.notifyDailyReminder}
@@ -54,12 +58,14 @@ export default function SettingsNotificationsScreen() {
           value={base.notifyIncompleteActWarning}
           onPick={(v) => pick({ notifyIncompleteActWarning: v })}
           disabled={mutation.isPending}
+          infoText={INCOMPLETE_NUDGE_INFO}
         />
         <YesNoRow
           label="Streak evening nudge (8 PM)"
           value={base.notifyStreakWarning}
           onPick={(v) => pick({ notifyStreakWarning: v })}
           disabled={mutation.isPending}
+          showDivider={!dailySchedulingOn}
         />
         {dailySchedulingOn ? (
           <ThreeChoiceRow
@@ -70,13 +76,8 @@ export default function SettingsNotificationsScreen() {
             disabled={mutation.isPending}
           />
         ) : null}
-        <AppText variant="caption" className="mb-4 mt-1 text-acts-muted">
-          Incomplete nudges fire three hours after your daily time (by 9 PM).
-        </AppText>
 
-        <AppText variant="subtitle" className="mb-2 mt-4 text-acts-ink">
-          Weekly & monthly
-        </AppText>
+        <TitleWithInfo title="Weekly & monthly" variant="subtitle" className="mb-2 mt-4" />
         <YesNoRow
           label="Sunday recap (6 PM)"
           value={base.notifyWeeklyRecap}
@@ -102,13 +103,12 @@ export default function SettingsNotificationsScreen() {
           disabled={mutation.isPending}
         />
 
-        <AppText variant="subtitle" className="mb-2 mt-6 text-acts-ink">
-          Friends (saved for push alerts)
-        </AppText>
-        <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-          These preferences are stored now. Server push for friend activity is not live yet; your
-          device token is saved when notifications are allowed.
-        </AppText>
+        <TitleWithInfo
+          title="Friend activity"
+          variant="subtitle"
+          className="mb-2 mt-6"
+          infoText={FRIENDS_PUSH_INFO}
+        />
         <YesNoRow
           label="Friend posts on the feed"
           value={base.notifyFriendsPosting}
@@ -138,6 +138,7 @@ export default function SettingsNotificationsScreen() {
           value={base.notifyNewActs}
           onPick={(v) => pick({ notifyNewActs: v })}
           disabled={mutation.isPending}
+          showDivider={false}
         />
       </View>
     </Screen>

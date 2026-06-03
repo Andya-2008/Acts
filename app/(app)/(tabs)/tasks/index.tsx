@@ -56,7 +56,7 @@ import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import { celebrateTaskComplete, taskUncheckedHaptic } from '@/shared/utils/haptics';
 import { preferredDifficultyLevelFromActs } from '@/shared/utils/preferredTaskDifficulty';
 import { resolveEquippedTaskCheckTheme } from '@/features/cosmetics/taskCheckThemes';
-import { ActsTextInput, AppButton, AppCard, AppText, FadeInView, Screen } from '@/shared/components/ui';
+import { ActsTextInput, AppButton, AppCard, AppText, FadeInView, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
 import { configureActsLayoutAnimation } from '@/shared/utils/accessibilityMotion';
 import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
@@ -529,24 +529,45 @@ export default function TasksListScreen() {
     const nActive = activeFilterCount(listFilters);
     return (
       <View className="mb-3">
+        <AppCard className="mb-3 border-acts-green/40 bg-acts-green-soft/70 p-4">
+          <TitleWithInfo
+            title="Make up your own act"
+            className="mb-3"
+            infoText="Acts aren't limited to our suggestions — add any kind thing you want to do and earn the same rewards."
+          />
+          <ActsTextInput
+            value={newTitle}
+            onChangeText={setNewTitle}
+            placeholder="Add your own act"
+            placeholderTextColor="#9CA3AF"
+            className="mb-3 rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
+            style={getActsTextInputBoxStyle()}
+            editable={!addMutation.isPending}
+            onSubmitEditing={onAddCustom}
+            returnKeyType="done"
+          />
+          <AppButton
+            title="Add act"
+            loading={addMutation.isPending}
+            disabled={!newTitle.trim()}
+            onPress={onAddCustom}
+          />
+        </AppCard>
         {isWeekendDoubleActive() ? (
           <AppCard className="mb-3 border-acts-green/35 bg-acts-green-soft/80 p-3">
-            <AppText variant="subtitle" className="mb-0.5 text-acts-ink">
-              Double seeds & XP weekend
-            </AppText>
-            <AppText variant="caption" className="text-acts-muted">
-              Friday–Sunday: task rewards, deed-feed bonuses, and shop XP boosts pay out twice.
-            </AppText>
+            <TitleWithInfo
+              title="Double seeds & XP weekend"
+              infoText="Friday–Sunday: task rewards, deed-feed bonuses, and shop XP boosts pay out twice."
+            />
           </AppCard>
         ) : null}
         {streakGraceOffer.show ? (
           <AppCard className="mb-3 border-acts-green/45 bg-acts-green-soft p-3">
-            <AppText variant="subtitle" className="mb-1 text-acts-ink">
-              Save your streak
-            </AppText>
-            <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-              You missed yesterday but your run is still recoverable. You can use one streak save per calendar month.
-            </AppText>
+            <TitleWithInfo
+              title="Save your streak"
+              className="mb-3"
+              infoText="You missed yesterday but your run is still recoverable. You can use one streak save per calendar month."
+            />
             <AppButton
               title="Use monthly streak save"
               loading={mergeActsSettingsMutation.isPending}
@@ -564,10 +585,12 @@ export default function TasksListScreen() {
             />
           </AppCard>
         ) : null}
-        <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-          Suggested acts match your age, traits, and difficulty preference, then rotate with the calendar. Change
-          difficulty under Settings → Preferences.
-        </AppText>
+        <TitleWithInfo
+          title="Suggested acts"
+          variant="label"
+          className="mb-3"
+          infoText="Suggested acts match your age, traits, and difficulty preference, then rotate with the calendar. Change difficulty under Settings → Preferences."
+        />
         <Pressable
           onPress={() => setFiltersModalOpen(true)}
           accessibilityRole="button"
@@ -599,7 +622,7 @@ export default function TasksListScreen() {
         ) : null}
       </View>
     );
-  }, [catalogIsError, catalogError, localError, refetchCatalog, listFilters, streakGraceOffer.show, streakGraceOffer.forgivenDayKey, mergeActsSettingsMutation.isPending]);
+  }, [catalogIsError, catalogError, localError, refetchCatalog, listFilters, streakGraceOffer.show, streakGraceOffer.forgivenDayKey, mergeActsSettingsMutation.isPending, newTitle, addMutation.isPending, onAddCustom]);
 
   const listEmpty = useMemo(() => {
     if (ensureAssignedMutation.isPending && (tasks?.length ?? 0) === 0) {
@@ -666,23 +689,6 @@ export default function TasksListScreen() {
           </AppCard>
         </FadeInView>
       ) : null}
-      <ActsTextInput
-        value={newTitle}
-        onChangeText={setNewTitle}
-        placeholder="Add your own act"
-        placeholderTextColor="#9CA3AF"
-        className="mb-3 rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
-        style={getActsTextInputBoxStyle()}
-        editable={!addMutation.isPending}
-        onSubmitEditing={onAddCustom}
-        returnKeyType="done"
-      />
-      <AppButton
-        title="Add act"
-        loading={addMutation.isPending}
-        disabled={!newTitle.trim()}
-        onPress={onAddCustom}
-      />
     </View>
   );
 

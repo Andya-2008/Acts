@@ -8,8 +8,8 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dangerOutline';
 /** Match `rounded-2xl` in tailwind.config (1rem) so corners are never clipped by a separate underlay layer. */
 const RADIUS = 16;
 
-/** Chrome on the outer `Pressable`; fill + label live in an inner `View` so palette colors are not overridden by NativeWind. */
-const pressableChromeClass = 'rounded-2xl shadow-sm active:opacity-90';
+/** Outer pressable stays chrome-free so borders/shadows do not stack with the inner fill. */
+const pressableChromeClass = 'rounded-2xl active:opacity-90';
 
 export type AppButtonProps = PressableProps & {
   title: string;
@@ -94,10 +94,10 @@ export function AppButton({
       className={`${pressableChromeClass} ${isDisabled ? 'opacity-50' : ''} ${className ?? ''}`}
       style={(state) => {
         const user = typeof style === 'function' ? style(state) : style;
-        return [user ?? undefined, { borderRadius: RADIUS, overflow: 'hidden' as const }];
+        return [user ?? undefined, { borderRadius: RADIUS, overflow: 'hidden' as const, backgroundColor: 'transparent' }];
       }}
       {...rest}>
-      <View style={innerFillStyle}>
+      <View style={innerFillStyle} collapsable={false}>
         {loading ? (
           <ActivityIndicator color={spinnerColor} />
         ) : (

@@ -28,9 +28,10 @@ import { modalAnimationType } from '@/shared/utils/accessibilityMotion';
 import { computeCompletionStreak } from '@/features/user-profile/utils/computeCompletionStreak';
 import { useTasksQuery } from '@/features/tasks/hooks/useTasksQueries';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import { HeaderBackLabel } from '@/shared/components/HeaderBackLabel';
+import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
@@ -235,10 +236,9 @@ export default function AchievementsScreen() {
     <>
       <Stack.Screen
         options={{
+          ...stackHeaderChrome(act),
           headerShown: true,
           title: 'Trophy hall',
-          headerStyle: { backgroundColor: act.palette.canvas },
-          headerTintColor: act.palette.ink,
           headerTitleStyle: { color: act.palette.ink, fontWeight: '800' },
           headerLeft: () => <HeaderBackLabel />,
         }}
@@ -262,9 +262,11 @@ export default function AchievementsScreen() {
                   <View className="rounded-2xl bg-amber-500/25 p-2.5">
                     <Ionicons name="trophy" size={26} color="#D97706" />
                   </View>
-                  <AppText variant="subtitle" className="shrink font-extrabold text-acts-ink" numberOfLines={2}>
-                    Your trophy case
-                  </AppText>
+                  <TitleWithInfo
+                    title="Your trophy case"
+                    variant="subtitle"
+                    infoText="Tap any badge for the full quest briefing."
+                  />
                 </View>
                 <View className="shrink-0 items-end pl-1">
                   <AppText variant="caption" className="mb-0.5 text-acts-muted">
@@ -276,11 +278,8 @@ export default function AchievementsScreen() {
                   </AppText>
                 </View>
               </View>
-              <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
-                Tap any badge for the full quest briefing.
-              </AppText>
 
-              <View className="h-3 overflow-hidden rounded-full bg-acts-canvas">
+              <View className="mb-3 h-3 overflow-hidden rounded-full bg-acts-canvas">
                 <View
                   className="h-3 rounded-full"
                   style={{

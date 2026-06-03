@@ -21,7 +21,7 @@ import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
 import { purchaseShopItem } from '@/features/user-profile/services/userInfoRepository';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import { DEED_REACTION_EMOJI } from '@/shared/constants/deedReactions';
-import { AppButton, AppCard, AppText, Screen } from '@/shared/components/ui';
+import { AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import {
   appearancePresetChipStyle,
@@ -90,13 +90,6 @@ function LootRow({
               <View className="rounded-full bg-fuchsia-100 px-2.5 py-1">
                 <AppText variant="caption" className="font-bold text-fuchsia-900">
                   App backdrop
-                </AppText>
-              </View>
-            ) : null}
-            {item.kind === 'deedCommentUnlock' ? (
-              <View className="rounded-full bg-cyan-100 px-2.5 py-1">
-                <AppText variant="caption" className="font-bold text-cyan-900">
-                  Feed comments
                 </AppText>
               </View>
             ) : null}
@@ -174,9 +167,6 @@ export default function ShopScreen() {
         await mergeSettings.mutateAsync({ appearanceColorPreset: item.unlocksAppearancePresetId });
         Alert.alert('New backdrop', `${item.title} is equipped. Change anytime in Settings → Appearance.`);
       }
-      if (item?.kind === 'deedCommentUnlock') {
-        Alert.alert('Comments unlocked', 'You can now leave text replies on deed feed posts.');
-      }
       if (
         item &&
         (item.kind === 'extraRosterDaily' || item.kind === 'extraRosterWeekly' || item.kind === 'extraRosterMonthly') &&
@@ -228,21 +218,20 @@ export default function ShopScreen() {
 
     return (
       <View key={sectionId} className="mb-8">
-        <AppText variant="title" className="text-acts-ink">
-          {meta.title}
-        </AppText>
-        <AppText variant="caption" className="mb-4 mt-1 text-acts-muted">
-          {meta.blurb}
-        </AppText>
+        <TitleWithInfo
+          title={meta.title}
+          variant="title"
+          className="mb-4"
+          infoText={meta.blurb}
+        />
 
         {sectionId === 'app_appearance' ? (
           <AppCard className="mb-4 border-acts-blue/25 bg-acts-blue-soft/50 p-4">
-            <AppText variant="subtitle" className="mb-1 text-acts-ink">
-              Equipped app backdrop
-            </AppText>
-            <AppText variant="caption" className="mb-3 text-acts-muted">
-              Tap a color theme you own. Blossom, Evergreen, Ocean, and Dawn are always free.
-            </AppText>
+            <TitleWithInfo
+              title="Equipped app backdrop"
+              className="mb-3"
+              infoText="Tap a color theme you own. Blossom, Evergreen, Ocean, and Dawn are always free."
+            />
             <View className="flex-row flex-wrap gap-2">
               {backdropPresets.map((pid) => {
                 const pal = resolveActAppearancePalette(pid);
@@ -285,12 +274,11 @@ export default function ShopScreen() {
 
         {sectionId === 'task_appearance' ? (
           <AppCard className="mb-4 border-acts-blue/25 bg-acts-blue-soft/50 p-4">
-            <AppText variant="subtitle" className="mb-1 text-acts-ink">
-              Equipped task look
-            </AppText>
-            <AppText variant="caption" className="mb-3 text-acts-muted">
-              Tap a style you own. Classic is always free.
-            </AppText>
+            <TitleWithInfo
+              title="Equipped task look"
+              className="mb-3"
+              infoText="Tap a style you own. Classic is always free."
+            />
             <View className="flex-row flex-wrap gap-2">
               {TASK_CHECK_THEME_LIST.map((tid) => {
                 const tm = TASK_CHECK_THEMES[tid];

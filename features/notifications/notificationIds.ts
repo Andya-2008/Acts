@@ -9,4 +9,11 @@ export const LOCAL_NOTIFICATION_IDS = {
   monthlyAct: 'acts-retention-monthly',
 } as const;
 
+/** Activity (social + new acts) local notification identifiers. */
+export const ACTIVITY_NOTIFICATION_IDS = {
+  newTasks: 'acts-activity-new-tasks',
+  socialActivity: 'acts-activity-social',
+} as const;
+
 export const ANDROID_CHANNEL_RETENTION = 'acts-retention';
+export const ANDROID_CHANNEL_ACTIVITY = 'acts-activity';

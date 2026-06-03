@@ -4,7 +4,8 @@ import { View } from 'react-native';
 import { AppButton, Screen } from '@/shared/components/ui';
 
 const items: { title: string; href: string }[] = [
-  { title: 'Account Info', href: '/(app)/settings/account' },
+  { title: 'Account', href: '/(app)/settings/account' },
+  { title: 'Personalization', href: '/(app)/settings/personalization' },
   { title: 'Appearance', href: '/(app)/settings/appearance' },
   { title: 'Preferences', href: '/(app)/settings/preferences' },
   { title: 'Privacy', href: '/(app)/settings/privacy' },

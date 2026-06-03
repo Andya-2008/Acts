@@ -7,7 +7,6 @@ import { FREE_DEED_REACTION_KINDS } from '@/shared/constants/deedReactions';
 import type { TaskCheckThemeId } from '@/features/cosmetics/taskCheckThemes';
 import { buildOwnedTaskCheckThemeSet } from '@/features/cosmetics/taskCheckThemes';
 import {
-  SHOP_ID_DEED_COMMENTS,
   SHOP_ID_ROSTER_DAILY,
   SHOP_ID_ROSTER_MONTHLY,
   SHOP_ID_ROSTER_WEEKLY,
@@ -21,7 +20,6 @@ export type ShopItemKind =
   | 'taskTheme'
   | 'deedReactionPack'
   | 'appearancePreset'
-  | 'deedCommentUnlock'
   | 'extraRosterDaily'
   | 'extraRosterWeekly'
   | 'extraRosterMonthly';
@@ -92,16 +90,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     icon: 'planet',
     accentColor: '#14B8A6',
     unlocksAppearancePresetId: 'aurora_night',
-  },
-  {
-    id: SHOP_ID_DEED_COMMENTS,
-    title: 'Voice in the thread',
-    description: 'Unlock posting comments on deed feed posts (your words, your cheer).',
-    seedCost: 72,
-    kind: 'deedCommentUnlock',
-    section: 'deed_feed',
-    icon: 'chatbubbles',
-    accentColor: '#0EA5E9',
   },
   {
     id: SHOP_ID_ROSTER_DAILY,
@@ -280,7 +268,7 @@ export const SHOP_SECTION_META: Record<ShopSectionId, { title: string; blurb: st
   },
   deed_feed: {
     title: 'Deed feed & sharing',
-    blurb: 'Extra reactions plus a one-time unlock to post text comments on friends’ deeds.',
+    blurb: 'Extra reactions to celebrate friends’ deeds.',
   },
   boosts: {
     title: 'Boosts & home roster',
