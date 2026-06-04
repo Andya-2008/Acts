@@ -5,7 +5,7 @@ const contactKey = (uid: string) => `@acts/friends_gate_contact_v2_${uid}`;
 const skippedKey = (uid: string) => `@acts/friends_gate_skipped_${uid}`;
 const pendingPostSignupKey = (uid: string) => `@acts/friends_gate_pending_post_signup_${uid}`;
 
-/** Call once after email/password signup — not on login or cold app open. */
+/** Call once after email/password signup - not on login or cold app open. */
 export async function markPostSignupFriendsGatePending(uid: string): Promise<void> {
   await AsyncStorage.setItem(pendingPostSignupKey(uid), '1');
 }
@@ -102,7 +102,7 @@ export async function isPostSignupFriendsGateRequired(
 }
 
 /**
- * __DEV__ only — clears skip/invite/contact flags and marks gate pending again.
+ * __DEV__ only - clears skip/invite/contact flags and marks gate pending again.
  * Reload the app or open `/(app)/friends-get-started` to test the screen.
  */
 export async function resetFriendsGateForDev(uid: string): Promise<void> {

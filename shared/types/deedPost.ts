@@ -1,7 +1,7 @@
 import type { DeedCardTintId } from '@/shared/constants/deedPostCardTints';
 import type { Timestamp } from 'firebase/firestore';
 
-/** Firestore `deedPosts/{postId}` — community deed feed entry. */
+/** Firestore `deedPosts/{postId}` - community deed feed entry. */
 export type DeedPost = {
   id: string;
   authorUid: string;

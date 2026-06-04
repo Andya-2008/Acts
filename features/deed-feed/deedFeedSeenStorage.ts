@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 /**
  * Tracks which friend deed posts a viewer has already seen, so the main feed can
  * surface only what's new (Instagram-style "you're all caught up"). Stored locally
- * per user — seen state is a device-side preference, not shared data.
+ * per user - seen state is a device-side preference, not shared data.
  */
 
 const SEEN_KEY = (uid: string) => `@acts/deed_feed_seen_v1_${uid}`;

@@ -22,7 +22,7 @@ export type DerivedNotification = {
   type: DerivedNotificationType;
   title: string;
   message: string;
-  /** Milliseconds since epoch — sort + unread comparison. */
+  /** Milliseconds since epoch - sort + unread comparison. */
   timestampMs: number;
   /** Expo-router path to open when tapped. */
   route: string;

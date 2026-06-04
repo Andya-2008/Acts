@@ -50,7 +50,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'appearance_midnight',
     title: 'Midnight studio',
-    description: 'Deep navy canvas and neon accents—late-night kindness sessions.',
+    description: 'Deep navy canvas and neon accents-late-night kindness sessions.',
     seedCost: 56,
     kind: 'appearancePreset',
     section: 'app_appearance',
@@ -72,7 +72,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'appearance_desert_sand',
     title: 'Desert sand',
-    description: 'Warm parchment tones—sunrise acts and golden-hour vibes.',
+    description: 'Warm parchment tones-sunrise acts and golden-hour vibes.',
     seedCost: 44,
     kind: 'appearancePreset',
     section: 'app_appearance',
@@ -114,7 +114,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: SHOP_ID_ROSTER_MONTHLY,
     title: '+1 monthly act slot',
-    description: 'Adds one more monthly act—room for deeper, slower projects.',
+    description: 'Adds one more monthly act-room for deeper, slower projects.',
     seedCost: 68,
     kind: 'extraRosterMonthly',
     section: 'boosts',
@@ -124,7 +124,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'theme_dawn_glow',
     title: 'Dawn Glow',
-    description: 'Warm sunrise rings around your act checkboxes—early bird energy.',
+    description: 'Warm sunrise rings around your act checkboxes-early bird energy.',
     seedCost: 28,
     kind: 'taskTheme',
     section: 'task_appearance',
@@ -135,7 +135,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'theme_forest_moss',
     title: 'Forest Moss',
-    description: 'Soft green chrome for your tasks—grow the good, one checkbox at a time.',
+    description: 'Soft green chrome for your tasks-grow the good, one checkbox at a time.',
     seedCost: 32,
     kind: 'taskTheme',
     section: 'task_appearance',
@@ -157,7 +157,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'theme_ocean_neon',
     title: 'Ocean Neon',
-    description: 'Cool cyan pop—your list feels like a high-score screen.',
+    description: 'Cool cyan pop-your list feels like a high-score screen.',
     seedCost: 40,
     kind: 'taskTheme',
     section: 'task_appearance',
@@ -179,7 +179,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'theme_starfield',
     title: 'Starfield',
-    description: 'Violet orbit rings—save the world, RPG style.',
+    description: 'Violet orbit rings-save the world, RPG style.',
     seedCost: 72,
     kind: 'taskTheme',
     section: 'task_appearance',
@@ -190,7 +190,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reaction_emoji_rocket',
     title: 'Rocket cheer',
-    description: 'Blast a little encouragement onto friends’ deeds—unlocks the rocket reaction.',
+    description: 'Blast a little encouragement onto friends’ deeds-unlocks the rocket reaction.',
     seedCost: 22,
     kind: 'deedReactionPack',
     section: 'deed_feed',
@@ -201,7 +201,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reaction_emoji_pray',
     title: 'Grateful hands',
-    description: 'Say thanks with heart—unlocks the folded-hands reaction.',
+    description: 'Say thanks with heart-unlocks the folded-hands reaction.',
     seedCost: 20,
     kind: 'deedReactionPack',
     section: 'deed_feed',
@@ -212,7 +212,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reaction_emoji_flame',
     title: 'On fire',
-    description: 'When a deed is straight-up amazing—unlocks the flame reaction.',
+    description: 'When a deed is straight-up amazing-unlocks the flame reaction.',
     seedCost: 24,
     kind: 'deedReactionPack',
     section: 'deed_feed',
@@ -223,7 +223,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reaction_emoji_rainbow',
     title: 'Rainbow beam',
-    description: 'Spread joy in full color—unlocks the rainbow reaction.',
+    description: 'Spread joy in full color-unlocks the rainbow reaction.',
     seedCost: 26,
     kind: 'deedReactionPack',
     section: 'deed_feed',
@@ -234,7 +234,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reaction_emoji_party',
     title: 'Party popper',
-    description: 'Big wins deserve a celebration—unlocks the party reaction.',
+    description: 'Big wins deserve a celebration-unlocks the party reaction.',
     seedCost: 28,
     kind: 'deedReactionPack',
     section: 'deed_feed',
@@ -245,7 +245,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reaction_emoji_hundred',
     title: 'Perfect score',
-    description: 'Drop a 💯 when something is flawless—unlocks the 100 reaction.',
+    description: 'Drop a 💯 when something is flawless-unlocks the 100 reaction.',
     seedCost: 18,
     kind: 'deedReactionPack',
     section: 'deed_feed',
@@ -260,11 +260,11 @@ export const SHOP_SECTION_ORDER: ShopSectionId[] = ['app_appearance', 'task_appe
 export const SHOP_SECTION_META: Record<ShopSectionId, { title: string; blurb: string }> = {
   app_appearance: {
     title: 'App appearance',
-    blurb: 'Premium color backdrops—unlock once, then pick them anytime in Settings → Appearance.',
+    blurb: 'Premium color backdrops-unlock once, then pick them anytime in Settings → Appearance.',
   },
   task_appearance: {
     title: 'Task list flair',
-    blurb: 'Make completing acts feel like leveling up—checkbox rings and list chrome.',
+    blurb: 'Make completing acts feel like leveling up-checkbox rings and list chrome.',
   },
   deed_feed: {
     title: 'Deed feed & sharing',

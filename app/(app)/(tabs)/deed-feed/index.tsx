@@ -49,7 +49,7 @@ export default function DeedFeedScreen() {
   const friendUidsQuery = useFriendUidsQuery(uid);
   const friendUids = friendUidsQuery.data ?? [];
   const friendsListReady = friendUidsQuery.isFetched;
-  /** Friend uids used for deed queries — excludes blocked users so their posts are not read from Firestore. */
+  /** Friend uids used for deed queries - excludes blocked users so their posts are not read from Firestore. */
   const friendUidsForFeed = useMemo(
     () => friendUids.filter((id) => !blockedUidSet.has(id)),
     [friendUids, blockedUidSet],
@@ -68,7 +68,7 @@ export default function DeedFeedScreen() {
     [friendPosts, blockedUidSet],
   );
 
-  // "Already seen" feed filtering — the main feed surfaces only posts you haven't
+  // "Already seen" feed filtering - the main feed surfaces only posts you haven't
   // viewed yet; "Show all posts" reveals the rest for the current session.
   const { seenSnapshot, ready: seenReady, markSeen } = useDeedFeedSeen(uid);
   const [showAllPosts, setShowAllPosts] = useState(false);
@@ -262,7 +262,9 @@ export default function DeedFeedScreen() {
       const reactionBlockedReason = !postReactionsEnabled ? ('post' as const) : !viewerReactionsAllowed ? ('viewer' as const) : undefined;
       const showComments = Boolean(uid && item.feedCommentsEnabled !== false);
       return (
-        <AppCard className="mb-4 overflow-hidden p-0" cardBackgroundColor={resolveDeedPostCardBackground(item)}>
+        <AppCard
+          className="mb-4 overflow-hidden p-0"
+          cardBackgroundColor={act.palette.isDark ? act.palette.surface : resolveDeedPostCardBackground(item)}>
           <DeedPostHeader
             displayName={item.authorDisplayName}
             createdAt={item.createdAt}

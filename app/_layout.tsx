@@ -17,30 +17,11 @@ import { ActAppearanceProvider } from '@/shared/providers/ActAppearanceProvider'
 import { AppQueryProvider } from '@/shared/providers/AppQueryProvider';
 import { AuthStateListener } from '@/shared/providers/AuthStateListener';
 import { initializeSentry, wrapRootComponent } from '@/shared/services/sentry';
-import * as Sentry from '@sentry/react-native';
-
-Sentry.init({
-  dsn: 'https://5bdcfa03ce0487d9e45b8fdb9e4a6b4d@o4511498954342400.ingest.us.sentry.io/4511498975903744',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
-
-  // Enable Logs
-  enableLogs: true,
-
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
 
 export { ErrorBoundary } from 'expo-router';
 
-// Initialize crash/error reporting before anything else renders (no-ops without a DSN).
+// Initialize crash/error reporting before anything else renders. Single, privacy-clean
+// init lives in `shared/services/sentry` (no PII / no session replay).
 initializeSentry();
 
 WebBrowser.maybeCompleteAuthSession();
@@ -92,4 +73,4 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(wrapRootComponent(RootLayout));
+export default wrapRootComponent(RootLayout);

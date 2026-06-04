@@ -249,7 +249,7 @@ export async function notifyChallengeCompleted(userId: string, challengeName: st
     userId,
     'challenge_completed',
     '🎉 Challenge Complete',
-    `${challengeName} — Earned +${xpEarned} XP`,
+    `${challengeName} - Earned +${xpEarned} XP`,
     { actionUrl: '/challenges' },
   );
 }

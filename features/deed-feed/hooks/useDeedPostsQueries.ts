@@ -42,7 +42,7 @@ export function useMyDeedPostsQuery(uid: string | undefined) {
   });
 }
 
-/** Deed posts authored by `authorUid` — used for the memories grid on a profile. */
+/** Deed posts authored by `authorUid` - used for the memories grid on a profile. */
 export function useUserDeedPostsQuery(authorUid: string | undefined, enabled = true) {
   return useQuery({
     queryKey: authorUid

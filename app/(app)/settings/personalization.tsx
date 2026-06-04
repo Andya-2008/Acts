@@ -9,7 +9,7 @@ import { AppText, Screen } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
-/** Personalize Acts — set up (if not configured yet) or edit existing choices. */
+/** Personalize Acts - set up (if not configured yet) or edit existing choices. */
 export default function SettingsPersonalizationScreen() {
   const act = useActAppearance();
   const uid = useAuthStore((s) => s.user?.uid);
@@ -38,7 +38,7 @@ export default function SettingsPersonalizationScreen() {
         <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
           {notConfigured
             ? 'Answer a few quick questions so Acts can suggest acts that fit you.'
-            : 'Update your answers anytime — your suggested acts adapt to your choices.'}
+            : 'Update your answers anytime - your suggested acts adapt to your choices.'}
         </AppText>
         {notConfigured ? (
           <OnboardingWizard

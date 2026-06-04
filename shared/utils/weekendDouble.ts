@@ -1,5 +1,5 @@
 /**
- * Double XP & seeds (currency) on **local** Friday–Sunday.
+ * Double XP & seeds (currency) on **local** Friday-Sunday.
  * (JS: Fri=5, Sat=6, Sun=0)
  */
 
@@ -12,7 +12,7 @@ export function localYmd(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-/** The Friday date (local) that anchors the Fri–Sun window containing `d`, or null if not weekend. */
+/** The Friday date (local) that anchors the Fri-Sun window containing `d`, or null if not weekend. */
 export function fridayYmdOfWeekendContaining(d = new Date()): string | null {
   const day = d.getDay();
   if (day !== 0 && day !== 5 && day !== 6) {

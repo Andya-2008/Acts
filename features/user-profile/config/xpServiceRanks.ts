@@ -69,7 +69,7 @@ export const SERVICE_RANK_TIERS: ServiceRankTier[] = [
 
 export type ServiceRankView = {
   tier: ServiceRankTier;
-  /** 0–1 progress toward the *next* tier, or 1 if at max */
+  /** 0-1 progress toward the *next* tier, or 1 if at max */
   progressToNext: number;
   /** XP above current tier floor */
   xpIntoTier: number;

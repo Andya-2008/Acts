@@ -249,7 +249,7 @@ export async function sendFriendRequest(fromUid: string, usernameRaw: string): P
     throw new Error('You are already friends with this person.');
   }
 
-  /** Must not read `toUid`'s incoming subcollection — rules only allow the recipient to read it. */
+  /** Must not read `toUid`'s incoming subcollection - rules only allow the recipient to read it. */
   const outgoingSnap = await getDoc(outgoingRef(db, fromUid, toUid));
   if (outgoingSnap.exists()) {
     throw new Error('A friend request is already pending.');

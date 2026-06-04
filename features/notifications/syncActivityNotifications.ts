@@ -68,7 +68,7 @@ export type ActivitySyncInput = {
  * running: acts newly added to the list, and new social activity (reactions,
  * comments, friend posts, friend requests) since the last time we notified.
  *
- * This is best-effort and only runs when the app is open/foregrounded — true
+ * This is best-effort and only runs when the app is open/foregrounded - true
  * push delivery while the app is closed requires a server (Cloud Functions + the
  * Expo push token we already store). Gated by the user's notification settings.
  */

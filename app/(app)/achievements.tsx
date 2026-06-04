@@ -265,6 +265,7 @@ export default function AchievementsScreen() {
                   <TitleWithInfo
                     title="Your trophy case"
                     variant="subtitle"
+                    className="min-w-0 flex-1"
                     infoText="Tap any badge for the full quest briefing."
                   />
                 </View>
@@ -293,7 +294,7 @@ export default function AchievementsScreen() {
                 <Ionicons name="sparkles" size={14} color="#CA8A04" />
                 <AppText variant="caption" className="text-acts-muted">
                   {unlockedCount === ACHIEVEMENTS.length
-                    ? 'Collection complete — you legend!'
+                    ? 'Collection complete - you legend!'
                     : `${ACHIEVEMENTS.length - unlockedCount} badge${ACHIEVEMENTS.length - unlockedCount === 1 ? '' : 's'} left to discover`}
                 </AppText>
               </View>

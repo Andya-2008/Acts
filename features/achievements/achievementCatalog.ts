@@ -130,7 +130,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'acts_3500', category: 'acts', title: 'Thirty-five hundred', description: 'Complete 3,500 acts.', icon: 'ribbon', metric: { kind: 'acts_min', n: 3500 }, accentHex: '#7C3AED' },
   { id: 'acts_5000', category: 'acts', title: 'Five thousand acts', description: 'Complete 5,000 acts.', icon: 'planet', metric: { kind: 'acts_min', n: 5000 }, accentHex: '#5B21B6' },
 
-  // Deed feed — every authored post counts (including shares from Memories / Tasks with a photo).
+  // Deed feed - every authored post counts (including shares from Memories / Tasks with a photo).
   { id: 'deed_post_1', category: 'deed_feed', title: 'Feed debut', description: 'Publish your first deed post.', icon: 'images', metric: { kind: 'deed_posts_min', n: 1 }, accentHex: '#E11D74' },
   { id: 'deed_post_3', category: 'deed_feed', title: 'Story trio', description: 'Publish 3 deed posts.', icon: 'camera', metric: { kind: 'deed_posts_min', n: 3 }, accentHex: '#DB2777' },
   { id: 'deed_post_5', category: 'deed_feed', title: 'Feed regular', description: 'Publish 5 deed posts.', icon: 'aperture', metric: { kind: 'deed_posts_min', n: 5 }, accentHex: '#BE185D' },
@@ -176,11 +176,11 @@ export function achievementHowToUnlock(def: AchievementDef): string {
     }
     case 'acts_min': {
       const n = def.metric.n;
-      return `Every time you check an act off your task list, it counts toward this goal (any cadence—daily, weekly, etc.). Reach ${n.toLocaleString()} completed act${n === 1 ? '' : 's'} total.`;
+      return `Every time you check an act off your task list, it counts toward this goal (any cadence-daily, weekly, etc.). Reach ${n.toLocaleString()} completed act${n === 1 ? '' : 's'} total.`;
     }
     case 'deed_posts_min': {
       const n = def.metric.n;
-      return `Each deed post you author counts—including when you share a completed act (with a photo) from Tasks or Memories to the feed. Publish ${n} post${n === 1 ? '' : 's'} total.`;
+      return `Each deed post you author counts-including when you share a completed act (with a photo) from Tasks or Memories to the feed. Publish ${n} post${n === 1 ? '' : 's'} total.`;
     }
   }
 }

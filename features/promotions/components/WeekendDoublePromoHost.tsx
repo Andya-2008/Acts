@@ -11,7 +11,7 @@ import { useTutorialGateStore } from '@/shared/stores/tutorialGateStore';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 /**
- * Shows the weekend double promo once per Fri–Sun window (first time the app becomes active that weekend).
+ * Shows the weekend double promo once per Fri-Sun window (first time the app becomes active that weekend).
  */
 export function WeekendDoublePromoHost() {
   const uid = useAuthStore((s) => s.user?.uid);

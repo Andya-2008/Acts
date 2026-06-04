@@ -80,7 +80,7 @@ export function hasNativeGoogleClientIdForPlatform(): boolean {
   return true;
 }
 
-/** Native apps must not use the Web OAuth client — Google blocks that as a policy violation. */
+/** Native apps must not use the Web OAuth client - Google blocks that as a policy violation. */
 export function canStartGoogleOAuthOnPlatform(): boolean {
   if (Platform.OS === 'web') {
     return isGoogleWebClientConfigured();

@@ -69,7 +69,7 @@ export function useDerivedNotifications(uid: string | undefined) {
   };
 }
 
-/** Lightweight unread badge — shares the cache with {@link useDerivedNotifications}. */
+/** Lightweight unread badge - shares the cache with {@link useDerivedNotifications}. */
 export function useNotificationsUnreadCount(uid: string | undefined): number {
   return useDerivedNotifications(uid).unreadCount;
 }

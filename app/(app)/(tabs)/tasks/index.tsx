@@ -18,6 +18,7 @@ import { useFocusEffect } from 'expo-router';
 import { TaskListFiltersModal } from '@/features/tasks/components/TaskListFiltersModal';
 import { TaskRewardFly } from '@/features/tasks/components/TaskRewardFly';
 import { TaskRow, type TaskToggleOrigin } from '@/features/tasks/components/TaskRow';
+import { addSeenTaskIds, loadSeenTaskIds } from '@/features/tasks/taskSeenStorage';
 import { authorDisplayNameForDeed } from '@/features/deed-feed/utils/authorDisplayName';
 import { ownedTaskThemeSet } from '@/features/shop/shopCatalog';
 import { autoAssignPerCadenceFromPurchases } from '@/features/shop/shopEntitlements';
@@ -228,6 +229,50 @@ export default function TasksListScreen() {
     () => visibleTasks.filter((t) => taskMatchesListFilters(t, listFilters)),
     [visibleTasks, listFilters],
   );
+
+  // "New" markers: acts the user hasn't seen on this tab yet. Seen state is loaded
+  // once per focus (so badges stay stable during a visit) and persisted on blur.
+  const [seenTaskIds, setSeenTaskIds] = useState<Set<string> | null>(null);
+  const displayedTaskIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    displayedTaskIdsRef.current = displayedTasks.map((t) => t.id);
+  }, [displayedTasks]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      if (uid) {
+        void loadSeenTaskIds(uid).then((set) => {
+          if (active) {
+            setSeenTaskIds(set);
+          }
+        });
+      } else {
+        setSeenTaskIds(new Set());
+      }
+      return () => {
+        active = false;
+        if (uid && displayedTaskIdsRef.current.length > 0) {
+          void addSeenTaskIds(uid, displayedTaskIdsRef.current);
+        }
+      };
+    }, [uid]),
+  );
+
+  const newTaskIds = useMemo(() => {
+    // Empty seen set means a first run on this device - don't flood the list with
+    // markers; the current acts get recorded as seen on blur instead.
+    if (!seenTaskIds || seenTaskIds.size === 0) {
+      return new Set<string>();
+    }
+    const out = new Set<string>();
+    for (const t of displayedTasks) {
+      if (t.completedAt == null && !seenTaskIds.has(t.id)) {
+        out.add(t.id);
+      }
+    }
+    return out;
+  }, [seenTaskIds, displayedTasks]);
 
   const prevVisibleLen = useRef(0);
   useEffect(() => {
@@ -509,6 +554,7 @@ export default function TasksListScreen() {
         onShareToDeedFeed={Platform.OS === 'web' ? undefined : shareToDeedFeed}
         deedFeedShareTaskId={deedFeedShareTaskId}
         taskCheckThemeId={equippedTaskCheckTheme}
+        isNew={newTaskIds.has(item.id)}
       />
     ),
     [
@@ -522,6 +568,7 @@ export default function TasksListScreen() {
       shareToDeedFeed,
       deedFeedShareTaskId,
       equippedTaskCheckTheme,
+      newTaskIds,
     ],
   );
 
@@ -533,7 +580,7 @@ export default function TasksListScreen() {
           <TitleWithInfo
             title="Make up your own act"
             className="mb-3"
-            infoText="Acts aren't limited to our suggestions — add any kind thing you want to do and earn the same rewards."
+            infoText="Acts aren't limited to our suggestions - add any kind thing you want to do and earn the same rewards."
           />
           <ActsTextInput
             value={newTitle}
@@ -557,7 +604,7 @@ export default function TasksListScreen() {
           <AppCard className="mb-3 border-acts-green/35 bg-acts-green-soft/80 p-3">
             <TitleWithInfo
               title="Double seeds & XP weekend"
-              infoText="Friday–Sunday: task rewards, deed-feed bonuses, and shop XP boosts pay out twice."
+              infoText="Friday-Sunday: task rewards, deed-feed bonuses, and shop XP boosts pay out twice."
             />
           </AppCard>
         ) : null}

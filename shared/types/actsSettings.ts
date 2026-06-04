@@ -1,7 +1,7 @@
 import type { ActAppearanceColorPresetId } from '@/shared/theme/appearancePalettes';
 import { normalizeProfileBio } from '@/shared/constants/profileBio';
 
-/** Who can see a profile stat (rank, streak, XP, acts count) besides you — you always see your own. */
+/** Who can see a profile stat (rank, streak, XP, acts count) besides you - you always see your own. */
 export type ProfileStatVisibility = 'public' | 'friends_only' | 'only_me';
 
 /** Calendar period keys for the user's rotating home roster (local device timezone). */
@@ -58,7 +58,7 @@ export type ActsAppSettings = {
   notifyWeeklyActReminder: boolean;
   /** First of month: nudge for monthly cadence acts (local). */
   notifyMonthlyActReminder: boolean;
-  /** Local hour (0–23) for daily reminder; incomplete nudge is +3h (capped 9 PM). */
+  /** Local hour (0-23) for daily reminder; incomplete nudge is +3h (capped 9 PM). */
   retentionDailyReminderHour: number;
   /** Forgiving a single missed calendar day for streak counting (YYYY-MM-DD). */
   streakGraceForgivenDayKey?: string;

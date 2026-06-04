@@ -4,7 +4,7 @@ import { ActivityIndicator, PixelRatio, Pressable, Text, View } from 'react-nati
 import { GoogleGLogo } from '@/features/auth/components/GoogleGLogo';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 
-/** https://developers.google.com/identity/branding-guidelines — light theme */
+/** https://developers.google.com/identity/branding-guidelines - light theme */
 const GOOGLE_LIGHT = {
   fill: '#FFFFFF',
   stroke: '#747775',

@@ -34,6 +34,6 @@ export async function registerExpoPushToken(uid: string): Promise<void> {
       ExpoPushTokenUpdatedAt: new Date(),
     });
   } catch {
-    // Simulator / missing entitlements — ignore
+    // Simulator / missing entitlements - ignore
   }
 }

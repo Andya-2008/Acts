@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 
-import { AppButton, AppCard, AppText, Badge, Screen } from '@/shared/components/ui';
+import { ActsTextInput, AppButton, AppCard, AppText, Badge, Screen } from '@/shared/components/ui';
+import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import { HeaderBackLabel } from '@/shared/components/HeaderBackLabel';
+import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
+import { modalAnimationType } from '@/shared/utils/accessibilityMotion';
 import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
@@ -17,6 +21,8 @@ import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 
 export default function ChallengesScreen() {
   const act = useActAppearance();
+  const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
   const userId = useAuthStore((s) => s.user?.uid);
   const season = useMemo(() => getActiveSeason(), []);
   const daysLeft = useMemo(() => seasonDaysRemaining(season), [season]);
@@ -24,6 +30,8 @@ export default function ChallengesScreen() {
   const { data: progress, isLoading } = useSeasonProgressQuery(userId, season.id);
   const completeMutation = useRecordChallengeCompletionMutation(userId);
   const [error, setError] = useState<string | null>(null);
+  const [confirmChallenge, setConfirmChallenge] = useState<SeasonalChallenge | null>(null);
+  const [noteText, setNoteText] = useState('');
 
   const pendingChallengeId = completeMutation.isPending
     ? completeMutation.variables?.challenge.id ?? null
@@ -37,11 +45,27 @@ export default function ChallengesScreen() {
     headerLeft: () => <HeaderBackLabel />,
   };
 
-  const onComplete = (challenge: SeasonalChallenge) => {
+  const openComplete = (challenge: SeasonalChallenge) => {
     setError(null);
+    setNoteText('');
+    setConfirmChallenge(challenge);
+  };
+
+  const submitComplete = () => {
+    if (!confirmChallenge) {
+      return;
+    }
+    const challenge = confirmChallenge;
+    const note = noteText.trim();
     completeMutation.mutate(
-      { season, challenge },
-      { onError: (e) => setError(mapAuthError(e)) },
+      { season, challenge, note: note.length > 0 ? note : undefined },
+      {
+        onSuccess: () => {
+          setConfirmChallenge(null);
+          setNoteText('');
+        },
+        onError: (e) => setError(mapAuthError(e)),
+      },
     );
   };
 
@@ -91,6 +115,7 @@ export default function ChallengesScreen() {
           const done = completions[challenge.id] ?? 0;
           const atMax = done >= challenge.maxCompletions;
           const xp = seasonalChallengeXp(season, challenge);
+          const lastNote = progress?.notes?.[challenge.id]?.[0];
           return (
             <AppCard key={challenge.id} className="mb-3 p-4">
               <View className="flex-row items-start">
@@ -112,21 +137,91 @@ export default function ChallengesScreen() {
                       {done} of {challenge.maxCompletions} this month
                     </AppText>
                   </View>
+                  {lastNote ? (
+                    <View className="mt-2 rounded-2xl border border-acts-border/70 bg-acts-canvas px-3 py-2">
+                      <AppText variant="caption" className="text-acts-muted">
+                        Your last note: {lastNote}
+                      </AppText>
+                    </View>
+                  ) : null}
                 </View>
               </View>
               <AppButton
-                title={atMax ? 'Completed' : 'Mark complete'}
+                title={atMax ? 'Completed' : done > 0 ? 'Log it again' : 'I did this'}
                 variant={atMax ? 'secondary' : 'primary'}
                 className="mt-3"
                 loading={pendingChallengeId === challenge.id}
                 disabled={atMax || !userId || completeMutation.isPending}
-                accessibilityLabel={`Mark ${challenge.title} complete`}
-                onPress={() => onComplete(challenge)}
+                accessibilityLabel={`Log ${challenge.title} as done`}
+                onPress={() => openComplete(challenge)}
               />
             </AppCard>
           );
         })}
       </Screen>
+
+      <Modal
+        visible={confirmChallenge != null}
+        transparent
+        animationType={modalAnimationType(reduceMotion, 'fade')}
+        onRequestClose={() => {
+          if (!completeMutation.isPending) {
+            setConfirmChallenge(null);
+          }
+        }}>
+        <Pressable
+          className="flex-1 justify-end bg-black/55"
+          accessibilityLabel="Dismiss"
+          onPress={() => {
+            if (!completeMutation.isPending) {
+              setConfirmChallenge(null);
+            }
+          }}>
+          <Pressable
+            className="rounded-t-3xl border-t-2 border-acts-border bg-acts-surface px-5 pt-5"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+            onPress={(e) => e.stopPropagation()}>
+            <View className="mb-4 h-1 w-10 self-center rounded-full bg-acts-border" />
+            <View className="mb-3 flex-row items-center gap-3">
+              <AppText style={{ fontSize: 30, lineHeight: 36 }}>{confirmChallenge?.icon}</AppText>
+              <AppText variant="subtitle" className="flex-1 text-acts-ink">
+                {confirmChallenge?.title}
+              </AppText>
+            </View>
+            <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+              Acts runs on the honor system, so just confirm you did this in real life. Add a note
+              to remember what you did (optional).
+            </AppText>
+            <ActsTextInput
+              value={noteText}
+              onChangeText={setNoteText}
+              placeholder="What did you do? (optional)"
+              placeholderTextColor="#9CA3AF"
+              multiline
+              editable={!completeMutation.isPending}
+              accessibilityLabel="Note about what you did"
+              className="mb-4 rounded-2xl border border-acts-border bg-acts-canvas text-acts-ink"
+              style={[getActsTextInputBoxStyle(), { minHeight: 88, textAlignVertical: 'top' }]}
+            />
+            <View className="flex-row gap-3">
+              <AppButton
+                title="Cancel"
+                variant="secondary"
+                className="flex-1"
+                disabled={completeMutation.isPending}
+                onPress={() => setConfirmChallenge(null)}
+              />
+              <AppButton
+                title="Mark complete"
+                className="flex-1"
+                loading={completeMutation.isPending}
+                disabled={completeMutation.isPending || !userId}
+                onPress={submitComplete}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }

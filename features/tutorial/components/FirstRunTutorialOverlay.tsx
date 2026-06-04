@@ -20,7 +20,7 @@ const SLIDES: Slide[] = [
   {
     icon: 'heart',
     title: 'Welcome to Acts',
-    body: 'Build a habit of kindness with quick acts you can do every day. Use the three tabs at the bottom—Tasks, Deed Feed, and Profile—to move around the app.',
+    body: 'Build a habit of kindness with quick acts you can do every day. Use the three tabs at the bottom-Tasks, Deed Feed, and Profile-to move around the app.',
   },
   {
     icon: 'leaf-outline',
@@ -45,7 +45,7 @@ const SLIDES: Slide[] = [
   {
     icon: 'storefront-outline',
     title: 'Seeds & Kindness Arcade',
-    body: 'Seeds are the hearts you earn from acts. Spend them in the Kindness Arcade for themes, feed extras, and more—check the Tasks header for your balance.',
+    body: 'Seeds are the hearts you earn from acts. Spend them in the Kindness Arcade for themes, feed extras, and more-check the Tasks header for your balance.',
   },
 ];
 

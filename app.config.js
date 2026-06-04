@@ -72,15 +72,20 @@ module.exports = ({ config }) => {
   if (!plugins.includes('expo-dev-client')) {
     plugins.push('expo-dev-client');
   }
-  // Sentry native config (crash reporting). Sourcemap upload during EAS build is
-  // skipped automatically unless SENTRY_AUTH_TOKEN + org/project are provided.
-  if (!plugins.some((p) => p === '@sentry/react-native' || (Array.isArray(p) && p[0] === '@sentry/react-native'))) {
+  // Sentry native config (crash reporting). Only add it if app.json hasn't already
+  // registered a Sentry plugin (it ships `@sentry/react-native/expo`); otherwise we'd
+  // get a duplicate Xcode build phase. Sourcemap upload is gated by SENTRY_DISABLE_AUTO_UPLOAD.
+  const hasSentryPlugin = plugins.some((p) => {
+    const name = Array.isArray(p) ? p[0] : p;
+    return typeof name === 'string' && name.startsWith('@sentry/react-native');
+  });
+  if (!hasSentryPlugin) {
     const sentryOrg = stripEnvValue(process.env.SENTRY_ORG);
     const sentryProject = stripEnvValue(process.env.SENTRY_PROJECT);
     plugins.push(
       sentryOrg && sentryProject
-        ? ['@sentry/react-native', { organization: sentryOrg, project: sentryProject }]
-        : '@sentry/react-native',
+        ? ['@sentry/react-native/expo', { organization: sentryOrg, project: sentryProject }]
+        : '@sentry/react-native/expo',
     );
   }
 

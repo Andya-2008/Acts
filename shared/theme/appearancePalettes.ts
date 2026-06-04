@@ -24,6 +24,8 @@ export type ActAppearancePalette = {
   blueSoft: string;
   border: string;
   danger: string;
+  /** Dark themes need surfaces (not light tints) so palette ink text stays legible. */
+  isDark: boolean;
 };
 
 export const FREE_ACT_APPEARANCE_PRESET_IDS = ['blossom', 'evergreen', 'ocean', 'dawn'] as const satisfies readonly ActAppearanceColorPresetId[];
@@ -52,6 +54,7 @@ const BLOSSOM: ActAppearancePalette = {
   blueSoft: '#E8ECFF',
   border: '#F1C9E0',
   danger: '#DC2626',
+  isDark: false,
 };
 
 const EVERGREEN: ActAppearancePalette = {
@@ -65,6 +68,7 @@ const EVERGREEN: ActAppearancePalette = {
   blueSoft: '#E3EEF8',
   border: '#C8E6D6',
   danger: '#B91C1C',
+  isDark: false,
 };
 
 const OCEAN: ActAppearancePalette = {
@@ -78,6 +82,7 @@ const OCEAN: ActAppearancePalette = {
   blueSoft: '#E0E9FF',
   border: '#C7D8EA',
   danger: '#DC2626',
+  isDark: false,
 };
 
 const DAWN: ActAppearancePalette = {
@@ -91,6 +96,7 @@ const DAWN: ActAppearancePalette = {
   blueSoft: '#E6EEF9',
   border: '#F0D4C4',
   danger: '#B91C1C',
+  isDark: false,
 };
 
 const MIDNIGHT: ActAppearancePalette = {
@@ -104,6 +110,7 @@ const MIDNIGHT: ActAppearancePalette = {
   blueSoft: '#1E1B4B',
   border: '#334155',
   danger: '#F87171',
+  isDark: true,
 };
 
 const LAVENDER_MIST: ActAppearancePalette = {
@@ -117,6 +124,7 @@ const LAVENDER_MIST: ActAppearancePalette = {
   blueSoft: '#EEF2FF',
   border: '#DDD6FE',
   danger: '#DC2626',
+  isDark: false,
 };
 
 const DESERT_SAND: ActAppearancePalette = {
@@ -130,6 +138,7 @@ const DESERT_SAND: ActAppearancePalette = {
   blueSoft: '#FEF3C7',
   border: '#E7D5C4',
   danger: '#B91C1C',
+  isDark: false,
 };
 
 const AURORA_NIGHT: ActAppearancePalette = {
@@ -143,6 +152,7 @@ const AURORA_NIGHT: ActAppearancePalette = {
   blueSoft: '#E0F2FE',
   border: '#99F6E4',
   danger: '#DC2626',
+  isDark: false,
 };
 
 const PRESETS: Record<ActAppearanceColorPresetId, ActAppearancePalette> = {

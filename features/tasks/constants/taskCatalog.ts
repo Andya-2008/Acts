@@ -11,7 +11,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000001',
     textShort: 'Thank one of your closest friends over text!',
     textLong:
-      'Take a moment to reflect on one of your closest friends—the person who has been there for you through thick and thin. Now, send them a thoughtful text message expressing your gratitude. Let them know how much their friendship means to you, recall a specific memory or moment you appreciated, and tell them the impact they have had on your life. A simple, heartfelt message can brighten their day and strengthen your bond.',
+      'Take a moment to reflect on one of your closest friends-the person who has been there for you through thick and thin. Now, send them a thoughtful text message expressing your gratitude. Let them know how much their friendship means to you, recall a specific memory or moment you appreciated, and tell them the impact they have had on your life. A simple, heartfelt message can brighten their day and strengthen your bond.',
     active: true,
     category: 'general',
     difficulty: 1,
@@ -27,7 +27,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000002',
     textShort: 'Leave a kind note for a family member or roommate!',
     textLong:
-      'Write a short, uplifting note for someone you live with—whether it is a parent, sibling, or roommate—and leave it somewhere they will find it, like on their pillow, desk, or mirror. It could be a compliment, a thank-you, or just a reminder that you care about them. Even a few kind words can make someone’s day feel a little lighter.',
+      'Write a short, uplifting note for someone you live with-whether it is a parent, sibling, or roommate-and leave it somewhere they will find it, like on their pillow, desk, or mirror. It could be a compliment, a thank-you, or just a reminder that you care about them. Even a few kind words can make someone’s day feel a little lighter.',
     active: true,
     category: 'general',
     difficulty: 1,
@@ -43,7 +43,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000003',
     textShort: 'Compliment a friend (genuinely and specifically)!',
     textLong:
-      'Think of a friend you have not hyped up lately. Send them or tell them one sincere, specific compliment—in person, on a call, or in a message. It could be about their effort, humor, loyalty, or something kind they did. When you are done, take a picture together afterward if you are in person, or save a screenshot of your message as your act memory.',
+      'Think of a friend you have not hyped up lately. Send them or tell them one sincere, specific compliment-in person, on a call, or in a message. It could be about their effort, humor, loyalty, or something kind they did. When you are done, take a picture together afterward if you are in person, or save a screenshot of your message as your act memory.',
     active: true,
     category: 'general',
     difficulty: 2,
@@ -59,7 +59,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000004',
     textShort: 'Pick up a few pieces of litter you see on the ground.',
     textLong:
-      'Next time you are walking outside—whether it is around your neighborhood, a park, or a school campus—take a moment to pick up a few pieces of trash you notice on the ground. It is a small action that helps the environment, shows care for your community, and might even inspire others to do the same.',
+      'Next time you are walking outside-whether it is around your neighborhood, a park, or a school campus-take a moment to pick up a few pieces of trash you notice on the ground. It is a small action that helps the environment, shows care for your community, and might even inspire others to do the same.',
     active: true,
     category: 'environmental',
     difficulty: 2,
@@ -75,7 +75,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000005',
     textShort: 'Hold the door open for someone.',
     textLong:
-      'When you see someone approaching a door, pause and hold it open for them. It is a tiny gesture, but it can make someone feel respected and acknowledged—especially if their hands are full or they are in a rush.',
+      'When you see someone approaching a door, pause and hold it open for them. It is a tiny gesture, but it can make someone feel respected and acknowledged-especially if their hands are full or they are in a rush.',
     active: true,
     category: 'general',
     difficulty: 1,
@@ -107,7 +107,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000007',
     textShort: 'Make breakfast or lunch for your family',
     textLong:
-      'Surprise your family by making breakfast or lunch for everyone. It does not need to be fancy — even a simple meal shows care and can brighten someone’s day.',
+      'Surprise your family by making breakfast or lunch for everyone. It does not need to be fancy - even a simple meal shows care and can brighten someone’s day.',
     active: true,
     category: 'general',
     difficulty: 1,
@@ -187,7 +187,7 @@ export const TASK_CATALOG: readonly TaskCatalogEntry[] = [
     taskId: 'task_0000013',
     textShort: 'Do a kind act for a friend.',
     textLong:
-      'Do something kind for a friend without them asking—bring them a snack, cover a small favor, send a care note, or help with one task they have been putting off. When you are done, take a picture together afterward if you see them, or save proof of the act as your memory.',
+      'Do something kind for a friend without them asking-bring them a snack, cover a small favor, send a care note, or help with one task they have been putting off. When you are done, take a picture together afterward if you see them, or save proof of the act as your memory.',
     active: true,
     category: 'community',
     difficulty: 2,

@@ -24,6 +24,7 @@ import { deedReactionKindsForViewer } from '@/features/shop/shopCatalog';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { useAuthStore } from '@/shared/stores/authStore';
+import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { AppButton, AppCard, AppText, TitleWithInfo } from '@/shared/components/ui';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import type { DeedCardTintId } from '@/shared/constants/deedPostCardTints';
@@ -36,6 +37,7 @@ import type { DeedReactionKind } from '@/shared/types/deedReaction';
  * queries/mutations) so it can live on its own "Your deeds" screen.
  */
 export function MyDeedsList({ uid }: { uid: string }) {
+  const act = useActAppearance();
   const user = useAuthStore((s) => s.user);
   const { data: viewerUserInfo } = useUserInfoQuery(uid);
   const { data: myPosts, isPending: myPostsPending } = useMyDeedPostsQuery(uid);
@@ -180,7 +182,7 @@ export function MyDeedsList({ uid }: { uid: string }) {
           <AppCard
             key={post.id}
             className="mb-3 overflow-hidden p-0"
-            cardBackgroundColor={resolveDeedPostCardBackground(post)}>
+            cardBackgroundColor={act.palette.isDark ? act.palette.surface : resolveDeedPostCardBackground(post)}>
             <DeedPostHeader
               displayName={post.authorDisplayName}
               createdAt={post.createdAt}

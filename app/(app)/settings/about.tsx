@@ -79,7 +79,7 @@ export default function SettingsAboutScreen() {
         </View>
 
         <AppText variant="subtitle" className="mt-8 text-center text-acts-green">
-          Thanks for helping change the world! — {DEVELOPER}
+          Thanks for helping change the world! - {DEVELOPER}
         </AppText>
 
         <Pressable

@@ -20,12 +20,12 @@ const usernameSchema = z
   .max(20, 'Username must be at most 20 characters.')
   .regex(/^[a-zA-Z0-9_]+$/, 'Use letters, numbers, and underscores only.');
 
-/** Empty, or 3–20 chars matching `usernameSchema`. */
+/** Empty, or 3-20 chars matching `usernameSchema`. */
 const optionalUsernameSchema = z
   .string()
   .trim()
   .refine((s) => s.length === 0 || usernameSchema.safeParse(s).success, {
-    message: 'Usernames use 3–20 letters, numbers, or underscores.',
+    message: 'Usernames use 3-20 letters, numbers, or underscores.',
   });
 
 /** Empty, or a number with at least 10 digits (contact matching on Acts). */

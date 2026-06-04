@@ -1,6 +1,6 @@
 import type { ActsAppSettings } from '@/shared/types/actsSettings';
 
-/** Maps personalization difficulty to catalog `difficulty` (1–3). */
+/** Maps personalization difficulty to catalog `difficulty` (1-3). */
 export function preferredDifficultyLevelFromActs(
   difficulty: ActsAppSettings['preferredDifficulty'],
 ): 1 | 2 | 3 {

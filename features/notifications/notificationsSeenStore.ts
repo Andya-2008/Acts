@@ -7,7 +7,7 @@ import {
 
 /**
  * Shared "inbox last seen" timestamp so the unread badge (deed feed top bar) and
- * the inbox screen stay in sync — reading the inbox clears the badge everywhere.
+ * the inbox screen stay in sync - reading the inbox clears the badge everywhere.
  */
 type NotificationsSeenSlice = {
   uid: string | null;

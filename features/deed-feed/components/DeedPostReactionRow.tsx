@@ -20,7 +20,7 @@ type DeedPostReactionRowProps = {
   busy?: boolean;
   /** When false, emoji buttons are hidden; a short explanation is shown instead. */
   canReact?: boolean;
-  /** Why this viewer cannot react — shown when canReact is false. */
+  /** Why this viewer cannot react - shown when canReact is false. */
   blockedReason?: DeedReactionBlockedReason;
   onToggle: (postId: string, kind: DeedReactionKind) => void;
 };
@@ -79,7 +79,7 @@ export function DeedPostReactionRow({
         <View className="flex-row flex-wrap gap-2">
           {kinds.length === 0 ? (
             <AppText variant="caption" className="text-acts-muted">
-              No reactions unlocked yet — visit the Kindness Arcade to add more.
+              No reactions unlocked yet - visit the Kindness Arcade to add more.
             </AppText>
           ) : null}
           {kinds.map((kind) => {

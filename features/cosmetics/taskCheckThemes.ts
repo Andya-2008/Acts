@@ -33,6 +33,9 @@ export type TaskCheckThemeMeta = {
   cardBg?: string;
   cardBorderDone?: string;
   cardBgDone?: string;
+  /** Opaque hex of the card fills, used to pick legible text color regardless of app theme. */
+  cardBgHex?: string;
+  cardBgDoneHex?: string;
 };
 
 export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
@@ -65,6 +68,8 @@ export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
     cardBg: 'bg-amber-50/85',
     cardBorderDone: 'border-orange-400',
     cardBgDone: 'bg-orange-50/90',
+    cardBgHex: '#FFFBEB',
+    cardBgDoneHex: '#FFF7ED',
   },
   forest_moss: {
     id: 'forest_moss',
@@ -82,6 +87,8 @@ export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
     cardBg: 'bg-emerald-50/90',
     cardBorderDone: 'border-emerald-500',
     cardBgDone: 'bg-emerald-100/85',
+    cardBgHex: '#ECFDF5',
+    cardBgDoneHex: '#D1FAE5',
   },
   golden_medal: {
     id: 'golden_medal',
@@ -99,6 +106,8 @@ export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
     cardBg: 'bg-yellow-50/95',
     cardBorderDone: 'border-amber-500',
     cardBgDone: 'bg-amber-100/90',
+    cardBgHex: '#FEFCE8',
+    cardBgDoneHex: '#FEF3C7',
   },
   ocean_neon: {
     id: 'ocean_neon',
@@ -116,6 +125,8 @@ export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
     cardBg: 'bg-sky-50/90',
     cardBorderDone: 'border-cyan-500',
     cardBgDone: 'bg-cyan-50/95',
+    cardBgHex: '#F0F9FF',
+    cardBgDoneHex: '#ECFEFF',
   },
   candy_party: {
     id: 'candy_party',
@@ -133,6 +144,8 @@ export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
     cardBg: 'bg-pink-50/95',
     cardBorderDone: 'border-fuchsia-500',
     cardBgDone: 'bg-fuchsia-50/95',
+    cardBgHex: '#FDF2F8',
+    cardBgDoneHex: '#FDF4FF',
   },
   starfield: {
     id: 'starfield',
@@ -150,6 +163,8 @@ export const TASK_CHECK_THEMES: Record<TaskCheckThemeId, TaskCheckThemeMeta> = {
     cardBg: 'bg-violet-50/90',
     cardBorderDone: 'border-indigo-500',
     cardBgDone: 'bg-indigo-50/95',
+    cardBgHex: '#F5F3FF',
+    cardBgDoneHex: '#EEF2FF',
   },
 };
 

@@ -13,7 +13,7 @@ type FadeInViewProps = {
 
 /**
  * One-shot entrance animation for screen sections (mount only).
- * Avoid wrapping high-churn FlatList rows — cells recycle and can replay the animation.
+ * Avoid wrapping high-churn FlatList rows - cells recycle and can replay the animation.
  */
 export function FadeInView({
   children,

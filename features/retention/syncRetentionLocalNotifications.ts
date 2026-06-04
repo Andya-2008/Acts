@@ -185,7 +185,7 @@ export async function syncRetentionLocalNotifications(input: RetentionSyncInput)
       content: {
         title: 'Time for an act of kindness',
         body: doneToday
-          ? 'You showed up today — open Acts for tomorrow’s ideas.'
+          ? 'You showed up today - open Acts for tomorrow’s ideas.'
           : 'Open Acts to see today’s suggested acts.',
         data: { screen: 'tasks' },
       },
@@ -205,7 +205,7 @@ export async function syncRetentionLocalNotifications(input: RetentionSyncInput)
       content: {
         title: 'Acts waiting for you',
         body: doneToday
-          ? 'You completed something today — finish another act on your list if you can.'
+          ? 'You completed something today - finish another act on your list if you can.'
           : 'You still have acts on your list. One quick completion counts.',
         data: { screen: 'tasks' },
       },
@@ -244,7 +244,7 @@ export async function syncRetentionLocalNotifications(input: RetentionSyncInput)
       identifier: ID.weekendDouble,
       content: {
         title: 'Weekend double rewards',
-        body: 'Friday–Sunday: earn double seeds and XP on completed acts. Open Acts to start.',
+        body: 'Friday-Sunday: earn double seeds and XP on completed acts. Open Acts to start.',
         data: { screen: 'tasks' },
       },
       trigger: {

@@ -5,7 +5,7 @@ import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
 import { useFriendsGateRefreshStore } from '@/shared/stores/friendsGateRefreshStore';
 
 /**
- * Post-signup friends gate — only required after creating an account, not on normal app open / login.
+ * Post-signup friends gate - only required after creating an account, not on normal app open / login.
  */
 export function useFriendsGate(uid: string | undefined) {
   const friendsQuery = useFriendUidsQuery(uid);

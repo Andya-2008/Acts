@@ -37,13 +37,13 @@ export function useRecordChallengeCompletionMutation(userId: string | undefined)
   return useMutation<
     ChallengeCompletionResult,
     Error,
-    { season: SeasonalSeason; challenge: SeasonalChallenge }
+    { season: SeasonalSeason; challenge: SeasonalChallenge; note?: string }
   >({
-    mutationFn: async ({ season, challenge }) => {
+    mutationFn: async ({ season, challenge, note }) => {
       if (!userId) {
         throw new Error('Not signed in');
       }
-      return recordChallengeCompletion(userId, season, challenge);
+      return recordChallengeCompletion(userId, season, challenge, note);
     },
     onSuccess: (_result, { season }) => {
       if (!userId) {

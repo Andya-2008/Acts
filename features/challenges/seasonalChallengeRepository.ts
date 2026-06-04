@@ -21,8 +21,33 @@ export type SeasonProgress = {
   seasonId: string;
   /** challengeId → times completed this season. */
   completions: Record<string, number>;
+  /** challengeId → most recent honor-system notes ("what I did"), newest first. */
+  notes: Record<string, string[]>;
   totalXpEarned: number;
 };
+
+/** Keep only the most recent few notes per challenge so the doc stays small. */
+const MAX_NOTES_PER_CHALLENGE = 3;
+
+function sanitizeNotes(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== 'object') {
+    return {};
+  }
+  const out: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .filter((v): v is string => typeof v === 'string')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0)
+        .slice(0, MAX_NOTES_PER_CHALLENGE);
+      if (cleaned.length > 0) {
+        out[key] = cleaned;
+      }
+    }
+  }
+  return out;
+}
 
 function progressRef(uid: string, seasonId: string) {
   const db = getFirebaseFirestore();
@@ -30,7 +55,7 @@ function progressRef(uid: string, seasonId: string) {
 }
 
 function emptyProgress(seasonId: string): SeasonProgress {
-  return { seasonId, completions: {}, totalXpEarned: 0 };
+  return { seasonId, completions: {}, notes: {}, totalXpEarned: 0 };
 }
 
 export async function fetchSeasonProgress(uid: string, seasonId: string): Promise<SeasonProgress> {
@@ -42,6 +67,7 @@ export async function fetchSeasonProgress(uid: string, seasonId: string): Promis
   return {
     seasonId,
     completions: { ...(data.completions ?? {}) },
+    notes: sanitizeNotes(data.notes),
     totalXpEarned: Math.max(0, Math.floor(Number(data.totalXpEarned ?? 0))),
   };
 }
@@ -59,12 +85,14 @@ export type ChallengeCompletionResult = {
 
 /**
  * Records one completion of a challenge: bumps the per-challenge count, adds XP to the season
- * total, and grants lifetime XP. Throws if the challenge is already at its max completions.
+ * total, and grants lifetime XP. An optional honor-system note ("what I did") is stored so the
+ * user can look back on what they logged. Throws if already at the max completions.
  */
 export async function recordChallengeCompletion(
   uid: string,
   season: SeasonalSeason,
   challenge: SeasonalChallenge,
+  note?: string,
 ): Promise<ChallengeCompletionResult> {
   const progress = await fetchSeasonProgress(uid, season.id);
   const current = progress.completions[challenge.id] ?? 0;
@@ -76,11 +104,19 @@ export async function recordChallengeCompletion(
   const newCount = current + 1;
   const totalXpEarned = progress.totalXpEarned + xpGranted;
 
+  const trimmedNote = note?.trim() ?? '';
+  const nextNotes = { ...progress.notes };
+  if (trimmedNote.length > 0) {
+    const existing = nextNotes[challenge.id] ?? [];
+    nextNotes[challenge.id] = [trimmedNote, ...existing].slice(0, MAX_NOTES_PER_CHALLENGE);
+  }
+
   await setDoc(
     progressRef(uid, season.id),
     {
       seasonId: season.id,
       completions: { ...progress.completions, [challenge.id]: newCount },
+      notes: nextNotes,
       totalXpEarned,
       updatedAt: serverTimestamp(),
     },

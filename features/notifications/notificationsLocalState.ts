@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 /**
  * Device-local notification bookkeeping: when the inbox was last viewed (for the
  * unread badge), the last task set we notified about, and throttle timestamps for
- * local OS notifications. None of this is shared data — it's per device/user.
+ * local OS notifications. None of this is shared data - it's per device/user.
  */
 
 const LAST_SEEN_KEY = (uid: string) => `@acts/notif_last_seen_${uid}`;

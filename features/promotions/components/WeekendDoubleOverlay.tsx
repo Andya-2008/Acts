@@ -208,7 +208,7 @@ export function WeekendDoubleOverlay({ visible, onClose }: WeekendDoubleOverlayP
             paletteColor={false}
             className="mt-4 max-w-[320px] self-center px-5 text-center leading-6"
             style={{ color: 'rgba(255,247,251,0.9)' }}>
-            All weekend long (Friday–Sunday), every seed reward and lifetime XP you earn from Acts is doubled.
+            All weekend long (Friday-Sunday), every seed reward and lifetime XP you earn from Acts is doubled.
           </AppText>
         </Animated.View>
 

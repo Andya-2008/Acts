@@ -315,7 +315,7 @@ export default function ShopScreen() {
         {showComingSoon ? (
           <AppCard className="border-dashed border-acts-border/80 bg-acts-canvas/80 p-4">
             <AppText variant="body" className="text-center text-acts-muted">
-              Coming soon — new goodies will land in this aisle.
+              Coming soon - new goodies will land in this aisle.
             </AppText>
           </AppCard>
         ) : null}

@@ -4,7 +4,7 @@ export type TaskCadence = 'daily' | 'weekly' | 'monthly' | 'anytime';
 
 export type TaskDifficultyLevel = 1 | 2 | 3;
 
-/** Firestore `userInfo/{uid}/tasks/{taskId}` — catalog tasks + optional custom acts. */
+/** Firestore `userInfo/{uid}/tasks/{taskId}` - catalog tasks + optional custom acts. */
 export type ActTask = {
   id: string;
   taskId: string;

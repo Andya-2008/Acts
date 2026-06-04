@@ -183,22 +183,28 @@ function FriendRow({
   onRemove: () => void;
 }) {
   const { data } = useUserInfoQuery(f.friendUid);
-  const displayName = [f.First, f.Last].filter(Boolean).join(' ') || 'Friend';
+  const fullName = [f.First ?? data?.First, f.Last ?? data?.Last].filter(Boolean).join(' ').trim();
+  const rawUsername = (f.Username ?? data?.Username)?.trim();
+  const usernameHandle = rawUsername ? `@${rawUsername.replace(/^@+/, '')}` : null;
+  const primaryLine = fullName.length > 0 ? fullName : usernameHandle ?? 'Friend';
+  const showHandleLine = fullName.length > 0 && usernameHandle != null;
   return (
     <View className="mb-3 rounded-2xl border border-acts-border/60 bg-acts-surface px-4 py-3">
       <Pressable
         className="flex-row items-center"
         onPress={() => router.push(`/(app)/profile/${f.friendUid}` as Href)}
         accessibilityRole="button"
-        accessibilityLabel={`Open profile for ${displayName}`}>
+        accessibilityLabel={`Open profile for ${primaryLine}`}>
         <RowAvatar uri={data?.profilePicUrl} />
         <View className="min-w-0 flex-1">
           <AppText variant="subtitle" className="text-acts-ink" numberOfLines={2}>
-            {displayName}
+            {primaryLine}
           </AppText>
-          <AppText variant="caption" className="mt-0.5 text-acts-muted" numberOfLines={1}>
-            @{f.Username}
-          </AppText>
+          {showHandleLine ? (
+            <AppText variant="caption" className="mt-0.5 text-acts-muted" numberOfLines={1}>
+              {usernameHandle}
+            </AppText>
+          ) : null}
         </View>
       </Pressable>
       <AppButton
@@ -207,7 +213,7 @@ function FriendRow({
         size="compact"
         className="mt-3"
         disabled={busy}
-        accessibilityLabel={`Remove ${displayName} from friends`}
+        accessibilityLabel={`Remove ${primaryLine} from friends`}
         onPress={onRemove}
       />
     </View>

@@ -17,7 +17,7 @@ export type UserInfoDoc = {
   UserConfig: boolean;
   Username: string;
   profilePicUrl: string | null;
-  /** Kindness / heart points balance — shown in-app as **Seeds** (shop currency). */
+  /** Kindness / heart points balance - shown in-app as **Seeds** (shop currency). */
   HeartPoints?: number;
   /** Total XP from good deeds (monotonic; never reduced when un-completing tasks). */
   LifetimeXP?: number;

@@ -6,11 +6,19 @@ import type { ComponentType } from 'react';
  *
  * Enabled only when `EXPO_PUBLIC_SENTRY_DSN` is set (add it to your EAS
  * "production" environment). Without a DSN this no-ops so local/dev builds
- * stay quiet. We never send email/PII to Sentry — only the Firebase uid and
+ * stay quiet. We never send email/PII to Sentry - only the Firebase uid and
  * username for grouping.
  */
 
 type CaptureLevel = 'fatal' | 'error' | 'warning' | 'info';
+
+/**
+ * Project DSN fallback so release builds report even if `EXPO_PUBLIC_SENTRY_DSN`
+ * isn't set in the EAS environment. A DSN is a public ingest identifier (not a secret).
+ * Dev stays quiet unless you opt in via the env var.
+ */
+const FALLBACK_SENTRY_DSN =
+  'https://5bdcfa03ce0487d9e45b8fdb9e4a6b4d@o4511498954342400.ingest.us.sentry.io/4511498975903744';
 
 let initialized = false;
 
@@ -19,10 +27,10 @@ export function isSentryEnabled(): boolean {
 }
 
 export function initializeSentry(): void {
-  const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+  const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? (__DEV__ ? undefined : FALLBACK_SENTRY_DSN);
   if (!dsn) {
     if (__DEV__) {
-      console.warn('[Sentry] EXPO_PUBLIC_SENTRY_DSN not set — crash reporting disabled.');
+      console.warn('[Sentry] EXPO_PUBLIC_SENTRY_DSN not set - crash reporting disabled in dev.');
     }
     return;
   }

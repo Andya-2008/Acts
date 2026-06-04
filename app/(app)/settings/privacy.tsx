@@ -73,7 +73,7 @@ export default function SettingsPrivacyScreen() {
   };
 
   const hasPasswordProvider = Boolean(user?.providerData?.some((p) => p.providerId === 'password'));
-  const authLabel = user?.providerData?.map((p) => p.providerId).join(', ') || '—';
+  const authLabel = user?.providerData?.map((p) => p.providerId).join(', ') || '-';
 
   const changePassword = async () => {
     const email = user?.email?.trim();

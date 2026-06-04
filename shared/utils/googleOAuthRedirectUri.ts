@@ -10,7 +10,7 @@ import {
 } from '@/shared/config/googleAuthEnv';
 import { isExpoGoRuntime } from '@/shared/utils/expoRuntime';
 
-/** `com.googleusercontent.apps.<id>:/oauthredirect` — required for iOS/Android OAuth clients. */
+/** `com.googleusercontent.apps.<id>:/oauthredirect` - required for iOS/Android OAuth clients. */
 export function googleReversedClientRedirectUri(clientId: string): string | null {
   const trimmed = clientId.trim();
   if (!trimmed.endsWith('.apps.googleusercontent.com')) {
@@ -33,7 +33,7 @@ function getExpoProjectFullName(): string | null {
   return null;
 }
 
-/** HTTPS redirect for Expo Go — must be on the **Web** OAuth client's redirect URI list. */
+/** HTTPS redirect for Expo Go - must be on the **Web** OAuth client's redirect URI list. */
 export function getExpoAuthProxyRedirectUri(): string | null {
   const fullName = getExpoProjectFullName();
   if (!fullName) {

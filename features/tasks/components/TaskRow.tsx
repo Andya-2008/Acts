@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { AppButton, AppText } from '@/shared/components/ui';
+import { readableTextColors } from '@/shared/theme/colorUtils';
 import type { ActTask, TaskCadence } from '@/shared/types/task';
 import type { TaskCheckThemeId } from '@/features/cosmetics/taskCheckThemes';
 import { TASK_CHECK_THEMES } from '@/features/cosmetics/taskCheckThemes';
@@ -89,7 +90,7 @@ function IconAction({
 }) {
   const ring =
     variant === 'rose'
-      ? 'border-acts-green/40 bg-white'
+      ? 'border-acts-green/40 bg-acts-surface'
       : variant === 'blue'
         ? 'border-acts-blue/35 bg-acts-blue-soft/80'
         : variant === 'danger'
@@ -117,7 +118,7 @@ type TaskRowProps = {
   busy?: boolean;
   /** While reward flight runs, hide the real row (ghost is drawn in the overlay). */
   hideForRewardFly?: boolean;
-  /** Shown only after the act is marked done — direct actions, no system alerts. */
+  /** Shown only after the act is marked done - direct actions, no system alerts. */
   onPickTaskPhotoFromLibrary?: (task: ActTask) => void;
   onPickTaskPhotoFromCamera?: (task: ActTask) => void;
   onRemoveTaskPhoto?: (task: ActTask) => void;
@@ -128,6 +129,8 @@ type TaskRowProps = {
   deedFeedShareTaskId?: string | null;
   /** Checkbox chrome from shop / ActsSettings (`default` when omitted). */
   taskCheckThemeId?: TaskCheckThemeId;
+  /** Show an exciting "New" marker for acts the user hasn't seen on this tab yet. */
+  isNew?: boolean;
 };
 
 export function TaskRow({
@@ -142,6 +145,7 @@ export function TaskRow({
   onShareToDeedFeed,
   deedFeedShareTaskId,
   taskCheckThemeId = 'default',
+  isNew = false,
 }: TaskRowProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
@@ -162,6 +166,11 @@ export function TaskRow({
     theme.cardBg != null &&
     theme.cardBorderDone != null &&
     theme.cardBgDone != null;
+  // On cosmetic themed cards the fill is a fixed color, so derive legible text
+  // colors from that fill instead of the app palette (which may be dark/light).
+  const themedCardBgHex = themedRow ? (done ? theme.cardBgDoneHex : theme.cardBgHex) : undefined;
+  const themedText = themedCardBgHex ? readableTextColors(themedCardBgHex) : null;
+  const titleColor = themedText ? (done ? themedText.secondary : themedText.primary) : undefined;
 
   useEffect(() => {
     const wasDone = prevDone.current;
@@ -183,6 +192,14 @@ export function TaskRow({
 
   const body = (
     <>
+      {isNew && !done ? (
+        <View className="mb-1.5 flex-row items-center self-start rounded-full bg-acts-green px-2.5 py-1">
+          <Ionicons name="sparkles" size={12} color="#FFFFFF" />
+          <AppText variant="caption" className="ml-1 text-xs font-bold text-white">
+            New
+          </AppText>
+        </View>
+      ) : null}
       <View className="mb-1">
         {hasLongText ? (
           <Pressable
@@ -194,38 +211,50 @@ export function TaskRow({
             className="flex-row items-start gap-2 active:opacity-90">
             <AppText
               variant="subtitle"
-              className={`min-w-0 flex-1 shrink ${done ? 'text-acts-muted line-through' : 'text-acts-ink'}`}>
+              paletteColor={!themedText}
+              style={titleColor ? { color: titleColor } : undefined}
+              className={`min-w-0 flex-1 shrink ${done ? 'line-through' : ''} ${
+                themedText ? '' : done ? 'text-acts-muted' : 'text-acts-ink'
+              }`}>
               {task.textShort}
             </AppText>
             <Ionicons
               name={detailsOpen ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#8B6F82"
+              color={themedText ? themedText.secondary : '#8B6F82'}
               accessibilityLabel={detailsOpen ? 'Hide details' : 'Show details'}
             />
           </Pressable>
         ) : (
           <AppText
             variant="subtitle"
-            className={`min-w-0 shrink text-acts-ink ${done ? 'text-acts-muted line-through' : ''}`}>
+            paletteColor={!themedText}
+            style={titleColor ? { color: titleColor } : undefined}
+            className={`min-w-0 shrink ${done ? 'line-through' : ''} ${
+              themedText ? '' : done ? 'text-acts-muted' : 'text-acts-ink'
+            }`}>
             {task.textShort}
           </AppText>
         )}
         <View className="mt-1.5 flex-row flex-wrap items-center gap-2">
           {done ? (
-            <TagChip className="border border-acts-green/35 bg-white">
+            <TagChip className="border border-acts-green/35 bg-acts-surface">
               {task.photoUrl ? 'Memory photo saved' : 'No memory photo yet'}
             </TagChip>
           ) : null}
           {done && task.deedFeedPostId ? (
             <TagChip className="border border-acts-blue/35 bg-acts-blue-soft/90">On deed feed</TagChip>
           ) : null}
-          {task.picture ? <TagChip className="border border-acts-border/80 bg-white/90">Photo suggested</TagChip> : null}
+          {task.picture ? <TagChip className="border border-acts-border/80 bg-acts-surface/90">Photo suggested</TagChip> : null}
         </View>
       </View>
 
       {detailsOpen && hasLongText ? (
-        <AppText variant="body" className="mb-3 text-acts-ink leading-6">
+        <AppText
+          variant="body"
+          paletteColor={!themedText}
+          style={themedText ? { color: themedText.primary } : undefined}
+          className={`mb-3 leading-6 ${themedText ? '' : 'text-acts-ink'}`}>
           {task.textLong}
         </AppText>
       ) : null}
@@ -242,7 +271,7 @@ export function TaskRow({
           }>
           {difficultyLabel(task.difficulty)}
         </TagChip>
-        <TagChip className="border border-acts-border/80 bg-white/90">{categoryDisplayName(task.category)}</TagChip>
+        <TagChip className="border border-acts-border/80 bg-acts-surface/90">{categoryDisplayName(task.category)}</TagChip>
       </View>
 
       {task.materials.length > 0 && !(task.materials.length === 1 && task.materials[0] === 'Nothing') ? (
@@ -261,7 +290,7 @@ export function TaskRow({
       ) : null}
 
       {done && !task.photoUrl && showMemoryActions ? (
-        <View className="mb-3 h-28 w-28 items-center justify-center self-start rounded-2xl border-2 border-dashed border-acts-border/80 bg-white/70">
+        <View className="mb-3 h-28 w-28 items-center justify-center self-start rounded-2xl border-2 border-dashed border-acts-border/80 bg-acts-surface/70">
           <Ionicons name="image-outline" size={42} color="#C4B5BD" accessibilityIgnoresInvertColors />
         </View>
       ) : null}
@@ -363,7 +392,7 @@ export function TaskRow({
               accessibilityLabel="Choose photo from library"
               disabled={busy || photoBusyThis}
               onPress={() => onPickTaskPhotoFromLibrary?.(task)}
-              className={`items-center justify-center rounded-full border-2 border-acts-blue/35 bg-white shadow-sm active:opacity-85 ${
+              className={`items-center justify-center rounded-full border-2 border-acts-blue/35 bg-acts-surface shadow-sm active:opacity-85 ${
                 done ? 'h-16 w-16' : 'min-h-[52px] min-w-[48%] flex-1 flex-row gap-2 rounded-2xl border border-acts-border bg-acts-surface px-3 py-3'
               } ${busy || photoBusyThis ? 'opacity-50' : ''}`}>
               <Ionicons name={done ? 'images' : 'images-outline'} size={done ? 30 : 22} color="#5B6BE8" />
@@ -378,7 +407,7 @@ export function TaskRow({
               accessibilityLabel="Take a photo with camera"
               disabled={busy || photoBusyThis}
               onPress={() => onPickTaskPhotoFromCamera?.(task)}
-              className={`items-center justify-center rounded-full border-2 border-acts-green/40 bg-white shadow-sm active:opacity-85 ${
+              className={`items-center justify-center rounded-full border-2 border-acts-green/40 bg-acts-surface shadow-sm active:opacity-85 ${
                 done ? 'h-16 w-16' : 'min-h-[52px] min-w-[48%] flex-1 flex-row gap-2 rounded-2xl border border-acts-border bg-acts-surface px-3 py-3'
               } ${busy || photoBusyThis ? 'opacity-50' : ''}`}>
               <Ionicons name={done ? 'camera' : 'camera-outline'} size={done ? 28 : 22} color="#E11D74" />

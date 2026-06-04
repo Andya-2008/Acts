@@ -128,7 +128,7 @@ export function DeedPostCommentsSection({
             </AppText>
           </View>
           <AppText variant="caption" className="leading-5 text-acts-muted">
-            Be the first to leave a note of encouragement — short and kind works best.
+            Be the first to leave a note of encouragement - short and kind works best.
           </AppText>
         </View>
       ) : (

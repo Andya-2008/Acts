@@ -20,7 +20,7 @@ export const ALL_DEED_REACTION_KINDS: readonly DeedReactionKind[] = [
   'hundred',
 ] as const;
 
-/** @deprecated use ALL_DEED_REACTION_KINDS — kept for incremental refactors */
+/** @deprecated use ALL_DEED_REACTION_KINDS - kept for incremental refactors */
 export const DEED_REACTION_KINDS = ALL_DEED_REACTION_KINDS;
 
 /** VoiceOver-friendly names (not just internal kind ids). */

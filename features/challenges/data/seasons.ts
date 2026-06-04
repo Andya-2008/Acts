@@ -88,7 +88,7 @@ const SEASONAL_CHALLENGES: readonly SeasonalChallenge[] = [
   },
 ];
 
-/** The active season for `now` — always the current calendar month. */
+/** The active season for `now` - always the current calendar month. */
 export function getActiveSeason(now: Date = new Date()): SeasonalSeason {
   const year = now.getFullYear();
   const monthIndex = now.getMonth();
@@ -99,7 +99,7 @@ export function getActiveSeason(now: Date = new Date()): SeasonalSeason {
   return {
     id,
     name: `${MONTH_NAMES[monthIndex]} Acts of Kindness`,
-    subtitle: 'Complete kindness challenges for bonus XP this month.',
+    subtitle: 'Do these kind things out in the real world, then log them here to earn bonus XP. It runs on the honor system, so there is nothing to upload.',
     themeColor: '#F472B6',
     startDate,
     endDate,
