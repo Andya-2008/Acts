@@ -69,7 +69,7 @@ npm run firebase:deploy:hosting
 ```
 
 - **Rules** — auth, reports, blocks, account data  
-- **Hosting** — `legal/` → `https://acts.app/privacy`, `/terms`, `/support`
+- **Hosting** — `www/` → `https://acts.app/privacy`, `/terms`, `/support`
 
 ---
 

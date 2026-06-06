@@ -43,4 +43,4 @@ Must match the policy you host:
 
 ## After app changes
 
-If you add analytics, ads, or new data collection, update both the questionnaire and `legal/privacy.html`, then redeploy hosting.
+If you add analytics, ads, or new data collection, update both the questionnaire and `www/privacy.html`, then redeploy hosting.

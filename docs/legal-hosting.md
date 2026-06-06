@@ -1,6 +1,6 @@
 # Legal pages (Privacy, Terms, Support)
 
-Static pages live in the repo folder **`legal/`**.
+Static pages live in the repo folder **`www/`**.
 
 | Page | Live now | After custom domain |
 |------|----------|---------------------|
