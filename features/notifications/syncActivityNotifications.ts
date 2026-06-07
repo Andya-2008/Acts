@@ -141,15 +141,33 @@ export async function syncActivityNotifications(input: ActivitySyncInput): Promi
   }
 
   const newestMs = Math.max(...fresh.map((n) => n.timestampMs));
+  const lead = [...fresh].sort((a, b) => b.timestampMs - a.timestampMs)[0]!;
   const title = fresh.length === 1 ? fresh[0]!.title.replace(/^[^\w]+/, '').trim() || 'New activity' : 'New activity on Acts';
   const body =
     fresh.length === 1
       ? fresh[0]!.message
       : `You have ${fresh.length} new updates from friends. Open Acts to see them.`;
 
+  let screen = 'notifications';
+  let postId: string | undefined;
+  if (lead.type === 'friend_request') {
+    screen = 'friends';
+  } else if (lead.postId) {
+    screen = 'deed-feed';
+    postId = lead.postId;
+  }
+
   await Notifications.scheduleNotificationAsync({
     identifier: AID.socialActivity,
-    content: { title, body, data: { screen: 'notifications' } },
+    content: {
+      title,
+      body,
+      data: {
+        screen,
+        type: lead.type,
+        ...(postId ? { postId } : {}),
+      },
+    },
     trigger: null,
   });
   await setLastSocialNotifiedAt(uid, newestMs);

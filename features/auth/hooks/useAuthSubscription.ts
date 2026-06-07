@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 
+import { syncAuthEmailToUserProfileIfNeeded } from '@/features/auth/services/accountCredentialsService';
 import { isFirebaseWebConfigConfigured } from '@/shared/config/env';
 import { getFirebaseAuth } from '@/shared/services/firebase/client';
 import { clearSentryUserContext, setSentryUserContext } from '@/shared/services/sentry';
@@ -28,6 +29,9 @@ export function useAuthSubscription(): void {
       lastUid = nextUid;
       if (nextUser?.uid) {
         setSentryUserContext(nextUser.uid, nextUser.email ?? undefined, nextUser.displayName ?? undefined);
+        if (nextUser.email) {
+          void syncAuthEmailToUserProfileIfNeeded(nextUser.uid, nextUser.email);
+        }
       } else {
         clearSentryUserContext();
       }

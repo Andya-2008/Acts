@@ -37,6 +37,10 @@ In [expo.dev](https://expo.dev) → **Acts** → **Environment variables**, set 
 - `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
 - `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
 
+**Sentry** (required for **Production** store builds — no hardcoded DSN in the app)
+
+- `EXPO_PUBLIC_SENTRY_DSN` — from [sentry.io](https://sentry.io) → project → Client Keys (DSN)
+
 After changing variables, run a **new** build (existing IPAs do not pick up changes).
 
 ---
@@ -59,17 +63,24 @@ Open the **Acts** app (not Expo Go).
 
 ---
 
-## 3. Firebase rules & hosting
+## 3. Firebase backend (before 1.0.5 store build)
 
 From project root (logged in: `firebase login`):
 
 ```bash
-npm run firebase:deploy:rules-storage
+npm run firebase:deploy:backend
+```
+
+Or step by step:
+
+```bash
+firebase deploy --only functions,firestore:rules,storage
 npm run firebase:deploy:hosting
 ```
 
-- **Rules** — auth, reports, blocks, account data  
-- **Hosting** — `www/` → `https://acts.app/privacy`, `/terms`, `/support`
+- **Functions** — push notifications, `resolveLoginIdentifier`, `suggestFriends`, `onInviteSignup`
+- **Rules** — Firestore + Storage (challenge photos, login lookup reads require auth)
+- **Hosting** — `www/` → `https://acts.app/privacy`, `/terms`, `/support`, `/join` invite page
 
 ---
 

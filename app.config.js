@@ -140,6 +140,7 @@ module.exports = ({ config }) => {
           data: [
             { scheme: 'acts', pathPrefix: '/oauthredirect' },
             { scheme: 'com.FrogCOO.Acts', pathPrefix: '/oauthredirect' },
+            { scheme: 'acts', pathPrefix: '/join' },
           ],
           category: ['BROWSABLE', 'DEFAULT'],
         },

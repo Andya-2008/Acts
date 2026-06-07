@@ -13,7 +13,7 @@ export const forgotPasswordSchema = z.object({
   email: z.string().trim().email('Enter a valid email address.'),
 });
 
-const usernameSchema = z
+export const usernameSchema = z
   .string()
   .trim()
   .min(3, 'Username must be at least 3 characters.')

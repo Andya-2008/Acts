@@ -21,6 +21,7 @@ import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useFriendsGateRefreshStore } from '@/shared/stores/friendsGateRefreshStore';
 
+import { inviteRewardSummaryLine } from '@/features/friends/inviteRewardConfig';
 import { getInviteShareMessage } from '@/shared/config/appInvite';
 
 function ContactAvatar({ uri }: { uri: string | null | undefined }) {
@@ -144,7 +145,10 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
   const onInviteShare = useCallback(async () => {
     setLocalError(null);
     try {
-      const result = await Share.share({ message: getInviteShareMessage(), title: 'Acts' });
+      const result = await Share.share({
+        message: getInviteShareMessage(uid ?? undefined),
+        title: 'Acts',
+      });
       if (result.action === Share.dismissedAction) {
         return;
       }
@@ -155,7 +159,7 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Could not open share sheet.');
     }
-  }, [uid]);
+  }, [uid, setLocalError]);
 
   const onContinue = useCallback(async () => {
     setLocalError(null);
@@ -260,6 +264,9 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
             Acts is built for people you know. Share an invite link or add someone from your contacts to
             get started.
           </AppText>
+          <AppText variant="caption" className="mt-3 max-w-md text-center leading-5 text-acts-muted">
+            {inviteRewardSummaryLine()}
+          </AppText>
         </View>
 
         {localError ? (
@@ -272,7 +279,7 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
           title="Option 1 · Share invite link"
           variant="label"
           className="mb-2"
-          infoText="Send your link by text, email, or social apps. You can add more friends before continuing."
+          infoText="Send your personal link by text, email, or social apps. When they join and you become friends, you earn bonus seeds and XP."
         />
         <AppCard className="mb-5">
           <AppButton

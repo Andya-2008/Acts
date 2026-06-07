@@ -42,6 +42,31 @@ export function phoneKeyDocId(digits10: string): string {
   return `p_${digits10}`;
 }
 
+/** Ensures no other Acts account has claimed this phone for login or contact lookup. */
+export async function assertPhoneAvailableForUid(phoneRaw: string, uid: string): Promise<void> {
+  const phoneNorm = normalizePhoneKey(phoneRaw);
+  if (!phoneNorm) {
+    return;
+  }
+  const db = getFirebaseFirestore();
+
+  const loginSnap = await getDoc(doc(db, firestoreCollections.phoneLoginLookup, phoneKeyDocId(phoneNorm)));
+  if (loginSnap.exists()) {
+    const owner = String((loginSnap.data() as { uid?: string }).uid ?? '').trim();
+    if (owner && owner !== uid) {
+      throw new Error('PHONE_TAKEN');
+    }
+  }
+
+  const contactSnap = await getDoc(keysRef(db, phoneKeyDocId(phoneNorm)));
+  if (contactSnap.exists()) {
+    const owner = String((contactSnap.data() as RegisteredContactKeyDoc).uid ?? '').trim();
+    if (owner && owner !== uid) {
+      throw new Error('PHONE_TAKEN');
+    }
+  }
+}
+
 async function writeContactKeyIfAvailable(db: Firestore, docId: string, payload: RegisteredContactKeyDoc): Promise<void> {
   const ref = keysRef(db, docId);
   await runTransaction(db, async (trx) => {
@@ -53,6 +78,10 @@ async function writeContactKeyIfAvailable(db: Firestore, docId: string, payload:
     const cur = snap.data() as RegisteredContactKeyDoc;
     if (cur.uid === payload.uid) {
       trx.set(ref, payload, { merge: true });
+    } else if (cur.uid) {
+      if (docId.startsWith('p_')) {
+        throw new Error('PHONE_TAKEN');
+      }
     }
   });
 }
@@ -78,6 +107,8 @@ async function upsertPhoneLoginLookupForUid(
     const cur = snap.data() as { uid?: string };
     if (cur.uid === uid) {
       trx.set(ref, { uid, authEmail }, { merge: true });
+    } else if (cur.uid) {
+      throw new Error('PHONE_TAKEN');
     }
   });
 }

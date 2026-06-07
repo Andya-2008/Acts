@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Join Acts</title>
+    <meta name="description" content="You've been invited to Acts. Download the app and connect with your friend." />
+    <meta name="apple-itunes-app" content="app-id=6770841231" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a href="/" class="brand" style="text-decoration: none">Acts</a>
+        <nav class="site-nav">
+          <a href="/support">Support</a>
+          <a href="/privacy">Privacy</a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="hero join-hero">
+      <div class="wrap">
+        <p class="join-badge" id="invite-badge" hidden>Friend invite</p>
+        <h1 class="hero-title" id="join-title">Join Acts</h1>
+        <p class="hero-lead" id="join-lead">
+          Acts turns small good deeds into a daily habit you share with people you know.
+        </p>
+        <p class="reward-pill" id="reward-pill">
+          Connect after sign-up: your friend earns <strong>30 seeds</strong> and <strong>75 XP</strong>.
+        </p>
+
+        <div class="join-actions">
+          <a class="btn btn-primary" id="open-app" href="#">Open in Acts</a>
+          <a
+            class="btn btn-secondary"
+            id="app-store"
+            href="https://apps.apple.com/us/app/acts-be-kind/id6770841231"
+            >Get on the App Store</a
+          >
+        </div>
+
+        <p class="muted join-note" id="join-note">
+          After you install, open this same link again so your invite connects, or use
+          <strong>Open in Acts</strong> above.
+        </p>
+      </div>
+    </section>
+
+    <footer class="site-footer wrap">
+      <p>
+        <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
+      </p>
+    </footer>
+
+    <script>
+      (function () {
+        var STORAGE_KEY = 'acts_invited_by_v1';
+        var STORAGE_AT = 'acts_invited_by_at_v1';
+        var MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+        var APP_STORE =
+          'https://apps.apple.com/us/app/acts-be-kind/id6770841231';
+
+        function isValidUid(uid) {
+          return (
+            typeof uid === 'string' &&
+            uid.length >= 10 &&
+            uid.length <= 128 &&
+            /^[a-zA-Z0-9_-]+$/.test(uid)
+          );
+        }
+
+        function readInviterFromUrl() {
+          try {
+            var params = new URLSearchParams(window.location.search);
+            var keys = ['invitedBy', 'ref', 'inviter'];
+            for (var i = 0; i < keys.length; i++) {
+              var v = params.get(keys[i]);
+              if (v && isValidUid(v)) return v.trim();
+            }
+          } catch (e) {}
+          return null;
+        }
+
+        function persistInviter(uid) {
+          try {
+            localStorage.setItem(STORAGE_KEY, uid);
+            localStorage.setItem(STORAGE_AT, String(Date.now()));
+          } catch (e) {}
+        }
+
+        function loadStoredInviter() {
+          try {
+            var uid = localStorage.getItem(STORAGE_KEY);
+            var at = Number(localStorage.getItem(STORAGE_AT) || '0');
+            if (!uid || !isValidUid(uid)) return null;
+            if (at && Date.now() - at > MAX_AGE_MS) return null;
+            return uid;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        var fromUrl = readInviterFromUrl();
+        var inviter = fromUrl || loadStoredInviter();
+        if (fromUrl) persistInviter(fromUrl);
+
+        var badge = document.getElementById('invite-badge');
+        var title = document.getElementById('join-title');
+        var lead = document.getElementById('join-lead');
+        var openApp = document.getElementById('open-app');
+        var appStore = document.getElementById('app-store');
+
+        if (inviter) {
+          badge.hidden = false;
+          title.textContent = "You're invited to Acts";
+          lead.textContent =
+            'Download Acts, create your account, and add your friend. When you connect, you both earn bonus seeds.';
+          openApp.href =
+            'acts://join?invitedBy=' + encodeURIComponent(inviter);
+          appStore.href = APP_STORE;
+        } else {
+          openApp.href = 'acts://join';
+          lead.textContent =
+            'Complete daily acts of kindness, share photos with friends, and grow your service rank.';
+        }
+
+        openApp.addEventListener('click', function (e) {
+          if (!inviter) return;
+          persistInviter(inviter);
+          var deep = 'acts://join?invitedBy=' + encodeURIComponent(inviter);
+          window.location.href = deep;
+          e.preventDefault();
+          setTimeout(function () {
+            if (document.visibilityState === 'visible') {
+              window.location.href = APP_STORE;
+            }
+          }, 1600);
+        });
+
+        if (inviter && !fromUrl) {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('invitedBy', inviter);
+            window.history.replaceState({}, '', url.toString());
+          } catch (e) {}
+        }
+      })();
+    </script>
+  </body>
+</html>

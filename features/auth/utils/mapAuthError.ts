@@ -1,10 +1,9 @@
 import { FirebaseError } from 'firebase/app';
 
-const codeMap: Record<string, string> = {
-  'permission-denied':
-    "We couldn't save your reaction (permission denied). Pull to refresh, then try again. If it still fails, force-quit Acts and reopen so the latest app code loads.",
-  'storage/unauthorized':
-    "We couldn't upload that file. Check your connection and try again.",
+export const REACTION_PERMISSION_DENIED_MESSAGE =
+  "We couldn't save your reaction (permission denied). Pull to refresh, then try again. If it still fails, force-quit Acts and reopen so the latest app code loads.";
+
+const authCodeMap: Record<string, string> = {
   'auth/email-already-in-use':
     'That email is already registered. Sign in instead, or use a different email to create a new account.',
   'auth/invalid-email': 'That email address looks invalid.',
@@ -15,14 +14,56 @@ const codeMap: Record<string, string> = {
   'auth/invalid-credential': 'Incorrect sign-in or password.',
   'auth/account-exists-with-different-credential':
     'An account already exists with this email using a different sign-in method.',
+  'auth/credential-already-in-use':
+    'An account already exists with this email using a different sign-in method.',
   'auth/popup-closed-by-user': 'Sign-in was cancelled.',
   'auth/too-many-requests': 'Too many attempts. Try again shortly.',
   'auth/network-request-failed': 'Network error. Check your connection.',
-  'auth/requires-recent-login':
-    'For your security, sign out, sign in again, then retry deleting your account.',
+  'auth/requires-recent-login': 'For your security, sign out, sign in again, then retry.',
 };
 
-export function mapAuthError(error: unknown): string {
+const otherCodeMap: Record<string, string> = {
+  'permission-denied': "You don't have permission to complete this action.",
+  'storage/unauthorized': "We couldn't upload that file. Check your connection and try again.",
+};
+
+function getFirebaseErrorCode(error: unknown): string | null {
+  if (error instanceof FirebaseError) {
+    return error.code;
+  }
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = (error as { code: unknown }).code;
+    if (typeof code === 'string') {
+      return code;
+    }
+  }
+  if (error instanceof Error) {
+    const match = error.message.match(/\((auth\/[^)]+)\)/);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+function messageForFirebaseCode(code: string, permissionDeniedMessage: string): string | null {
+  if (authCodeMap[code]) {
+    return authCodeMap[code]!;
+  }
+  if (code === 'permission-denied') {
+    return permissionDeniedMessage;
+  }
+  return otherCodeMap[code] ?? null;
+}
+
+type MapAuthErrorOptions = {
+  /** Override Firestore `permission-denied` copy (e.g. deed reactions). */
+  permissionDeniedMessage?: string;
+};
+
+export function mapAuthError(error: unknown, options?: MapAuthErrorOptions): string {
+  const permissionDeniedMessage = options?.permissionDeniedMessage ?? otherCodeMap['permission-denied']!;
+
   if (error instanceof Error) {
     const loginIdMsg: Record<string, string> = {
       LOGIN_IDENTIFIER_EMPTY: 'Enter your email, username, or phone number.',
@@ -34,6 +75,25 @@ export function mapAuthError(error: unknown): string {
       LOGIN_USERNAME_NOT_FOUND: 'No Acts user has that username.',
       LOGIN_USERNAME_NO_EMAIL:
         'That username cannot sign in yet. Sign in with your email once so Acts can link this username, then try again.',
+      LOGIN_RATE_LIMIT: 'Too many sign-in lookups. Wait a minute and try again.',
+      EMAIL_CHANGE_NO_EMAIL: 'No email is on file for this account.',
+      EMAIL_CHANGE_OAUTH_MANAGED:
+        'This email is managed by Google or Apple sign-in. Change it in your Apple ID or Google account settings.',
+      EMAIL_CHANGE_INVALID: 'Enter a valid email address.',
+      EMAIL_CHANGE_SAME: 'That is already your email address.',
+      EMAIL_CHANGE_SENT:
+        'Check your new email inbox for a verification link. Your sign-in email updates after you confirm.',
+      PASSWORD_CHANGE_NO_EMAIL: 'No email is on file for this account.',
+      PASSWORD_CHANGE_OAUTH_MANAGED:
+        'This account signs in with Google or Apple. Manage your password in your Apple ID or Google account settings.',
+      PASSWORD_CHANGE_TOO_SHORT: 'Use at least 8 characters.',
+      PASSWORD_CHANGE_SAME: 'Choose a password different from your current one.',
+      PASSWORD_CHANGE_MISMATCH: 'New passwords do not match.',
+      USERNAME_UNCHANGED: 'That is already your username.',
+      USERNAME_INVALID: 'Usernames use 3–20 letters, numbers, or underscores.',
+      PHONE_TAKEN:
+        'That phone number is already linked to another Acts account. Sign in with that account or use a different number.',
+      PROFILE_NOT_FOUND: 'We could not load your profile. Pull to refresh and try again.',
       GOOGLE_EMAIL_REQUIRED:
         'This Google account has no email on file. Use a different Google account or email sign-up.',
       APPLE_EMAIL_REQUIRED:
@@ -49,22 +109,34 @@ export function mapAuthError(error: unknown): string {
       FEED_REACTIONS_VIEWER_OFF:
         'Reactions are off in your privacy settings. Turn them on under Settings → Privacy.',
       DEED_POST_NOT_FOUND: 'This deed post is no longer available. Pull to refresh the feed.',
+      FRIEND_LOOKUP_NOT_FOUND:
+        'No Acts user matches that username, email, or phone. They may need to add that info on their profile first.',
     };
     if (loginIdMsg[error.message]) {
       return loginIdMsg[error.message]!;
     }
-  }
-  if (error instanceof FirebaseError && codeMap[error.code]) {
-    return codeMap[error.code]!;
-  }
-  if (error instanceof Error) {
     if (error.message === 'USERNAME_TAKEN') {
       return 'That username is already taken.';
     }
     if (error.message === 'ERR_REQUEST_CANCELED') {
       return 'Sign-in was cancelled.';
     }
+  }
+
+  const code = getFirebaseErrorCode(error);
+  if (code) {
+    const mapped = messageForFirebaseCode(code, permissionDeniedMessage);
+    if (mapped) {
+      return mapped;
+    }
+  }
+
+  if (error instanceof Error) {
     return error.message;
   }
   return 'Something went wrong. Please try again.';
+}
+
+export function mapReactionError(error: unknown): string {
+  return mapAuthError(error, { permissionDeniedMessage: REACTION_PERMISSION_DENIED_MESSAGE });
 }

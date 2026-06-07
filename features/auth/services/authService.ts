@@ -25,7 +25,7 @@ import { purgeUserFirebaseData } from '@/features/auth/services/purgeUserFirebas
 import { resolveIdentifierToAuthEmail } from '@/features/auth/services/resolveLoginIdentifier';
 import { formatDobForUserInfo } from '@/features/auth/utils/formatDob';
 import type { SignupFormValues } from '@/features/auth/validation/authSchemas';
-import { syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
+import { assertPhoneAvailableForUid, syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from '@/shared/services/firebase/client';
 import { uploadUserProfilePhoto } from '@/shared/services/firebase/storageUploads';
@@ -139,9 +139,6 @@ export async function registerNewUser(input: SignupFormValues): Promise<User> {
   const db = getFirebaseFirestore();
 
   const trimmedUser = input.username.trim();
-  if (trimmedUser.length > 0) {
-    await assertUsernameAvailableForRegistration(trimmedUser);
-  }
 
   const credential = await createUserWithEmailAndPassword(auth, input.email, input.password);
   const { user } = credential;
@@ -156,6 +153,14 @@ export async function registerNewUser(input: SignupFormValues): Promise<User> {
   let firestoreProfileCommitted = false;
 
   try {
+    if (trimmedUser.length > 0) {
+      await assertUsernameAvailableForRegistration(trimmedUser);
+    }
+    const trimmedPhone = input.phone.trim();
+    if (trimmedPhone.length > 0) {
+      await assertPhoneAvailableForUid(trimmedPhone, user.uid);
+    }
+
     await createUserInfoForEmailPasswordSignup({
       uid: user.uid,
       username: resolvedUsername,

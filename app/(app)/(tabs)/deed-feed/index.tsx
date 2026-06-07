@@ -9,9 +9,10 @@ import {
   Pressable,
   RefreshControl,
   View,
+  type FlatList as FlatListType,
   type ViewToken,
 } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { router, useGlobalSearchParams, type Href } from 'expo-router';
 
 import { DeedFeedTopBar } from '@/features/deed-feed/components/DeedFeedTopBar';
 import { DeedPostCommentsSection } from '@/features/deed-feed/components/DeedPostCommentsSection';
@@ -28,12 +29,16 @@ import { useDeedPostReactionsQuery, useSetDeedReactionMutation } from '@/feature
 import { useFriendsDeedPostsQuery } from '@/features/deed-feed/hooks/useDeedPostsQueries';
 import { getBlockedUidSet } from '@/features/safety/blockedUids';
 import { useBlockUserMutation, useSubmitDeedReportMutation } from '@/features/safety/useSafetyMutations';
-import { resolveDeedPostAvatar, resolveDeedPostCardBackground } from '@/features/deed-feed/utils/deedPostDisplay';
+import {
+  resolveDeedPostAvatar,
+  resolveDeedPostCardPresentation,
+} from '@/features/deed-feed/utils/deedPostDisplay';
 import { deedReactionKindsForViewer } from '@/features/shop/shopCatalog';
+import { FriendsCirclePromptCard } from '@/features/friends/components/FriendsCirclePromptCard';
 import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
-import { mapAuthError } from '@/features/auth/utils/mapAuthError';
+import { mapAuthError, mapReactionError } from '@/features/auth/utils/mapAuthError';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
-import { AppButton, AppCard, AppText, FadeInView, Screen, TitleWithInfo } from '@/shared/components/ui';
+import { AppButton, AppCard, AppText, FadeInView, Screen } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
@@ -42,6 +47,18 @@ import type { DeedReactionKind } from '@/shared/types/deedReaction';
 
 export default function DeedFeedScreen() {
   const act = useActAppearance();
+  const searchParams = useGlobalSearchParams<{ postId?: string | string[] }>();
+  const focusPostId = useMemo(() => {
+    const raw = searchParams.postId;
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw.trim();
+    }
+    if (Array.isArray(raw) && typeof raw[0] === 'string') {
+      return raw[0].trim();
+    }
+    return undefined;
+  }, [searchParams.postId]);
+  const feedListRef = useRef<FlatListType<DeedPost>>(null);
   const uid = useAuthStore((s) => s.user?.uid);
   const user = useAuthStore((s) => s.user);
   const { data: viewerUserInfo } = useUserInfoQuery(uid);
@@ -72,6 +89,13 @@ export default function DeedFeedScreen() {
   // viewed yet; "Show all posts" reveals the rest for the current session.
   const { seenSnapshot, ready: seenReady, markSeen } = useDeedFeedSeen(uid);
   const [showAllPosts, setShowAllPosts] = useState(false);
+
+  useEffect(() => {
+    if (focusPostId) {
+      setShowAllPosts(true);
+    }
+  }, [focusPostId]);
+
   const feedPosts = useMemo(() => {
     if (showAllPosts || !seenReady) {
       return visibleFriendPosts;
@@ -83,8 +107,23 @@ export default function DeedFeedScreen() {
     !friendFeedPending &&
     seenReady &&
     !showAllPosts &&
+    !focusPostId &&
     visibleFriendPosts.length > 0 &&
     feedPosts.length === 0;
+
+  useEffect(() => {
+    if (!focusPostId || friendFeedPending || feedPosts.length === 0) {
+      return;
+    }
+    const index = feedPosts.findIndex((p) => p.id === focusPostId);
+    if (index < 0) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      feedListRef.current?.scrollToIndex({ index, viewOffset: 120, animated: true });
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [focusPostId, feedPosts, friendFeedPending]);
 
   const markSeenRef = useRef(markSeen);
   useEffect(() => {
@@ -169,7 +208,7 @@ export default function DeedFeedScreen() {
       setReactionMutation.mutate(
         { postId, kind: next },
         {
-          onError: (e) => Alert.alert('Could not react', mapAuthError(e)),
+          onError: (e) => Alert.alert('Could not react', mapReactionError(e)),
         },
       );
     },
@@ -261,15 +300,19 @@ export default function DeedFeedScreen() {
       const canReactOnPost = postReactionsEnabled && viewerReactionsAllowed;
       const reactionBlockedReason = !postReactionsEnabled ? ('post' as const) : !viewerReactionsAllowed ? ('viewer' as const) : undefined;
       const showComments = Boolean(uid && item.feedCommentsEnabled !== false);
+      const cardPresentation = resolveDeedPostCardPresentation(item);
       return (
         <AppCard
-          className="mb-4 overflow-hidden p-0"
-          cardBackgroundColor={act.palette.isDark ? act.palette.surface : resolveDeedPostCardBackground(item)}>
+          className={`mb-4 overflow-hidden p-0 ${
+            focusPostId === item.id ? 'border-2 border-acts-green' : ''
+          }`}
+          cardBackgroundColor={cardPresentation.backgroundColor}>
           <DeedPostHeader
             displayName={item.authorDisplayName}
             createdAt={item.createdAt}
             avatarUri={avatarUri}
             authorUid={item.authorUid}
+            textColors={cardPresentation.text}
             onOpenMenu={
               uid && item.authorUid && item.authorUid !== uid ? () => openFriendPostMenu(item) : undefined
             }
@@ -277,8 +320,11 @@ export default function DeedFeedScreen() {
           <Image source={{ uri: item.photoUrl }} className="aspect-square w-full bg-acts-canvas" resizeMode="cover" />
           <View className="p-4">
             {item.caption.trim().length > 0 ? (
-              <AppText variant="body" className="mb-1 text-acts-ink">
-                <AppText variant="body" className="font-semibold text-acts-ink">
+              <AppText
+                variant="body"
+                className="mb-1"
+                style={{ color: cardPresentation.text.primary }}>
+                <AppText variant="body" className="font-semibold" style={{ color: cardPresentation.text.primary }}>
                   {(item.authorDisplayName.trim() || 'Friend') + '  '}
                 </AppText>
                 {item.caption}
@@ -336,109 +382,91 @@ export default function DeedFeedScreen() {
       deleteCommentMutation,
       openFriendPostMenu,
       blockedUidSet,
+      focusPostId,
     ],
   );
 
-  if (!uid) {
-    return (
-      <Screen scroll={false} safeAreaEdges={['left', 'right', 'bottom']}>
-        <DeedFeedTopBar />
-        <FadeInView>
-          <View className="flex-1 justify-center py-12">
-            <AppText variant="body" className="mb-2 text-center text-acts-ink">
-              Sign in to see the deed feed.
-            </AppText>
-          </View>
-        </FadeInView>
-      </Screen>
-    );
-  }
+  const listEmpty = useMemo(() => {
+    const focusPostMissing =
+      Boolean(focusPostId) &&
+      friendsListReady &&
+      !friendFeedPending &&
+      seenReady &&
+      showAllPosts &&
+      !visibleFriendPosts.some((p) => p.id === focusPostId);
 
-  if (friendFeedError) {
-    return (
-      <Screen scroll safeAreaEdges={['left', 'right', 'bottom']}>
-        <DeedFeedTopBar />
-        <FadeInView>
-          <View className="px-4">
-            <AppText variant="caption" className="mb-4 text-acts-danger">
-              {mapAuthError(friendFeedErr)}
-            </AppText>
-            <AppButton title="Try again" className="w-full" onPress={() => void refetchAll()} />
-          </View>
-        </FadeInView>
-      </Screen>
-    );
-  }
-
-  const listEmpty = allCaughtUp ? (
-    <View className="px-1 py-6">
-      <AppCard className="mb-4 items-center border-acts-green/30 bg-acts-green-soft/40 p-6">
-        <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-acts-green-soft">
-          <Ionicons name="checkmark-done" size={30} color={act.palette.green} />
-        </View>
-        <AppText variant="subtitle" className="mb-1 text-center text-acts-ink">
-          You're all caught up
-        </AppText>
-        <AppText variant="caption" className="mb-4 text-center leading-5 text-acts-muted">
-          You've seen every recent deed from your friends. Check back later, or revisit posts you've already seen.
-        </AppText>
-        <AppButton
-          title="Show all posts"
-          variant="secondary"
-          className="w-full"
-          accessibilityLabel="Show all friend posts again"
-          onPress={() => setShowAllPosts(true)}
-        />
-      </AppCard>
-    </View>
-  ) : friendsListReady && !friendFeedPending && (visibleFriendPosts ?? []).length === 0 ? (
-      friendUids.length === 0 ? (
+    if (focusPostMissing) {
+      return (
         <View className="px-1 py-6">
-          <AppCard className="mb-4 border-acts-border/80 bg-acts-surface p-4">
-            <TitleWithInfo
-              title="Your feed starts with friends"
-              className="mb-4"
-              infoText="Add people on Acts to see their shared deeds here. You can search by username, match people from your contacts, or send an invite."
-            />
+          <AppCard className="mb-4 items-center border-acts-border/70 bg-acts-surface p-6">
+            <AppText variant="subtitle" className="mb-2 text-center text-acts-ink">
+              Post not available
+            </AppText>
+            <AppText variant="caption" className="mb-4 text-center leading-5 text-acts-muted">
+              That deed may have been removed, or you may no longer be friends with the author.
+            </AppText>
             <AppButton
-              title="Find friends"
+              title="Back to feed"
               variant="secondary"
-              className="mb-3 w-full"
-              onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
-            />
-            <AppButton
-              title="Go to Tasks"
               className="w-full"
-              onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
+              onPress={() => router.replace('/(app)/(tabs)/deed-feed' as Href)}
             />
           </AppCard>
         </View>
-      ) : (
+      );
+    }
+
+    if (allCaughtUp) {
+      return (
         <View className="px-1 py-6">
-          <AppCard className="mb-4 border-acts-border/80 bg-acts-surface p-4">
-            <TitleWithInfo
-              title="No friend deeds yet"
-              className="mb-4"
-              infoText="None of your friends have shared a deed photo recently. When they complete an act and share it to the feed, it will show up here."
-            />
+          <AppCard className="mb-4 items-center border-acts-green/30 bg-acts-green-soft/40 p-6">
+            <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-acts-green-soft">
+              <Ionicons name="checkmark-done" size={30} color={act.palette.green} />
+            </View>
+            <AppText variant="subtitle" className="mb-1 text-center text-acts-ink">
+              You're all caught up
+            </AppText>
+            <AppText variant="caption" className="mb-4 text-center leading-5 text-acts-muted">
+              You've seen every recent deed from your friends. Check back later, or revisit posts you've already seen.
+            </AppText>
             <AppButton
-              title="Invite or nudge friends"
+              title="Show all posts"
               variant="secondary"
-              className="mb-3 w-full"
-              onPress={() => router.push('/(app)/(tabs)/deed-feed/friends' as Href)}
-            />
-            <AppButton
-              title="Share your own deed"
               className="w-full"
-              onPress={() => router.push('/(app)/(tabs)/tasks' as Href)}
+              accessibilityLabel="Show all friend posts again"
+              onPress={() => setShowAllPosts(true)}
             />
           </AppCard>
         </View>
-      )
-    ) : null;
+      );
+    }
+
+    if (friendsListReady && !friendFeedPending && visibleFriendPosts.length === 0) {
+      return (
+        <View className="px-1 py-6">
+          <FriendsCirclePromptCard
+            variant={friendUids.length === 0 ? 'feed_no_friends' : 'feed_no_posts'}
+            friendCount={friendUids.length}
+          />
+        </View>
+      );
+    }
+
+    return null;
+  }, [
+    act.palette.green,
+    focusPostId,
+    friendsListReady,
+    friendFeedPending,
+    seenReady,
+    showAllPosts,
+    visibleFriendPosts,
+    allCaughtUp,
+    friendUids.length,
+  ]);
 
   const feedListHeader = useMemo(() => {
-    if (!friendsListReady || !seenReady || (friendFeedPending && (visibleFriendPosts ?? []).length === 0)) {
+    if (!friendsListReady || !seenReady || (friendFeedPending && visibleFriendPosts.length === 0)) {
       return (
         <View className="mb-2">
           <View className="items-center py-8">
@@ -452,6 +480,13 @@ export default function DeedFeedScreen() {
     }
     return (
       <View className="mb-3 px-1">
+        {friendUids.length <= 1 && visibleFriendPosts.length > 0 ? (
+          <FriendsCirclePromptCard
+            variant="feed_no_friends"
+            friendCount={friendUids.length}
+            className="mb-3"
+          />
+        ) : null}
         <View className="mb-3 flex-row gap-2">
           <Pressable
             accessibilityRole="button"
@@ -488,12 +523,54 @@ export default function DeedFeedScreen() {
         ) : null}
       </View>
     );
-  }, [act.palette.green, act.palette.ink, act.palette.muted, friendsListReady, seenReady, friendFeedPending, visibleFriendPosts, showAllPosts]);
+  }, [
+    act.palette.green,
+    act.palette.ink,
+    act.palette.muted,
+    friendsListReady,
+    seenReady,
+    friendFeedPending,
+    visibleFriendPosts,
+    showAllPosts,
+    friendUids.length,
+  ]);
+
+  if (!uid) {
+    return (
+      <Screen scroll={false} safeAreaEdges={['left', 'right', 'bottom']}>
+        <DeedFeedTopBar />
+        <FadeInView>
+          <View className="flex-1 justify-center py-12">
+            <AppText variant="body" className="mb-2 text-center text-acts-ink">
+              Sign in to see the deed feed.
+            </AppText>
+          </View>
+        </FadeInView>
+      </Screen>
+    );
+  }
+
+  if (friendFeedError) {
+    return (
+      <Screen scroll safeAreaEdges={['left', 'right', 'bottom']}>
+        <DeedFeedTopBar />
+        <FadeInView>
+          <View className="px-4">
+            <AppText variant="caption" className="mb-4 text-acts-danger">
+              {mapAuthError(friendFeedErr)}
+            </AppText>
+            <AppButton title="Try again" className="w-full" onPress={() => void refetchAll()} />
+          </View>
+        </FadeInView>
+      </Screen>
+    );
+  }
 
   return (
     <Screen scroll={false} safeAreaEdges={['left', 'right', 'bottom']}>
       <DeedFeedTopBar />
       <FlatList
+        ref={feedListRef}
         className="flex-1"
         data={feedPosts}
         keyExtractor={(item) => item.id}
@@ -503,6 +580,12 @@ export default function DeedFeedScreen() {
         contentContainerStyle={{ paddingTop: 14, paddingBottom: 32, flexGrow: 1 }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={(info) => {
+          feedListRef.current?.scrollToOffset({
+            offset: Math.max(0, info.averageItemLength * info.index),
+            animated: true,
+          });
+        }}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={() => void refetchAll()} tintColor="#E11D74" />
         }

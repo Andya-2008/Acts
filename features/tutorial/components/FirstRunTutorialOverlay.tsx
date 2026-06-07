@@ -25,7 +25,7 @@ const SLIDES: Slide[] = [
   {
     icon: 'leaf-outline',
     title: 'Your task list',
-    body: 'Acts are grouped by cadence (daily, weekly, monthly). Check one off when you’re done to earn seeds and lifetime XP, and keep your streak alive.',
+    body: 'We highlighted an easy first act on Tasks. Check it off to earn seeds and lifetime XP in about a minute, then keep your streak going.',
   },
   {
     icon: 'people-outline',
@@ -40,12 +40,12 @@ const SLIDES: Slide[] = [
   {
     icon: 'person-circle-outline',
     title: 'Profile & settings',
-    body: 'See your service rank, streak, and totals. Open Settings for notifications and appearance, Achievements for badges, and the shop from your seeds balance on Tasks.',
+    body: 'See your service rank, streak, and totals. Open Settings for notifications and appearance, Achievements for badges, and tap Shop on the Tasks header to open the Kindness Arcade.',
   },
   {
     icon: 'storefront-outline',
     title: 'Seeds & Kindness Arcade',
-    body: 'Seeds are the hearts you earn from acts. Spend them in the Kindness Arcade for themes, feed extras, and more-check the Tasks header for your balance.',
+    body: 'Seeds are the hearts you earn from acts. Tap Shop on the Tasks header to spend them on themes, feed extras, and more.',
   },
 ];
 

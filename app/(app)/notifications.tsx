@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Stack, router, type Href } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, View } from 'react-native';
 
@@ -8,6 +8,7 @@ import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useDerivedNotifications } from '@/features/notifications/hooks/useDerivedNotifications';
+import { hrefForDerivedNotification } from '@/features/notifications/notificationNavigation';
 import type {
   DerivedNotification,
   DerivedNotificationType,
@@ -185,7 +186,7 @@ export default function NotificationsScreen() {
               unread={item.timestampMs > baseline}
               onPress={() => {
                 void markAllSeen();
-                router.push(item.route as Href);
+                router.push(hrefForDerivedNotification(item));
               }}
             />
           )}

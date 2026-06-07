@@ -8,6 +8,10 @@ import { sendExpoPush, type ExpoPushMessage } from './expoPush';
 initializeApp();
 const db = getFirestore();
 
+export { onInviteSignup } from './onInviteSignup';
+export { resolveLoginIdentifier } from './resolveLoginIdentifier';
+export { suggestFriends } from './suggestFriends';
+
 // Cap concurrency so a burst of activity can't run up a surprise bill.
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
@@ -176,7 +180,7 @@ export const onFriendRequest = onDocumentCreated(
       settingKey: 'notifyFriendRequests',
       title: 'New friend request',
       body: `${displayName(actor)} wants to be friends`,
-      screen: 'notifications',
+      screen: 'friends',
     });
   },
 );
@@ -221,7 +225,7 @@ export const onDeedPost = onDocumentCreated('deedPosts/{postId}', async (event) 
       to: recipient.ExpoPushToken,
       title: 'New deed from a friend',
       body: `${authorName} shared a new deed`,
-      data: { screen: 'deed-feed', postId, recipientUid: uid },
+      data: { screen: 'deed-feed', type: 'friend_post', postId, recipientUid: uid },
     });
   });
 

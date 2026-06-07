@@ -21,7 +21,7 @@ function lifetimeXpFromUserInfo(data: { LifetimeXP?: unknown } | null | undefine
 }
 
 /**
- * Tasks tab header: Seeds + shop in one pill, lifetime XP, and reward-flight anchor on the seeds pill.
+ * Tasks tab header: Seeds balance, a prominent Shop button, and lifetime XP.
  */
 export function SeedsXpShopHeader({ trailing = false }: SeedsXpShopHeaderProps) {
   const uid = useAuthStore((s) => s.user?.uid);
@@ -47,26 +47,34 @@ export function SeedsXpShopHeader({ trailing = false }: SeedsXpShopHeaderProps) 
     };
   }, [setPillAnchor]);
 
+  const openShop = () => router.push('/(app)/shop' as Href);
+
   return (
     <View className={`flex-row flex-wrap items-center justify-end gap-2 ${trailing ? '' : 'pl-2'}`}>
       <View
         ref={measureRef}
         collapsable={false}
-        onLayout={() => requestAnimationFrame(reportAnchor)}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Seeds ${seeds}. Open kindness shop.`}
-          hitSlop={4}
-          onPress={() => router.push('/(app)/shop' as Href)}
-          className="flex-row items-center rounded-full border border-acts-border/60 bg-acts-surface px-2 py-1 active:opacity-85">
-          <Ionicons name="leaf" size={16} color="#2F855A" />
-          <AppText variant="subtitle" className="ml-1 min-w-[1.25rem] text-right text-acts-ink">
-            {seeds}
-          </AppText>
-          <View className="mx-1.5 h-4 w-px bg-acts-border/80" />
-          <Ionicons name="bag-handle-outline" size={17} color="#2D1528" />
-        </Pressable>
+        onLayout={() => requestAnimationFrame(reportAnchor)}
+        accessibilityRole="text"
+        accessibilityLabel={`Seeds ${seeds}`}
+        className="flex-row items-center rounded-full border border-acts-border/60 bg-acts-surface px-2.5 py-1">
+        <Ionicons name="leaf" size={16} color="#2F855A" />
+        <AppText variant="subtitle" className="ml-1 min-w-[1.25rem] text-right text-acts-ink">
+          {seeds}
+        </AppText>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open kindness shop"
+        accessibilityHint="Spend seeds on themes, reactions, and boosts"
+        hitSlop={6}
+        onPress={openShop}
+        className="flex-row items-center rounded-full border border-acts-green/50 bg-acts-green-soft px-3 py-1.5 active:opacity-85">
+        <Ionicons name="storefront" size={18} color="#2F855A" />
+        <AppText variant="subtitle" className="ml-1.5 font-semibold text-acts-green">
+          Shop
+        </AppText>
+      </Pressable>
       <View
         accessibilityRole="text"
         accessibilityLabel={`Experience ${xp}`}

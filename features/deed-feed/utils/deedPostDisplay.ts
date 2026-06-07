@@ -1,9 +1,19 @@
 import { deedCardBackgroundForTintId } from '@/shared/constants/deedPostCardTints';
+import { readableTextColors, type ReadableTextColors } from '@/shared/theme/colorUtils';
 import type { DeedPost } from '@/shared/types/deedPost';
 
 /** Avatar URL: denormalized on post, then profile `userInfo`, then viewer fallback for own posts. */
 export function resolveDeedPostCardBackground(post: DeedPost): string {
   return deedCardBackgroundForTintId(post.cardTintId ?? null);
+}
+
+/** Card tint + text colors that stay legible on the tint (including Midnight Studio). */
+export function resolveDeedPostCardPresentation(post: DeedPost): {
+  backgroundColor: string;
+  text: ReadableTextColors;
+} {
+  const backgroundColor = resolveDeedPostCardBackground(post);
+  return { backgroundColor, text: readableTextColors(backgroundColor) };
 }
 
 export function resolveDeedPostAvatar(

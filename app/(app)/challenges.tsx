@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Modal, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { Stack } from 'expo-router';
 
 import { ActsTextInput, AppButton, AppCard, AppText, Badge, Screen } from '@/shared/components/ui';
@@ -32,6 +33,7 @@ export default function ChallengesScreen() {
   const [error, setError] = useState<string | null>(null);
   const [confirmChallenge, setConfirmChallenge] = useState<SeasonalChallenge | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const pendingChallengeId = completeMutation.isPending
     ? completeMutation.variables?.challenge.id ?? null
@@ -48,8 +50,54 @@ export default function ChallengesScreen() {
   const openComplete = (challenge: SeasonalChallenge) => {
     setError(null);
     setNoteText('');
+    setPhotoUri(null);
     setConfirmChallenge(challenge);
   };
+
+  const pickChallengePhotoFromLibrary = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      setError('Photos can be added from the iOS or Android app.');
+      return;
+    }
+    setError(null);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError('Photo library access was denied. You can enable it in system settings.');
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+    if (picked.canceled) {
+      return;
+    }
+    const uri = picked.assets[0]?.uri;
+    if (uri) {
+      setPhotoUri(uri);
+    }
+  }, []);
+
+  const pickChallengePhotoFromCamera = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      setError('Photos can be added from the iOS or Android app.');
+      return;
+    }
+    setError(null);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setError('Camera access was denied. You can enable it in system settings.');
+      return;
+    }
+    const picked = await ImagePicker.launchCameraAsync({ quality: 0.85 });
+    if (picked.canceled) {
+      return;
+    }
+    const uri = picked.assets[0]?.uri;
+    if (uri) {
+      setPhotoUri(uri);
+    }
+  }, []);
 
   const submitComplete = () => {
     if (!confirmChallenge) {
@@ -58,11 +106,17 @@ export default function ChallengesScreen() {
     const challenge = confirmChallenge;
     const note = noteText.trim();
     completeMutation.mutate(
-      { season, challenge, note: note.length > 0 ? note : undefined },
+      {
+        season,
+        challenge,
+        note: note.length > 0 ? note : undefined,
+        photoLocalUri: photoUri ?? undefined,
+      },
       {
         onSuccess: () => {
           setConfirmChallenge(null);
           setNoteText('');
+          setPhotoUri(null);
         },
         onError: (e) => setError(mapAuthError(e)),
       },
@@ -116,6 +170,7 @@ export default function ChallengesScreen() {
           const atMax = done >= challenge.maxCompletions;
           const xp = seasonalChallengeXp(season, challenge);
           const lastNote = progress?.notes?.[challenge.id]?.[0];
+          const lastPhoto = progress?.photoUrls?.[challenge.id]?.[0];
           return (
             <AppCard key={challenge.id} className="mb-3 p-4">
               <View className="flex-row items-start">
@@ -137,6 +192,14 @@ export default function ChallengesScreen() {
                       {done} of {challenge.maxCompletions} this month
                     </AppText>
                   </View>
+                  {lastPhoto ? (
+                    <Image
+                      source={{ uri: lastPhoto }}
+                      className="mt-2 h-28 w-full rounded-2xl border border-acts-border/70 bg-acts-canvas"
+                      resizeMode="cover"
+                      accessibilityLabel={`Photo from your last ${challenge.title} log`}
+                    />
+                  ) : null}
                   {lastNote ? (
                     <View className="mt-2 rounded-2xl border border-acts-border/70 bg-acts-canvas px-3 py-2">
                       <AppText variant="caption" className="text-acts-muted">
@@ -190,8 +253,42 @@ export default function ChallengesScreen() {
             </View>
             <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
               Acts runs on the honor system, so just confirm you did this in real life. Add a note
-              to remember what you did (optional).
+              or photo to remember what you did (optional).
             </AppText>
+            {photoUri ? (
+              <View className="mb-3">
+                <Image
+                  source={{ uri: photoUri }}
+                  className="h-36 w-full rounded-2xl border border-acts-border bg-acts-canvas"
+                  resizeMode="cover"
+                  accessibilityLabel="Photo to attach to this challenge log"
+                />
+                <AppButton
+                  title="Remove photo"
+                  variant="ghost"
+                  className="mt-2 self-start"
+                  disabled={completeMutation.isPending}
+                  onPress={() => setPhotoUri(null)}
+                />
+              </View>
+            ) : Platform.OS !== 'web' ? (
+              <View className="mb-3 flex-row gap-2">
+                <AppButton
+                  title="Add photo"
+                  variant="secondary"
+                  className="flex-1"
+                  disabled={completeMutation.isPending}
+                  onPress={() => void pickChallengePhotoFromLibrary()}
+                />
+                <AppButton
+                  title="Camera"
+                  variant="secondary"
+                  className="flex-1"
+                  disabled={completeMutation.isPending}
+                  onPress={() => void pickChallengePhotoFromCamera()}
+                />
+              </View>
+            ) : null}
             <ActsTextInput
               value={noteText}
               onChangeText={setNoteText}

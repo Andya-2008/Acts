@@ -3,6 +3,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
 import { grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
+import { uploadSeasonChallengePhoto } from '@/shared/services/firebase/storageUploads';
 
 import type { SeasonalChallenge, SeasonalSeason } from './data/seasons';
 
@@ -23,11 +24,14 @@ export type SeasonProgress = {
   completions: Record<string, number>;
   /** challengeId → most recent honor-system notes ("what I did"), newest first. */
   notes: Record<string, string[]>;
+  /** challengeId → optional photo URLs from completions, newest first. */
+  photoUrls: Record<string, string[]>;
   totalXpEarned: number;
 };
 
 /** Keep only the most recent few notes per challenge so the doc stays small. */
 const MAX_NOTES_PER_CHALLENGE = 3;
+const MAX_PHOTOS_PER_CHALLENGE = 3;
 
 function sanitizeNotes(raw: unknown): Record<string, string[]> {
   if (!raw || typeof raw !== 'object') {
@@ -49,13 +53,33 @@ function sanitizeNotes(raw: unknown): Record<string, string[]> {
   return out;
 }
 
+function sanitizePhotoUrls(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== 'object') {
+    return {};
+  }
+  const out: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .filter((v): v is string => typeof v === 'string')
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0 && v.startsWith('http'))
+        .slice(0, MAX_PHOTOS_PER_CHALLENGE);
+      if (cleaned.length > 0) {
+        out[key] = cleaned;
+      }
+    }
+  }
+  return out;
+}
+
 function progressRef(uid: string, seasonId: string) {
   const db = getFirebaseFirestore();
   return doc(db, firestoreCollections.userInfo, uid, SEASON_PROGRESS, seasonId);
 }
 
 function emptyProgress(seasonId: string): SeasonProgress {
-  return { seasonId, completions: {}, notes: {}, totalXpEarned: 0 };
+  return { seasonId, completions: {}, notes: {}, photoUrls: {}, totalXpEarned: 0 };
 }
 
 export async function fetchSeasonProgress(uid: string, seasonId: string): Promise<SeasonProgress> {
@@ -68,6 +92,7 @@ export async function fetchSeasonProgress(uid: string, seasonId: string): Promis
     seasonId,
     completions: { ...(data.completions ?? {}) },
     notes: sanitizeNotes(data.notes),
+    photoUrls: sanitizePhotoUrls(data.photoUrls),
     totalXpEarned: Math.max(0, Math.floor(Number(data.totalXpEarned ?? 0))),
   };
 }
@@ -93,6 +118,7 @@ export async function recordChallengeCompletion(
   season: SeasonalSeason,
   challenge: SeasonalChallenge,
   note?: string,
+  photoLocalUri?: string,
 ): Promise<ChallengeCompletionResult> {
   const progress = await fetchSeasonProgress(uid, season.id);
   const current = progress.completions[challenge.id] ?? 0;
@@ -111,12 +137,21 @@ export async function recordChallengeCompletion(
     nextNotes[challenge.id] = [trimmedNote, ...existing].slice(0, MAX_NOTES_PER_CHALLENGE);
   }
 
+  const nextPhotoUrls = { ...progress.photoUrls };
+  const photoUri = photoLocalUri?.trim();
+  if (photoUri && photoUri.length > 0) {
+    const downloadUrl = await uploadSeasonChallengePhoto(uid, season.id, challenge.id, photoUri);
+    const existingPhotos = nextPhotoUrls[challenge.id] ?? [];
+    nextPhotoUrls[challenge.id] = [downloadUrl, ...existingPhotos].slice(0, MAX_PHOTOS_PER_CHALLENGE);
+  }
+
   await setDoc(
     progressRef(uid, season.id),
     {
       seasonId: season.id,
       completions: { ...progress.completions, [challenge.id]: newCount },
       notes: nextNotes,
+      photoUrls: nextPhotoUrls,
       totalXpEarned,
       updatedAt: serverTimestamp(),
     },

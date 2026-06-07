@@ -1,5 +1,10 @@
 import { arrayUnion, doc, getDoc, increment, runTransaction, updateDoc } from 'firebase/firestore';
 
+import {
+  assertPhoneAvailableForUid,
+  normalizePhoneKey,
+  syncRegisteredContactKeysFromUserInfo,
+} from '@/features/friends/services/registeredContactKeysRepository';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
 import type { ActsAppSettings } from '@/shared/types/actsSettings';
@@ -153,5 +158,26 @@ export async function updateUserProfileBasics(
   if (Object.keys(updates).length === 0) {
     return;
   }
+  if (fields.Phone !== undefined) {
+    const trimmed = fields.Phone.trim();
+    if (trimmed.length > 0) {
+      const existing = await fetchUserInfo(uid);
+      const currentNorm = existing?.Phone ? normalizePhoneKey(existing.Phone) : null;
+      const nextNorm = normalizePhoneKey(trimmed);
+      if (nextNorm && nextNorm !== currentNorm) {
+        await assertPhoneAvailableForUid(trimmed, uid);
+      }
+    }
+  }
   await updateDoc(ref, updates);
+  if (fields.Phone !== undefined || fields.First !== undefined || fields.Last !== undefined) {
+    try {
+      await syncRegisteredContactKeysFromUserInfo(uid);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'PHONE_TAKEN') {
+        throw error;
+      }
+      /* best-effort: friend lookup by phone/name */
+    }
+  }
 }

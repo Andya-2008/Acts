@@ -9,4 +9,6 @@ export const friendsQueryKeys = {
     [...friendsQueryKeys.all, 'relation', meUid, profileUid] as const,
   mutualFriends: (meUid: string, profileUid: string) =>
     [...friendsQueryKeys.all, 'mutual', meUid, profileUid] as const,
+  suggestions: (uid: string, contactKey = '') =>
+    [...friendsQueryKeys.all, 'suggestions', uid, contactKey] as const,
 };

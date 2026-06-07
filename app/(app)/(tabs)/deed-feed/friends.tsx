@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, Share, View } from 'react-native';
 
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
-import { useContactsOnActsMatches } from '@/features/friends/hooks/useContactsOnActsMatches';
+import { FriendSuggestionsRail } from '@/features/friends/components/FriendSuggestionsRail';
 import {
   useAcceptFriendRequestMutation,
   useCancelOutgoingFriendRequestMutation,
@@ -14,11 +14,16 @@ import {
   useOutgoingFriendRequestsQuery,
   useRemoveFriendMutation,
   useSendFriendRequestMutation,
+  useSendFriendRequestToUidMutation,
 } from '@/features/friends/hooks/useFriendsQueries';
+import { useFriendSuggestionsWithContacts } from '@/features/friends/hooks/useFriendSuggestionsWithContacts';
 import { syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
 import type { FriendListItem } from '@/features/friends/services/friendsRepository';
+import type { FriendSuggestion } from '@/features/friends/services/friendSuggestionsService';
+import { validateFriendLookupInput } from '@/features/friends/utils/friendLookup';
 import { getBlockedUidSet } from '@/features/safety/blockedUids';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
+import { inviteRewardSummaryLine } from '@/features/friends/inviteRewardConfig';
 import { getInviteShareMessage } from '@/shared/config/appInvite';
 import { DeedFeedFriendsTopBar } from '@/features/deed-feed/components/DeedFeedFriendsTopBar';
 import { ActsTextInput, AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
@@ -222,27 +227,28 @@ function FriendRow({
 
 export default function FriendsScreen() {
   const uid = useAuthStore((s) => s.user?.uid);
-  const [usernameInput, setUsernameInput] = useState('');
+  const [friendLookupInput, setFriendLookupInput] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
   const incoming = useIncomingFriendRequestsQuery(uid);
   const outgoing = useOutgoingFriendRequestsQuery(uid);
   const friends = useFriendsListQuery(uid);
   const sendMutation = useSendFriendRequestMutation(uid);
+  const sendToUidMutation = useSendFriendRequestToUidMutation(uid);
   const acceptMutation = useAcceptFriendRequestMutation(uid);
   const declineMutation = useDeclineFriendRequestMutation(uid);
   const cancelMutation = useCancelOutgoingFriendRequestMutation(uid);
   const removeMutation = useRemoveFriendMutation(uid);
-  const contactsOnActs = useContactsOnActsMatches(uid);
   const { data: myUserInfo } = useUserInfoQuery(uid);
   const blockedUidSet = useMemo(() => getBlockedUidSet(myUserInfo), [myUserInfo]);
+  const friendSuggestions = useFriendSuggestionsWithContacts(uid, blockedUidSet);
   const visibleFriends = useMemo(
     () => (friends.data ?? []).filter((f) => !blockedUidSet.has(f.friendUid)),
     [friends.data, blockedUidSet],
   );
   const visibleContactMatches = useMemo(
-    () => contactsOnActs.matches.filter((m) => !blockedUidSet.has(m.uid)),
-    [contactsOnActs.matches, blockedUidSet],
+    () => friendSuggestions.contactMatches.filter((m) => !blockedUidSet.has(m.uid)),
+    [friendSuggestions.contactMatches, blockedUidSet],
   );
 
   useEffect(() => {
@@ -256,6 +262,7 @@ export default function FriendsScreen() {
 
   const busy =
     sendMutation.isPending ||
+    sendToUidMutation.isPending ||
     acceptMutation.isPending ||
     declineMutation.isPending ||
     cancelMutation.isPending ||
@@ -286,25 +293,40 @@ export default function FriendsScreen() {
     [removeMutation],
   );
 
-  const onSendByUsername = useCallback(() => {
+  const onSendFriendLookup = useCallback(() => {
     setLocalError(null);
-    const u = usernameInput.trim().replace(/^@/, '');
-    if (u.length < 3) {
-      setLocalError('Enter a username (at least 3 characters).');
+    const validationError = validateFriendLookupInput(friendLookupInput);
+    if (validationError) {
+      setLocalError(validationError);
       return;
     }
-    sendMutation.mutate(u, {
-      onSuccess: () => setUsernameInput(''),
+    sendMutation.mutate(friendLookupInput.trim(), {
+      onSuccess: () => setFriendLookupInput(''),
       onError: (e) => setLocalError(mapAuthError(e)),
     });
-  }, [usernameInput, sendMutation]);
+  }, [friendLookupInput, sendMutation]);
+
+  const outgoingUidSet = useMemo(
+    () => new Set((outgoing.data ?? []).map((r) => r.toUid)),
+    [outgoing.data],
+  );
+
+  const onAddSuggestion = useCallback(
+    (s: FriendSuggestion) => {
+      setLocalError(null);
+      sendToUidMutation.mutate(s.uid, {
+        onError: (e) => setLocalError(mapAuthError(e)),
+      });
+    },
+    [sendToUidMutation],
+  );
 
   const onInviteShare = useCallback(() => {
     void Share.share({
-      message: getInviteShareMessage(),
+      message: getInviteShareMessage(uid),
       title: 'Acts',
     });
-  }, []);
+  }, [uid]);
 
   if (!uid) {
     return (
@@ -324,7 +346,7 @@ export default function FriendsScreen() {
         title="Friends"
         showTitle={false}
         className="mb-4"
-        infoText="Add people you trust to see their deed photos, react, and comment. Search by username, match contacts who are already on Acts, or share an invite."
+        infoText="Add people you trust to see their deed photos, react, and comment. Three suggested people refresh regularly — mutual friends appear first. You can also search by username, email, or phone."
       />
 
       {localError ? (
@@ -333,21 +355,35 @@ export default function FriendsScreen() {
         </AppText>
       ) : null}
 
+      <FriendSuggestionsRail
+        suggestions={friendSuggestions.suggestions}
+        loading={friendSuggestions.isLoading}
+        busy={busy}
+        errorMessage={
+          friendSuggestions.isError
+            ? mapAuthError(friendSuggestions.error)
+            : null
+        }
+        outgoingUidSet={outgoingUidSet}
+        onAdd={onAddSuggestion}
+        onRefreshNew={() => void friendSuggestions.refreshNewSuggestions()}
+      />
+
       <AppText variant="label" className="mb-2">
-        Add by username
+        Add by username, email, or phone
       </AppText>
       <AppCard className="mb-6">
         <ActsTextInput
-          value={usernameInput}
-          onChangeText={setUsernameInput}
+          value={friendLookupInput}
+          onChangeText={setFriendLookupInput}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="username (no @ required)"
+          placeholder="username, email, or phone"
           placeholderTextColor="#9CA3AF"
           editable={!busy}
-          accessibilityLabel="Friend username"
-          accessibilityHint="Enter at least three characters, then send a friend request"
-          onSubmitEditing={onSendByUsername}
+          accessibilityLabel="Friend username, email, or phone"
+          accessibilityHint="Enter a username, email, or phone number, then send a friend request"
+          onSubmitEditing={onSendFriendLookup}
           returnKeyType="send"
           className="mb-3 rounded-2xl border border-acts-border bg-acts-surface text-acts-ink"
           style={getActsTextInputBoxStyle()}
@@ -356,8 +392,8 @@ export default function FriendsScreen() {
           title="Send friend request"
           loading={sendMutation.isPending}
           disabled={busy}
-          accessibilityLabel="Send friend request by username"
-          onPress={onSendByUsername}
+          accessibilityLabel="Send friend request"
+          onPress={onSendFriendLookup}
         />
       </AppCard>
 
@@ -365,28 +401,28 @@ export default function FriendsScreen() {
         title="Contacts on Acts"
         variant="label"
         className="mb-2"
-        infoText="Scan your contacts to find people already on Acts. If none match, ask friends to set a username in Profile and try again, or use Add by username above. Matches you blocked are hidden until you unblock them in Settings → Privacy."
+        infoText="Scan your contacts to find people already on Acts. You can also add someone manually with their username, email, or phone above. Matches you blocked are hidden until you unblock them in Settings → Privacy."
       />
       <AppCard className="mb-6">
         <AppButton
-          title={contactsOnActs.loading ? 'Scanning contacts…' : 'Find friends from contacts'}
+          title={friendSuggestions.contactsLoading ? 'Scanning contacts…' : 'Refresh contact scan'}
           variant="secondary"
-          loading={contactsOnActs.loading}
-          disabled={contactsOnActs.loading}
-          accessibilityLabel="Find friends from contacts on this device"
-          onPress={() => void contactsOnActs.loadMatches()}
+          loading={friendSuggestions.contactsLoading}
+          disabled={friendSuggestions.contactsLoading}
+          accessibilityLabel="Refresh contact scan for friend suggestions"
+          onPress={() => void friendSuggestions.refreshContacts()}
         />
-        {contactsOnActs.permissionDenied ? (
+        {friendSuggestions.contactsPermissionDenied ? (
           <AppText variant="caption" className="mt-3 text-acts-danger">
             Contacts access denied.
           </AppText>
         ) : null}
-        {contactsOnActs.loadError ? (
+        {friendSuggestions.contactsLoadError ? (
           <AppText variant="caption" className="mt-3 text-acts-danger">
-            {contactsOnActs.loadError}
+            {friendSuggestions.contactsLoadError}
           </AppText>
         ) : null}
-        {contactsOnActs.matches.length > 0 ? (
+        {friendSuggestions.contactMatches.length > 0 ? (
           <View className="mt-4 gap-3">
             {visibleContactMatches.map((m) => (
               <View
@@ -417,21 +453,21 @@ export default function FriendsScreen() {
             ))}
           </View>
         ) : null}
-        {contactsOnActs.searched &&
-        !contactsOnActs.loading &&
-        contactsOnActs.matches.length === 0 &&
-        !contactsOnActs.permissionDenied &&
-        !contactsOnActs.loadError ? (
+        {friendSuggestions.contactsSearched &&
+        !friendSuggestions.contactsLoading &&
+        friendSuggestions.contactMatches.length === 0 &&
+        !friendSuggestions.contactsPermissionDenied &&
+        !friendSuggestions.contactsLoadError ? (
           <AppText variant="caption" className="mt-3 text-acts-muted">
             No contacts matched an Acts account yet.
           </AppText>
         ) : null}
-        {contactsOnActs.searched &&
-        !contactsOnActs.loading &&
-        contactsOnActs.matches.length > 0 &&
+        {friendSuggestions.contactsSearched &&
+        !friendSuggestions.contactsLoading &&
+        friendSuggestions.contactMatches.length > 0 &&
         visibleContactMatches.length === 0 &&
-        !contactsOnActs.permissionDenied &&
-        !contactsOnActs.loadError ? (
+        !friendSuggestions.contactsPermissionDenied &&
+        !friendSuggestions.contactsLoadError ? (
           <AppText variant="caption" className="mt-3 text-acts-muted">
             Matches hidden (blocked accounts).
           </AppText>
@@ -442,6 +478,9 @@ export default function FriendsScreen() {
         Invite others
       </AppText>
       <AppCard className="mb-6">
+        <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
+          {inviteRewardSummaryLine()}
+        </AppText>
         <AppButton
           title="Share invite"
           variant="secondary"

@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import type { ActTask } from '@/shared/types/task';
+
 /**
  * Tracks which assigned acts a user has already seen on the Tasks tab, so freshly
  * rotated-in acts can wear an exciting "New" marker until they've been viewed.
@@ -9,6 +11,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const SEEN_KEY = (uid: string) => `@acts/tasks_seen_v1_${uid}`;
 /** Keep the most-recent N ids so the list can't grow without bound. */
 const MAX_SEEN_IDS = 800;
+
+/** Cadence acts get a fresh "New" badge each calendar period; custom acts use stable ids. */
+export function taskSeenKey(task: Pick<ActTask, 'id' | 'cadence' | 'assignedPeriodKey'>): string {
+  if (task.cadence === 'daily' || task.cadence === 'weekly' || task.cadence === 'monthly') {
+    const period = task.assignedPeriodKey?.trim();
+    if (period) {
+      return `${task.id}@${period}`;
+    }
+  }
+  return task.id;
+}
 
 export async function loadSeenTaskIds(uid: string): Promise<Set<string>> {
   try {

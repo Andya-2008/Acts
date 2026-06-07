@@ -43,6 +43,25 @@ export async function uploadDeedFeedPhoto(uid: string, postDocId: string, imageU
   return getDownloadURL(objectRef);
 }
 
+/** Honor-system photo for a seasonal challenge log: `season_challenge_photos/{uid}/{fileName}`. */
+export async function uploadSeasonChallengePhoto(
+  uid: string,
+  seasonId: string,
+  challengeId: string,
+  localUri: string,
+): Promise<string> {
+  const storage = getFirebaseStorage();
+  const safeSeason = seasonId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
+  const safeChallenge = challengeId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
+  const fileName = `${safeSeason}_${safeChallenge}_${Date.now()}.jpg`;
+  const objectRef = ref(storage, `season_challenge_photos/${uid}/${fileName}`);
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const contentType = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/jpeg';
+  await uploadBytes(objectRef, blob, { contentType });
+  return getDownloadURL(objectRef);
+}
+
 export async function deleteDeedFeedPhotoObject(uid: string, postDocId: string): Promise<void> {
   const storage = getFirebaseStorage();
   const objectRef = ref(storage, `deed_feed_photos/${uid}/${postDocId}.jpg`);

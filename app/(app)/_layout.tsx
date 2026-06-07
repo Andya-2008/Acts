@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
+import { InviteJoinAlertModal } from '@/features/friends/components/InviteJoinAlertModal';
 import { ActivityNotificationsSync } from '@/features/notifications/ActivityNotificationsSync';
 import { NotificationNavigationSync } from '@/features/notifications/NotificationNavigationSync';
 import { RetentionNotificationsSync } from '@/features/retention/RetentionNotificationsSync';
@@ -88,6 +89,7 @@ export default function AppGroupLayout() {
       <RetentionNotificationsSync />
       <ActivityNotificationsSync />
       <NotificationNavigationSync />
+      <InviteJoinAlertModal />
       <FriendsGateGuard>
         <AppStackScreens />
       </FriendsGateGuard>

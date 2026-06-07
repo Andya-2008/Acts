@@ -1,44 +1,109 @@
 import * as Notifications from 'expo-notifications';
-import { useRouter, type Href } from 'expo-router';
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { useRootNavigationState, useRouter } from 'expo-router';
+import { useEffect, useRef } from 'react';
+import { InteractionManager, Platform } from 'react-native';
 
-function routeForScreen(screen: string | undefined): Href {
-  switch (screen) {
-    case 'notifications':
-      return '/(app)/notifications' as Href;
-    case 'deed-feed':
-      return '/(app)/(tabs)/deed-feed' as Href;
-    case 'tasks':
-    default:
-      return '/(app)/(tabs)/tasks' as Href;
+import { useFriendsGate } from '@/features/friends/hooks/useFriendsGate';
+import {
+  hrefForNotificationPayload,
+  type NotificationNavPayload,
+} from '@/features/notifications/notificationNavigation';
+import { useAuthStore } from '@/shared/stores/authStore';
+
+/** Session dedupe — `getLastNotificationResponseAsync` replays the same tap on remount. */
+const handledNotificationKeys = new Set<string>();
+
+function payloadFromResponse(
+  response: Notifications.NotificationResponse,
+): NotificationNavPayload {
+  const data = response.notification.request.content.data ?? {};
+  return {
+    screen: typeof data.screen === 'string' ? data.screen : undefined,
+    postId: typeof data.postId === 'string' ? data.postId : undefined,
+    type: typeof data.type === 'string' ? data.type : undefined,
+    newUserUid: typeof data.newUserUid === 'string' ? data.newUserUid : undefined,
+  };
+}
+
+export function notificationResponseKey(response: Notifications.NotificationResponse): string {
+  const id = response.notification.request.identifier?.trim();
+  if (id) {
+    return id;
   }
+  const data = response.notification.request.content.data ?? {};
+  return `${response.notification.date}:${JSON.stringify(data)}`;
+}
+
+function deferNotificationNavigation(run: () => void): void {
+  InteractionManager.runAfterInteractions(() => {
+    requestAnimationFrame(() => {
+      setTimeout(run, 120);
+    });
+  });
 }
 
 /**
- * Opens the relevant screen when the user taps a local notification, based on the
- * `data.screen` payload (defaults to Tasks for legacy reminders).
+ * Opens the relevant screen when the user taps a local or remote notification.
+ * Waits for auth + friends gate + root navigation so we do not push routes while
+ * the native stack is still mounting (can crash with EXC_BAD_ACCESS on iOS).
  */
 export function useNotificationNavigation(): void {
   const router = useRouter();
+  const rootState = useRootNavigationState();
+  const authReady = useAuthStore((s) => s.authReady);
+  const uid = useAuthStore((s) => s.user?.uid);
+  const friendsGate = useFriendsGate(uid);
+  const pendingResponseRef = useRef<Notifications.NotificationResponse | null>(null);
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
+  const navigationReady =
+    Platform.OS !== 'web' &&
+    authReady &&
+    Boolean(rootState?.key) &&
+    (!uid || friendsGate.ready);
+
+  const open = (response: Notifications.NotificationResponse | null) => {
+    if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
       return;
     }
 
-    const open = (response: Notifications.NotificationResponse | null) => {
-      if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    const key = notificationResponseKey(response);
+    if (handledNotificationKeys.has(key)) {
+      return;
+    }
+    handledNotificationKeys.add(key);
+
+    const href = hrefForNotificationPayload(payloadFromResponse(response));
+    deferNotificationNavigation(() => {
+      router.push(href);
+    });
+  };
+
+  useEffect(() => {
+    if (!navigationReady) {
+      return;
+    }
+
+    if (pendingResponseRef.current) {
+      const pending = pendingResponseRef.current;
+      pendingResponseRef.current = null;
+      open(pending);
+    }
+
+    const handle = (response: Notifications.NotificationResponse) => {
+      if (!navigationReady) {
+        pendingResponseRef.current = response;
         return;
       }
-      const screen = response.notification.request.content.data?.screen as string | undefined;
-      router.push(routeForScreen(screen));
+      open(response);
     };
 
-    open(Notifications.getLastNotificationResponse());
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        handle(response);
+      }
+    });
 
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => open(response));
-
+    const sub = Notifications.addNotificationResponseReceivedListener(handle);
     return () => sub.remove();
-  }, [router]);
+  }, [navigationReady, router]);
 }

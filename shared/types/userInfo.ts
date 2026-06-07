@@ -28,6 +28,8 @@ export type UserInfoDoc = {
   /** Expo push token for future friend/social alerts (written when notification permission granted). */
   ExpoPushToken?: string;
   ExpoPushTokenUpdatedAt?: Timestamp | FieldValue;
+  /** Set at sign-up when the user opened an invite link (`?invitedBy=`). Used for invite rewards. */
+  InvitedByUid?: string;
 };
 
 /** Written after onboarding; optional on older documents. */

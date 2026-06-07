@@ -46,3 +46,26 @@ const LIGHT_TEXT: ReadableTextColors = { primary: '#F1F5F9', secondary: '#B6C0CE
 export function readableTextColors(bgHex: string): ReadableTextColors {
   return relativeLuminance(bgHex) > 0.45 ? DARK_TEXT : LIGHT_TEXT;
 }
+
+export type ReadableChipColors = {
+  background: string;
+  border: string;
+  text: string;
+};
+
+/** Subtle pill chips that stay readable on cosmetic task card fills (Midnight + light themes). */
+export function readableChipColors(bgHex: string): ReadableChipColors {
+  const onLight = relativeLuminance(bgHex) > 0.45;
+  if (onLight) {
+    return {
+      border: 'rgba(31, 36, 48, 0.14)',
+      background: 'rgba(31, 36, 48, 0.07)',
+      text: DARK_TEXT.secondary,
+    };
+  }
+  return {
+    border: 'rgba(241, 245, 249, 0.2)',
+    background: 'rgba(241, 245, 249, 0.12)',
+    text: LIGHT_TEXT.secondary,
+  };
+}

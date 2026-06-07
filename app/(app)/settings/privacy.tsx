@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Alert, View } from 'react-native';
-import { sendPasswordResetEmail } from 'firebase/auth';
 
 import { FriendsOrMeRow, ThreeChoiceRow, YesNoRow } from '@/features/settings/components/SettingsRows';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
@@ -13,7 +12,6 @@ import {
   type ProfileStatVisibility,
 } from '@/shared/types/actsSettings';
 import { AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
-import { getFirebaseAuth } from '@/shared/services/firebase/client';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 function BlockedAccountRow({ viewerUid, blockedUid }: { viewerUid: string; blockedUid: string }) {
@@ -59,7 +57,6 @@ export default function SettingsPrivacyScreen() {
   const { data: userInfo } = useUserInfoQuery(uid);
   const mutation = useMergeActsSettingsMutation(uid);
   const base = mergeActsDefaults(userInfo?.ActsSettings);
-  const [pwBusy, setPwBusy] = useState(false);
   const blockedUids = useMemo(() => {
     const raw = userInfo?.BlockedUids;
     if (!Array.isArray(raw)) {
@@ -72,25 +69,7 @@ export default function SettingsPrivacyScreen() {
     void mutation.mutateAsync(p);
   };
 
-  const hasPasswordProvider = Boolean(user?.providerData?.some((p) => p.providerId === 'password'));
   const authLabel = user?.providerData?.map((p) => p.providerId).join(', ') || '-';
-
-  const changePassword = async () => {
-    const email = user?.email?.trim();
-    if (!email || !hasPasswordProvider) {
-      Alert.alert('Change password', 'Password reset is available for email/password accounts.');
-      return;
-    }
-    setPwBusy(true);
-    try {
-      await sendPasswordResetEmail(getFirebaseAuth(), email);
-      Alert.alert('Check your email', 'We sent a link to reset your password.');
-    } catch (e) {
-      Alert.alert('Could not send reset', e instanceof Error ? e.message : 'Try again later.');
-    } finally {
-      setPwBusy(false);
-    }
-  };
 
   return (
     <Screen scroll>
@@ -108,15 +87,6 @@ export default function SettingsPrivacyScreen() {
             </AppText>
           ) : null}
         </View>
-
-        <AppButton
-          title="Change Password"
-          variant="secondary"
-          loading={pwBusy}
-          disabled={pwBusy || !hasPasswordProvider}
-          onPress={() => void changePassword()}
-          className="mb-6"
-        />
 
         <TitleWithInfo
           title="Profile Visibility"

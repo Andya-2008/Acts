@@ -10,15 +10,22 @@ import {
   RefreshControl,
   UIManager,
   View,
+  type FlatList as FlatListType,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 
+import { FirstActSpotlightCard } from '@/features/tasks/components/FirstActSpotlightCard';
 import { TaskListFiltersModal } from '@/features/tasks/components/TaskListFiltersModal';
 import { TaskRewardFly } from '@/features/tasks/components/TaskRewardFly';
 import { TaskRow, type TaskToggleOrigin } from '@/features/tasks/components/TaskRow';
-import { addSeenTaskIds, loadSeenTaskIds } from '@/features/tasks/taskSeenStorage';
+import {
+  getFirstActPromptDone,
+  setFirstActPromptDone,
+} from '@/features/tasks/firstActPromptStorage';
+import { pickFirstActCandidate } from '@/features/tasks/utils/pickFirstActCandidate';
+import { addSeenTaskIds, loadSeenTaskIds, taskSeenKey } from '@/features/tasks/taskSeenStorage';
 import { authorDisplayNameForDeed } from '@/features/deed-feed/utils/authorDisplayName';
 import { ownedTaskThemeSet } from '@/features/shop/shopCatalog';
 import { autoAssignPerCadenceFromPurchases } from '@/features/shop/shopEntitlements';
@@ -42,6 +49,11 @@ import {
   filtersAreActive,
   taskMatchesListFilters,
 } from '@/features/tasks/utils/taskListFilters';
+import {
+  FriendsCirclePromptCard,
+  shouldShowFriendsCirclePrompt,
+} from '@/features/friends/components/FriendsCirclePromptCard';
+import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { ServiceRankUpOverlay, type ServiceRankUpPayload } from '@/features/user-profile/components/ServiceRankUpOverlay';
 import { computeLifetimeRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
@@ -63,6 +75,7 @@ import { configureActsLayoutAnimation } from '@/shared/utils/accessibilityMotion
 import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useCurrencyStore } from '@/shared/stores/currencyStore';
+import { useTutorialGateStore } from '@/shared/stores/tutorialGateStore';
 import type { ActTask } from '@/shared/types/task';
 import { HEARTS_FOR_DEED_FEED_SHARE } from '@/shared/utils/deedFeedReward';
 import { rewardForCadence } from '@/shared/utils/taskReward';
@@ -78,6 +91,34 @@ export default function TasksListScreen() {
   const { data: catalogEntries, isError: catalogIsError, error: catalogError, refetch: refetchCatalog, isFetching: catalogFetching } =
     useTaskCatalogQuery(Boolean(uid));
   const { data: userInfo } = useUserInfoQuery(uid);
+  const friendUidsQuery = useFriendUidsQuery(uid);
+  const friendCount = friendUidsQuery.data?.length ?? 0;
+  const showGrowFriendsPrompt =
+    friendUidsQuery.isFetched && shouldShowFriendsCirclePrompt(friendCount);
+  const tutorialOpen = useTutorialGateStore((s) => s.firstRunTutorialOpen);
+  const listRef = useRef<FlatListType<ActTask>>(null);
+  const [firstActPromptDone, setFirstActPromptDoneState] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!uid) {
+      setFirstActPromptDoneState(null);
+      return;
+    }
+    void getFirstActPromptDone(uid).then(setFirstActPromptDoneState);
+  }, [uid]);
+
+  const hasCompletedAnyAct = useMemo(
+    () => (tasks ?? []).some((t) => t.completedAt != null),
+    [tasks],
+  );
+
+  useEffect(() => {
+    if (!uid || !hasCompletedAnyAct || firstActPromptDone === true) {
+      return;
+    }
+    void setFirstActPromptDone(uid).then(() => setFirstActPromptDoneState(true));
+  }, [uid, hasCompletedAnyAct, firstActPromptDone]);
+
   const actsSettingsForGrace = useMemo(() => mergeActsDefaults(userInfo?.ActsSettings), [userInfo?.ActsSettings]);
   const streakGraceOffer = useMemo(
     () => canOfferStreakGraceSave(tasks ?? [], actsSettingsForGrace),
@@ -233,9 +274,9 @@ export default function TasksListScreen() {
   // "New" markers: acts the user hasn't seen on this tab yet. Seen state is loaded
   // once per focus (so badges stay stable during a visit) and persisted on blur.
   const [seenTaskIds, setSeenTaskIds] = useState<Set<string> | null>(null);
-  const displayedTaskIdsRef = useRef<string[]>([]);
+  const displayedTaskSeenKeysRef = useRef<string[]>([]);
   useEffect(() => {
-    displayedTaskIdsRef.current = displayedTasks.map((t) => t.id);
+    displayedTaskSeenKeysRef.current = displayedTasks.map((t) => taskSeenKey(t));
   }, [displayedTasks]);
 
   useFocusEffect(
@@ -252,27 +293,49 @@ export default function TasksListScreen() {
       }
       return () => {
         active = false;
-        if (uid && displayedTaskIdsRef.current.length > 0) {
-          void addSeenTaskIds(uid, displayedTaskIdsRef.current);
+        if (uid && displayedTaskSeenKeysRef.current.length > 0) {
+          void addSeenTaskIds(uid, displayedTaskSeenKeysRef.current);
         }
       };
     }, [uid]),
   );
 
   const newTaskIds = useMemo(() => {
-    // Empty seen set means a first run on this device - don't flood the list with
-    // markers; the current acts get recorded as seen on blur instead.
-    if (!seenTaskIds || seenTaskIds.size === 0) {
+    if (!seenTaskIds) {
       return new Set<string>();
     }
     const out = new Set<string>();
     for (const t of displayedTasks) {
-      if (t.completedAt == null && !seenTaskIds.has(t.id)) {
+      if (t.completedAt == null && !seenTaskIds.has(taskSeenKey(t))) {
         out.add(t.id);
       }
     }
     return out;
   }, [seenTaskIds, displayedTasks]);
+
+  const firstActCandidate = useMemo(() => pickFirstActCandidate(visibleTasks), [visibleTasks]);
+
+  const showFirstActSpotlight =
+    firstActPromptDone === false &&
+    !tutorialOpen &&
+    !hasCompletedAnyAct &&
+    firstActCandidate != null &&
+    displayedTasks.some((t) => t.id === firstActCandidate.id);
+
+  const scrollToFirstAct = useCallback(() => {
+    const index = displayedTasks.findIndex((t) => t.id === firstActCandidate?.id);
+    if (index < 0) {
+      return;
+    }
+    listRef.current?.scrollToIndex({ index, viewOffset: 140, animated: true });
+  }, [displayedTasks, firstActCandidate?.id]);
+
+  const dismissFirstActSpotlight = useCallback(() => {
+    if (!uid) {
+      return;
+    }
+    void setFirstActPromptDone(uid).then(() => setFirstActPromptDoneState(true));
+  }, [uid]);
 
   const prevVisibleLen = useRef(0);
   useEffect(() => {
@@ -555,6 +618,7 @@ export default function TasksListScreen() {
         deedFeedShareTaskId={deedFeedShareTaskId}
         taskCheckThemeId={equippedTaskCheckTheme}
         isNew={newTaskIds.has(item.id)}
+        spotlight={showFirstActSpotlight && item.id === firstActCandidate?.id}
       />
     ),
     [
@@ -569,6 +633,8 @@ export default function TasksListScreen() {
       deedFeedShareTaskId,
       equippedTaskCheckTheme,
       newTaskIds,
+      showFirstActSpotlight,
+      firstActCandidate?.id,
     ],
   );
 
@@ -600,6 +666,21 @@ export default function TasksListScreen() {
             onPress={onAddCustom}
           />
         </AppCard>
+        {showGrowFriendsPrompt ? (
+          <FriendsCirclePromptCard
+            variant="tasks_grow"
+            friendCount={friendCount}
+            className="mb-3"
+          />
+        ) : null}
+        {showFirstActSpotlight && firstActCandidate ? (
+          <FirstActSpotlightCard
+            task={firstActCandidate}
+            className="mb-3"
+            onScrollToAct={scrollToFirstAct}
+            onDismiss={dismissFirstActSpotlight}
+          />
+        ) : null}
         {isWeekendDoubleActive() ? (
           <AppCard className="mb-3 border-acts-green/35 bg-acts-green-soft/80 p-3">
             <TitleWithInfo
@@ -669,7 +750,25 @@ export default function TasksListScreen() {
         ) : null}
       </View>
     );
-  }, [catalogIsError, catalogError, localError, refetchCatalog, listFilters, streakGraceOffer.show, streakGraceOffer.forgivenDayKey, mergeActsSettingsMutation.isPending, newTitle, addMutation.isPending, onAddCustom]);
+  }, [
+    catalogIsError,
+    catalogError,
+    localError,
+    refetchCatalog,
+    listFilters,
+    streakGraceOffer.show,
+    streakGraceOffer.forgivenDayKey,
+    mergeActsSettingsMutation.isPending,
+    newTitle,
+    addMutation.isPending,
+    onAddCustom,
+    showGrowFriendsPrompt,
+    friendCount,
+    showFirstActSpotlight,
+    firstActCandidate,
+    scrollToFirstAct,
+    dismissFirstActSpotlight,
+  ]);
 
   const listEmpty = useMemo(() => {
     if (ensureAssignedMutation.isPending && (tasks?.length ?? 0) === 0) {
@@ -786,6 +885,7 @@ export default function TasksListScreen() {
         categoryOptions={categoryOptions}
       />
       <FlatList
+        ref={listRef}
         className="flex-1"
         data={displayedTasks}
         keyExtractor={(item) => item.id}
@@ -797,6 +897,12 @@ export default function TasksListScreen() {
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
+        onScrollToIndexFailed={(info) => {
+          listRef.current?.scrollToOffset({
+            offset: Math.max(0, info.averageItemLength * info.index),
+            animated: true,
+          });
+        }}
       />
       <Modal visible={rewardFly != null} transparent animationType="none" statusBarTranslucent>
         <View style={{ flex: 1 }} pointerEvents="box-none">

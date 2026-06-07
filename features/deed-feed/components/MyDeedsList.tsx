@@ -18,10 +18,13 @@ import {
   useMyDeedPostsQuery,
   useUpdateDeedPostAuthorSettingsMutation,
 } from '@/features/deed-feed/hooks/useDeedPostsQueries';
-import { resolveDeedPostAvatar, resolveDeedPostCardBackground } from '@/features/deed-feed/utils/deedPostDisplay';
+import {
+  resolveDeedPostAvatar,
+  resolveDeedPostCardPresentation,
+} from '@/features/deed-feed/utils/deedPostDisplay';
 import type { DeedPostAuthorSettingsPatch } from '@/features/deed-feed/services/deedPostRepository';
 import { deedReactionKindsForViewer } from '@/features/shop/shopCatalog';
-import { mapAuthError } from '@/features/auth/utils/mapAuthError';
+import { mapAuthError, mapReactionError } from '@/features/auth/utils/mapAuthError';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
@@ -93,7 +96,7 @@ export function MyDeedsList({ uid }: { uid: string }) {
       }
       setReactionMutation.mutate(
         { postId, kind: next },
-        { onError: (e) => Alert.alert('Could not react', mapAuthError(e)) },
+        { onError: (e) => Alert.alert('Could not react', mapReactionError(e)) },
       );
     },
     [reactionByPostId, setReactionMutation, viewerReactionKindSet, viewerReactionsAllowed],
@@ -178,16 +181,18 @@ export function MyDeedsList({ uid }: { uid: string }) {
         const showComments = post.feedCommentsEnabled !== false;
         const reactionBusy =
           setReactionMutation.isPending && setReactionMutation.variables?.postId === post.id;
+        const cardPresentation = resolveDeedPostCardPresentation(post);
         return (
           <AppCard
             key={post.id}
             className="mb-3 overflow-hidden p-0"
-            cardBackgroundColor={act.palette.isDark ? act.palette.surface : resolveDeedPostCardBackground(post)}>
+            cardBackgroundColor={cardPresentation.backgroundColor}>
             <DeedPostHeader
               displayName={post.authorDisplayName}
               createdAt={post.createdAt}
               avatarUri={avatarUri}
               authorUid={post.authorUid}
+              textColors={cardPresentation.text}
             />
             <Image
               source={{ uri: post.photoUrl }}
@@ -196,7 +201,11 @@ export function MyDeedsList({ uid }: { uid: string }) {
             />
             <View className="p-4">
               {post.caption.trim().length > 0 ? (
-                <AppText variant="body" className="mb-3 text-acts-ink" numberOfLines={4}>
+                <AppText
+                  variant="body"
+                  className="mb-3"
+                  style={{ color: cardPresentation.text.primary }}
+                  numberOfLines={4}>
                   {post.caption}
                 </AppText>
               ) : null}

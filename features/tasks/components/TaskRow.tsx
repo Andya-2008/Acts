@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 import { AppButton, AppText } from '@/shared/components/ui';
-import { readableTextColors } from '@/shared/theme/colorUtils';
+import { readableChipColors, readableTextColors } from '@/shared/theme/colorUtils';
 import type { ActTask, TaskCadence } from '@/shared/types/task';
 import type { TaskCheckThemeId } from '@/features/cosmetics/taskCheckThemes';
 import { TASK_CHECK_THEMES } from '@/features/cosmetics/taskCheckThemes';
@@ -58,13 +58,28 @@ function categoryDisplayName(category: string): string {
 function TagChip({
   children,
   className,
+  borderColor,
+  backgroundColor,
+  textColor,
 }: {
   children: string;
   className?: string;
+  borderColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
 }) {
   return (
-    <View className={`self-start rounded-full border px-2.5 py-1 ${className ?? 'border-acts-border/80 bg-acts-surface'}`}>
-      <AppText variant="caption" className="font-medium text-acts-ink">
+    <View
+      className={`self-start rounded-full border px-2.5 py-1 ${className ?? 'border-acts-border/80 bg-acts-surface'}`}
+      style={
+        borderColor || backgroundColor
+          ? { borderColor, backgroundColor }
+          : undefined
+      }>
+      <AppText
+        variant="caption"
+        className={textColor ? 'font-medium' : 'font-medium text-acts-ink'}
+        style={textColor ? { color: textColor } : undefined}>
         {children}
       </AppText>
     </View>
@@ -131,6 +146,8 @@ type TaskRowProps = {
   taskCheckThemeId?: TaskCheckThemeId;
   /** Show an exciting "New" marker for acts the user hasn't seen on this tab yet. */
   isNew?: boolean;
+  /** First-act onboarding highlight ring. */
+  spotlight?: boolean;
 };
 
 export function TaskRow({
@@ -146,6 +163,7 @@ export function TaskRow({
   deedFeedShareTaskId,
   taskCheckThemeId = 'default',
   isNew = false,
+  spotlight = false,
 }: TaskRowProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
@@ -170,6 +188,7 @@ export function TaskRow({
   // colors from that fill instead of the app palette (which may be dark/light).
   const themedCardBgHex = themedRow ? (done ? theme.cardBgDoneHex : theme.cardBgHex) : undefined;
   const themedText = themedCardBgHex ? readableTextColors(themedCardBgHex) : null;
+  const themedChips = themedCardBgHex ? readableChipColors(themedCardBgHex) : null;
   const titleColor = themedText ? (done ? themedText.secondary : themedText.primary) : undefined;
 
   useEffect(() => {
@@ -238,14 +257,32 @@ export function TaskRow({
         )}
         <View className="mt-1.5 flex-row flex-wrap items-center gap-2">
           {done ? (
-            <TagChip className="border border-acts-green/35 bg-acts-surface">
+            <TagChip
+              className={themedChips ? 'border' : 'border border-acts-green/35 bg-acts-surface'}
+              borderColor={themedChips?.border}
+              backgroundColor={themedChips?.background}
+              textColor={themedChips?.text}>
               {task.photoUrl ? 'Memory photo saved' : 'No memory photo yet'}
             </TagChip>
           ) : null}
           {done && task.deedFeedPostId ? (
-            <TagChip className="border border-acts-blue/35 bg-acts-blue-soft/90">On deed feed</TagChip>
+            <TagChip
+              className={themedChips ? 'border' : 'border border-acts-blue/35 bg-acts-blue-soft/90'}
+              borderColor={themedChips?.border}
+              backgroundColor={themedChips?.background}
+              textColor={themedChips?.text}>
+              On deed feed
+            </TagChip>
           ) : null}
-          {task.picture ? <TagChip className="border border-acts-border/80 bg-acts-surface/90">Photo suggested</TagChip> : null}
+          {task.picture ? (
+            <TagChip
+              className={themedChips ? 'border' : 'border border-acts-border/80 bg-acts-surface/90'}
+              borderColor={themedChips?.border}
+              backgroundColor={themedChips?.background}
+              textColor={themedChips?.text}>
+              Photo suggested
+            </TagChip>
+          ) : null}
         </View>
       </View>
 
@@ -260,28 +297,58 @@ export function TaskRow({
       ) : null}
 
       <View className="mb-2 flex-row flex-wrap items-center gap-2">
-        <TagChip className="border border-acts-blue/25 bg-acts-blue-soft/90">{cadenceLabel(task.cadence)}</TagChip>
+        <TagChip
+          className={themedChips ? 'border' : 'border border-acts-blue/25 bg-acts-blue-soft/90'}
+          borderColor={themedChips?.border}
+          backgroundColor={themedChips?.background}
+          textColor={themedChips?.text}>
+          {cadenceLabel(task.cadence)}
+        </TagChip>
         <TagChip
           className={
-            task.difficulty === 1
-              ? 'border border-acts-green/30 bg-acts-green-soft/90'
-              : task.difficulty === 3
-                ? 'border border-acts-border/80 bg-acts-canvas'
-                : 'border border-acts-border/80 bg-acts-surface'
-          }>
+            themedChips
+              ? 'border'
+              : task.difficulty === 1
+                ? 'border border-acts-green/30 bg-acts-green-soft/90'
+                : task.difficulty === 3
+                  ? 'border border-acts-border/80 bg-acts-canvas'
+                  : 'border border-acts-border/80 bg-acts-surface'
+          }
+          borderColor={themedChips?.border}
+          backgroundColor={themedChips?.background}
+          textColor={themedChips?.text}>
           {difficultyLabel(task.difficulty)}
         </TagChip>
-        <TagChip className="border border-acts-border/80 bg-acts-surface/90">{categoryDisplayName(task.category)}</TagChip>
+        <TagChip
+          className={themedChips ? 'border' : 'border border-acts-border/80 bg-acts-surface/90'}
+          borderColor={themedChips?.border}
+          backgroundColor={themedChips?.background}
+          textColor={themedChips?.text}>
+          {categoryDisplayName(task.category)}
+        </TagChip>
       </View>
 
       {task.materials.length > 0 && !(task.materials.length === 1 && task.materials[0] === 'Nothing') ? (
         <View className="mb-2 flex-row flex-wrap items-center gap-x-2 gap-y-1">
-          <AppText variant="caption" className="font-semibold text-acts-muted">
+          <AppText
+            variant="caption"
+            className={themedText ? 'font-semibold' : 'font-semibold text-acts-muted'}
+            style={themedText ? { color: themedText.secondary } : undefined}>
             Materials
           </AppText>
           {task.materials.map((m) => (
-            <View key={m} className="rounded-full border border-acts-border bg-acts-surface px-2.5 py-1">
-              <AppText variant="caption" className="text-acts-muted">
+            <View
+              key={m}
+              className={themedChips ? 'rounded-full border px-2.5 py-1' : 'rounded-full border border-acts-border bg-acts-surface px-2.5 py-1'}
+              style={
+                themedChips
+                  ? { borderColor: themedChips.border, backgroundColor: themedChips.background }
+                  : undefined
+              }>
+              <AppText
+                variant="caption"
+                className={themedChips ? '' : 'text-acts-muted'}
+                style={themedChips ? { color: themedChips.text } : undefined}>
                 {m}
               </AppText>
             </View>
@@ -433,9 +500,11 @@ export function TaskRow({
       ref={cardMeasureRef}
       collapsable={false}
       className={`mb-3 flex-row items-start rounded-3xl px-4 py-3.5 ${
-        themedRow
-          ? `border-2 ${done ? `${theme.cardBorderDone} ${theme.cardBgDone}` : `${theme.cardBorder} ${theme.cardBg}`}`
-          : `border ${done ? 'border-acts-green/40 bg-acts-green-soft' : 'border-acts-border/70 bg-acts-surface'}`
+        spotlight && !done
+          ? 'border-2 border-acts-green bg-acts-green-soft/90'
+          : themedRow
+            ? `border-2 ${done ? `${theme.cardBorderDone} ${theme.cardBgDone}` : `${theme.cardBorder} ${theme.cardBg}`}`
+            : `border ${done ? 'border-acts-green/40 bg-acts-green-soft' : 'border-acts-border/70 bg-acts-surface'}`
       } ${busy ? 'opacity-60' : ''} ${hideForRewardFly ? 'opacity-0' : ''}`}
       pointerEvents={hideForRewardFly ? 'none' : 'auto'}>
       <View collapsable={false} className="mr-3">

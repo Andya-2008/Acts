@@ -4,6 +4,7 @@ import type { Timestamp } from 'firebase/firestore';
 import { Image, Pressable, View } from 'react-native';
 
 import { AppText } from '@/shared/components/ui';
+import type { ReadableTextColors } from '@/shared/theme/colorUtils';
 
 import { formatDeedPostDate, formatDeedPostTime } from '@/features/deed-feed/utils/deedPostDisplay';
 
@@ -15,9 +16,18 @@ type DeedPostHeaderProps = {
   authorUid?: string | null;
   /** Report / block menu (e.g. friend posts on the deed feed). */
   onOpenMenu?: () => void;
+  /** When the card uses a pastel tint, pass colors derived from that background. */
+  textColors?: ReadableTextColors;
 };
 
-export function DeedPostHeader({ displayName, createdAt, avatarUri, authorUid, onOpenMenu }: DeedPostHeaderProps) {
+export function DeedPostHeader({
+  displayName,
+  createdAt,
+  avatarUri,
+  authorUid,
+  onOpenMenu,
+  textColors,
+}: DeedPostHeaderProps) {
   const dateStr = formatDeedPostDate(createdAt);
   const timeStr = formatDeedPostTime(createdAt);
   const uid = authorUid?.trim() || '';
@@ -41,16 +51,26 @@ export function DeedPostHeader({ displayName, createdAt, avatarUri, authorUid, o
           )}
         </View>
         <View className="min-w-0 flex-1 justify-center">
-          <AppText variant="subtitle" className="text-acts-ink" numberOfLines={2}>
+          <AppText
+            variant="subtitle"
+            className={textColors ? '' : 'text-acts-ink'}
+            style={textColors ? { color: textColors.primary } : undefined}
+            numberOfLines={2}>
             {displayName.trim() || 'Friend'}
           </AppText>
           {dateStr.length > 0 ? (
-            <AppText variant="caption" className="mt-0.5 text-acts-muted">
+            <AppText
+              variant="caption"
+              className={textColors ? 'mt-0.5' : 'mt-0.5 text-acts-muted'}
+              style={textColors ? { color: textColors.secondary } : undefined}>
               {dateStr}
             </AppText>
           ) : null}
           {timeStr.length > 0 ? (
-            <AppText variant="caption" className="text-acts-muted">
+            <AppText
+              variant="caption"
+              className={textColors ? '' : 'text-acts-muted'}
+              style={textColors ? { color: textColors.secondary } : undefined}>
               {timeStr}
             </AppText>
           ) : null}
@@ -64,7 +84,7 @@ export function DeedPostHeader({ displayName, createdAt, avatarUri, authorUid, o
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="justify-center px-3 py-3"
             onPress={onOpenMenu}>
-            <Ionicons name="ellipsis-horizontal" size={22} color="#8B6F82" />
+            <Ionicons name="ellipsis-horizontal" size={22} color={textColors?.secondary ?? '#8B6F82'} />
           </Pressable>
         </View>
       ) : null}

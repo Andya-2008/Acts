@@ -27,7 +27,7 @@ Wait for the build on [expo.dev](https://expo.dev). Fix any build failures (usua
 3. Run:
 
 ```bash
-npm run eas:submit -- --platform ios --latest
+npm run eas:submit:ios:latest
 ```
 
 Or interactive (no `ascAppId` in eas.json):
@@ -42,10 +42,11 @@ Download the `.ipa` from Expo and upload with **Transporter** (Mac App Store).
 
 ## 3. App Store Connect metadata
 
-Open [App Store Connect](https://appstoreconnect.apple.com) → **Acts** → version **1.0.0**.
+Open [App Store Connect](https://appstoreconnect.apple.com) → **Acts** → version **1.0.5** (create the version if it does not exist yet).
 
 | Area | Doc |
 |------|-----|
+| What's New | `docs/app-store-whats-new-1.0.5.md` |
 | Description, keywords, subtitle | `docs/app-store-connect.md` §5 |
 | Screenshots | `docs/screenshots.md` |
 | App Privacy | `docs/app-privacy-questionnaire.md` |

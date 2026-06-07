@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { friendsQueryKeys } from '@/features/friends/queryKeys';
+import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
 import type { FriendshipRelation } from '@/features/friends/services/friendsRepository';
 import {
   acceptFriendRequest,
@@ -65,6 +66,13 @@ function invalidateFriends(qc: QueryClient, uid: string | undefined) {
     predicate: (q) =>
       Array.isArray(q.queryKey) &&
       q.queryKey[0] === 'friends' &&
+      q.queryKey[1] === 'suggestions' &&
+      q.queryKey[2] === uid,
+  });
+  void qc.invalidateQueries({
+    predicate: (q) =>
+      Array.isArray(q.queryKey) &&
+      q.queryKey[0] === 'friends' &&
       q.queryKey[1] === 'relation' &&
       (q.queryKey[2] === uid || q.queryKey[3] === uid),
   });
@@ -125,11 +133,11 @@ export function useSendFriendRequestToUidMutation(uid: string | undefined) {
 export function useSendFriendRequestMutation(uid: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (username: string) => {
+    mutationFn: (identifier: string) => {
       if (!uid) {
         throw new Error('Not signed in');
       }
-      return sendFriendRequest(uid, username);
+      return sendFriendRequest(uid, identifier);
     },
     onSuccess: async () => {
       invalidateFriends(qc, uid);
@@ -147,7 +155,11 @@ export function useAcceptFriendRequestMutation(uid: string | undefined) {
       return acceptFriendRequest(uid, fromUid);
     },
     onSuccess: async () => {
+      if (!uid) {
+        return;
+      }
       invalidateFriends(qc, uid);
+      await qc.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) });
     },
   });
 }

@@ -76,7 +76,15 @@ Privacy Policy URL must match what you declare here.
 
 ---
 
-## 5. Version 1.0.0 — Prepare for Submission
+## 5. Version metadata
+
+### What's New (1.0.5)
+
+Copy-paste from **`docs/app-store-whats-new-1.0.5.md`**.
+
+---
+
+## 5.1. Version 1.0.0 — Prepare for Submission (reference)
 
 ### Screenshots — **YOU**
 

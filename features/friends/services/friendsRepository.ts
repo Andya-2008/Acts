@@ -9,6 +9,14 @@ import {
   type WriteBatch,
 } from 'firebase/firestore';
 
+import { tryGrantInviteRewardsOnNewFriendship } from '@/features/friends/services/inviteRewardService';
+import {
+  emailKeyDocId,
+  fetchRegisteredUserByKeyDocId,
+  normalizeEmailKey,
+  normalizePhoneKey,
+  phoneKeyDocId,
+} from '@/features/friends/services/registeredContactKeysRepository';
 import { normalizeUsernameKey } from '@/shared/utils/usernameKey';
 import { fetchProfilePicUrlsForUids, fetchUserInfo } from '@/features/user-profile/services/userInfoRepository';
 import { firestoreCollections } from '@/shared/config/firestore';
@@ -47,6 +55,39 @@ export async function lookupUidByUsername(username: string): Promise<string | nu
   }
   const userId = (snap.data() as { userId?: string }).userId;
   return typeof userId === 'string' ? userId : null;
+}
+
+function looksLikeEmailAttempt(raw: string): boolean {
+  return raw.trim().includes('@');
+}
+
+/** Resolves username, email, or phone (last 10 digits) to a user's uid. */
+export async function lookupUidByFriendIdentifier(identifier: string): Promise<string | null> {
+  const raw = identifier.trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (looksLikeEmailAttempt(raw)) {
+    const emailKey = normalizeEmailKey(raw);
+    if (!emailKey) {
+      return null;
+    }
+    const reg = await fetchRegisteredUserByKeyDocId(emailKeyDocId(emailKey));
+    return reg?.uid ?? null;
+  }
+
+  const digitsOnly = raw.replace(/\D/g, '');
+  if (digitsOnly.length >= 10) {
+    const phoneKey = normalizePhoneKey(raw);
+    if (!phoneKey) {
+      return null;
+    }
+    const reg = await fetchRegisteredUserByKeyDocId(phoneKeyDocId(phoneKey));
+    return reg?.uid ?? null;
+  }
+
+  return lookupUidByUsername(raw.replace(/^@+/, ''));
 }
 
 export type IncomingFriendRequest = {
@@ -234,11 +275,11 @@ export async function fetchMutualFriends(meUid: string, profileUid: string): Pro
   return sorted.map((s) => ({ ...s, profilePicUrl: pics[s.friendUid] ?? null }));
 }
 
-export async function sendFriendRequest(fromUid: string, usernameRaw: string): Promise<void> {
+export async function sendFriendRequest(fromUid: string, identifierRaw: string): Promise<void> {
   const db = getFirebaseFirestore();
-  const toUid = await lookupUidByUsername(usernameRaw);
+  const toUid = await lookupUidByFriendIdentifier(identifierRaw);
   if (!toUid) {
-    throw new Error('No Acts user matches that username.');
+    throw new Error('FRIEND_LOOKUP_NOT_FOUND');
   }
   if (toUid === fromUid) {
     throw new Error('You cannot send a friend request to yourself.');
@@ -297,6 +338,8 @@ export async function acceptFriendRequest(recipientUid: string, fromUid: string)
   batch.set(friendEdgeRef(db, recipientUid, fromUid), { ...edgeToSender, since: serverTimestamp() });
 
   await batch.commit();
+
+  await tryGrantInviteRewardsOnNewFriendship(fromUid, recipientUid);
 }
 
 export async function declineFriendRequest(recipientUid: string, fromUid: string): Promise<void> {

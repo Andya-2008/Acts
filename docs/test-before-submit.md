@@ -4,11 +4,23 @@ Run on a **preview** or **production** build on a real device (not Expo Go).
 
 ## Auth & account
 
+- [ ] Sign in with **username** (not email) on returning account
+- [ ] Sign in with **phone** (if saved on profile) on returning account
 - [ ] Sign up with new email/password
 - [ ] Sign out and sign back in
 - [ ] Forgot password email arrives and works
 - [ ] **Delete account** (Settings → Account → type username → delete) — confirm you cannot sign in again and profile is gone
 - [ ] Google Sign-In (if enabled in this build): sign in and sign out once
+
+## 1.0.5 features
+
+- [ ] Tasks: first-act spotlight (new account) scrolls to an act; dismiss or complete clears it
+- [ ] Deed feed / Tasks: grow-friends prompt when 0–1 friends; share invite link
+- [ ] Accept invite from `/join?invitedBy=` — inviter gets seeds/XP (after friendship)
+- [ ] Tap push notification → correct screen; deed opens with post highlighted
+- [ ] Settings → Notifications inbox → same deep links
+- [ ] Seasonal challenges: log with optional photo; thumbnail on card
+- [ ] Dark / Midnight theme: task chips and deed cards readable
 
 ## Friends gate (new signup)
 

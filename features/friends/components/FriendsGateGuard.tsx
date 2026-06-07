@@ -13,7 +13,11 @@ type FriendsGateGuardProps = {
 export function FriendsGateGuard({ children }: FriendsGateGuardProps) {
   const uid = useAuthStore((s) => s.user?.uid);
   const segments = useSegments();
-  const onFriendsGateScreen = (segments as string[]).includes('friends-get-started');
+  const segmentsArr = segments as string[];
+  const onFriendsGateScreen = segmentsArr.includes('friends-get-started');
+  /** Allow friend-request deep links while the post-signup gate is still open. */
+  const onFriendsListScreen =
+    segmentsArr.includes('deed-feed') && segmentsArr[segmentsArr.length - 1] === 'friends';
   const { ready, required } = useFriendsGate(uid);
 
   if (!uid) {
@@ -33,7 +37,7 @@ export function FriendsGateGuard({ children }: FriendsGateGuardProps) {
     );
   }
 
-  if (required && !onFriendsGateScreen) {
+  if (required && !onFriendsGateScreen && !onFriendsListScreen) {
     return <Redirect href={'/(app)/friends-get-started' as Href} />;
   }
 

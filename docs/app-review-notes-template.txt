@@ -1,0 +1,26 @@
+Acts — App Review test account (1.0.5)
+
+Sign-in: Email and password (required). Username or phone also work if configured on this account.
+Username: [YOUR_DEMO_USERNAME]
+
+Email: [YOUR_REVIEW_EMAIL]
+Password: [YOUR_REVIEW_PASSWORD]
+
+How to explore:
+1. Sign in with the credentials above.
+2. If “Invite a friend” appears: tap ✕ (top left) to skip, or complete one option and tap Continue.
+3. Tasks tab — suggested acts; new accounts may see a “first act” highlight; tap to mark complete.
+4. Deed Feed tab — posts from friends (may be empty if no friends; that is OK).
+5. Profile tab — service rank and stats.
+6. Settings — Privacy, notifications, Account (includes Delete account).
+7. Optional: Settings → Notifications — tap an item to open the related screen (deed, friends, etc.).
+
+Google Sign-In: Available in this build — reviewers may use Google or email/password.
+
+Optional permissions (can deny):
+- Contacts — only if using Find friends from contacts
+- Photos / Camera — profile, task, or seasonal challenge photos
+- Notifications — optional reminders
+
+Support: https://acts-d7c7f.web.app/support
+Privacy: https://acts-d7c7f.web.app/privacy

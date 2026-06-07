@@ -1,12 +1,25 @@
 import type { User } from 'firebase/auth';
 import { doc, getDoc, runTransaction, serverTimestamp, updateDoc, type Firestore } from 'firebase/firestore';
 
+import { consumePendingInviterUid } from '@/features/friends/inviteAttribution';
 import { registerContactKeysForProfile, syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
 import { markPostSignupFriendsGatePending } from '@/features/friends/friendsGetStartedStorage';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
 import type { UserInfoDoc } from '@/shared/types/userInfo';
 import { normalizeUsernameKey } from '@/shared/utils/usernameKey';
+
+function isPhoneTakenError(error: unknown): boolean {
+  return error instanceof Error && error.message === 'PHONE_TAKEN';
+}
+
+async function invitedByUidForNewProfile(selfUid: string): Promise<string | undefined> {
+  const pending = await consumePendingInviterUid();
+  if (!pending || pending === selfUid) {
+    return undefined;
+  }
+  return pending;
+}
 
 async function assertUsernameKeyAvailable(db: Firestore, usernameKey: string): Promise<void> {
   const reserved = await getDoc(doc(db, firestoreCollections.usernames, usernameKey));
@@ -113,6 +126,7 @@ export async function createUserInfoForEmailPasswordSignup(input: {
 }): Promise<void> {
   const db = getFirebaseFirestore();
   const usernameKey = normalizeUsernameKey(input.username);
+  const invitedBy = await invitedByUidForNewProfile(input.uid);
   const payload: UserInfoDoc = {
     DOB: input.dobFormatted,
     'Date Joined': serverTimestamp(),
@@ -127,6 +141,7 @@ export async function createUserInfoForEmailPasswordSignup(input: {
     HeartPoints: 0,
     LifetimeXP: 0,
     ShopPurchasedIds: [],
+    ...(invitedBy ? { InvitedByUid: invitedBy } : {}),
   };
 
   await commitUserInfoWithUsernameClaim(db, input.uid, usernameKey, payload);
@@ -138,7 +153,10 @@ export async function createUserInfoForEmailPasswordSignup(input: {
       First: input.first,
       Last: input.last,
     });
-  } catch {
+  } catch (error) {
+    if (isPhoneTakenError(error)) {
+      throw error;
+    }
     /* Contact-discovery keys are best-effort; profile + username claim are already saved. */
   }
 }
@@ -197,6 +215,7 @@ export async function ensureUserInfoForGoogleUser(user: User): Promise<void> {
     }
     try {
       await assertUsernameKeyAvailable(db, usernameKey);
+      const invitedBy = await invitedByUidForNewProfile(user.uid);
       const payload: UserInfoDoc = {
         DOB: '',
         'Date Joined': serverTimestamp(),
@@ -211,6 +230,7 @@ export async function ensureUserInfoForGoogleUser(user: User): Promise<void> {
         HeartPoints: 0,
         LifetimeXP: 0,
         ShopPurchasedIds: [],
+        ...(invitedBy ? { InvitedByUid: invitedBy } : {}),
       };
       await commitUserInfoWithUsernameClaim(db, user.uid, usernameKey, payload);
       try {
@@ -302,6 +322,7 @@ export async function ensureUserInfoForAppleUser(
     }
     try {
       await assertUsernameKeyAvailable(db, usernameKey);
+      const invitedBy = await invitedByUidForNewProfile(user.uid);
       const payload: UserInfoDoc = {
         DOB: '',
         'Date Joined': serverTimestamp(),
@@ -316,6 +337,7 @@ export async function ensureUserInfoForAppleUser(
         HeartPoints: 0,
         LifetimeXP: 0,
         ShopPurchasedIds: [],
+        ...(invitedBy ? { InvitedByUid: invitedBy } : {}),
       };
       await commitUserInfoWithUsernameClaim(db, user.uid, usernameKey, payload);
       try {

@@ -30,7 +30,7 @@ Makes review smoother:
 ```
 Acts — App Review test account
 
-Sign-in: Email and password (required).
+Sign-in: Email and password (required). Username or phone also work if set on this account.
 Username: [demo username shown in Settings → Account]
 
 Email: [REVIEW_EMAIL]
@@ -39,7 +39,7 @@ Password: [REVIEW_PASSWORD]
 How to explore:
 1. Sign in with the credentials above.
 2. If “Invite a friend” appears: tap ✕ (top left) to skip, or complete one option and tap Continue.
-3. Tasks tab — suggested acts; tap to mark complete.
+3. Tasks tab — suggested acts; new accounts may see a “first act” highlight; tap to mark complete.
 4. Deed Feed tab — posts from friends (may be empty if no friends; that is OK).
 5. Profile tab — service rank and stats.
 6. Settings — Privacy, notifications, Account (includes Delete account).

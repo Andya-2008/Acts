@@ -7,6 +7,7 @@ Static pages live in the repo folder **`www/`**.
 | Privacy | `https://acts-d7c7f.web.app/privacy` | `https://acts.app/privacy` |
 | Terms | `https://acts-d7c7f.web.app/terms` | `https://acts.app/terms` |
 | Support | `https://acts-d7c7f.web.app/support` | `https://acts.app/support` |
+| Friend invite | `https://acts-d7c7f.web.app/join` | `https://acts.app/join` |
 
 The app defaults to **`acts-d7c7f.web.app`** until you set `EXPO_PUBLIC_LEGAL_BASE_URL=https://acts.app` and rebuild. See **`docs/connect-acts-app-domain.md`**.
 
