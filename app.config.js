@@ -183,17 +183,15 @@ module.exports = ({ config }) => {
   return {
     ...config,
     plugins,
-    ...(!rewardedAdsEnabled
-      ? {
-          autolinking: {
-            ...(config.autolinking ?? {}),
-            exclude: [
-              ...((config.autolinking?.exclude ?? []) ),
-              'react-native-google-mobile-ads',
-            ],
-          },
-        }
-      : {}),
+    autolinking: {
+      ...(config.autolinking ?? {}),
+      exclude: [
+        ...((config.autolinking?.exclude ?? [])),
+        // Deprecated native module (SDK 54 incompatible). SMS reCAPTCHA is WebView-only.
+        'expo-firebase-core',
+        ...(rewardedAdsEnabled ? [] : ['react-native-google-mobile-ads']),
+      ],
+    },
     extra: {
       ...(config.extra ?? {}),
       ...googleExtra,
