@@ -5,7 +5,7 @@ function str(v: string | undefined | null): string {
 }
 
 /** App Store listing for Acts: Be Kind (fallback when join page is not used). */
-const APP_STORE_URL = 'https://apps.apple.com/us/app/acts-be-kind/id6770841231';
+export { APP_STORE_URL, getAppStoreUrl } from '@/shared/config/appStore';
 
 /** Hosted invite landing (`/join`) — stores `invitedBy` and opens the app when installed. */
 export function getDefaultInviteJoinBase(): string {

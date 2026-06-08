@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
+import { RewardedAdsSectionGate } from '@/features/rewarded-ads/RewardedAdsSectionGate';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { TASK_CHECK_THEME_LIST, TASK_CHECK_THEMES, normalizeTaskCheckThemeId, type TaskCheckThemeId } from '@/features/cosmetics/taskCheckThemes';
 import {
@@ -351,7 +352,7 @@ export default function ShopScreen() {
     return (
       <Screen scroll>
         <AppText variant="body" className="text-acts-muted">
-          Sign in to use the shop.
+          Sign in to open Rewards.
         </AppText>
       </Screen>
     );
@@ -362,14 +363,14 @@ export default function ShopScreen() {
       <View className="pb-8 pt-2">
         <View className="mb-6 flex-row items-center gap-3">
           <View className="h-14 w-14 items-center justify-center rounded-2xl border-2 border-acts-green/40 bg-acts-green-soft">
-            <Ionicons name="storefront" size={28} color={act.palette.green} />
+            <Ionicons name="gift-outline" size={28} color={act.palette.green} />
           </View>
           <View className="min-w-0 flex-1">
             <AppText variant="title" className="text-acts-ink">
-              Kindness Arcade
+              Rewards
             </AppText>
             <AppText variant="caption" className="text-acts-muted">
-              Spend seeds you earn from acts. Open the shop anytime from the seeds pill on Tasks.
+              Spend seeds you earn from acts. Open Rewards anytime from the Tasks header.
             </AppText>
           </View>
         </View>
@@ -379,6 +380,8 @@ export default function ShopScreen() {
             {localError}
           </AppText>
         ) : null}
+
+        <RewardedAdsSectionGate userInfo={userInfo ?? undefined} />
 
         {SHOP_SECTION_ORDER.map(renderSection)}
       </View>

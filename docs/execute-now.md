@@ -2,7 +2,7 @@
 
 You are past planning. Do these in order (check off as you go).
 
-**Shipping 1.0.5?** Use **`docs/release-1.0.5.md`** (backend deploy + feature QA) instead of this generic list.
+**Shipping 1.0.7?** Use **`docs/release-1.0.7.md`** (Firebase Phone auth + feature QA) instead of this generic list.
 
 ## A. Environment (30 min)
 

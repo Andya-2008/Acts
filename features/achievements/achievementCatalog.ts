@@ -172,7 +172,7 @@ export function achievementHowToUnlock(def: AchievementDef): string {
     }
     case 'xp_min': {
       const xp = def.metric.xp;
-      return `Lifetime XP adds up from completing acts, sharing completed acts to the deed feed, and buying XP in the shop. Grow your lifetime total to ${xp.toLocaleString()} XP.`;
+      return `Lifetime XP adds up from completing acts, sharing completed acts to the deed feed, and buying XP in Rewards. Grow your lifetime total to ${xp.toLocaleString()} XP.`;
     }
     case 'acts_min': {
       const n = def.metric.n;

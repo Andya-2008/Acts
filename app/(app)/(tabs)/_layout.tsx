@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { AchievementUnlockHost } from '@/features/achievements/components/AchievementUnlockHost';
+import { ReleaseHighlightsHost } from '@/features/release-highlights/ReleaseHighlightsHost';
 import { FirstRunTutorialHost } from '@/features/tutorial/components/FirstRunTutorialHost';
 import { WeekendDoublePromoHost } from '@/features/promotions/components/WeekendDoublePromoHost';
 import { useHeartPointsFirestoreSync } from '@/features/user-profile/hooks/useHeartPointsFirestoreSync';
@@ -120,6 +121,7 @@ export default function TabsLayout() {
     <AchievementUnlockHost />
     <WeekendDoublePromoHost />
     <FirstRunTutorialHost />
+    <ReleaseHighlightsHost />
     </FriendsGateGuard>
   );
 }

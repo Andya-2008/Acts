@@ -21,7 +21,7 @@ function lifetimeXpFromUserInfo(data: { LifetimeXP?: unknown } | null | undefine
 }
 
 /**
- * Tasks tab header: Seeds balance, a prominent Shop button, and lifetime XP.
+ * Tasks tab header: Seeds balance, Rewards entry, and lifetime XP.
  */
 export function SeedsXpShopHeader({ trailing = false }: SeedsXpShopHeaderProps) {
   const uid = useAuthStore((s) => s.user?.uid);
@@ -47,7 +47,7 @@ export function SeedsXpShopHeader({ trailing = false }: SeedsXpShopHeaderProps) 
     };
   }, [setPillAnchor]);
 
-  const openShop = () => router.push('/(app)/shop' as Href);
+  const openRewards = () => router.push('/(app)/shop' as Href);
 
   return (
     <View className={`flex-row flex-wrap items-center justify-end gap-2 ${trailing ? '' : 'pl-2'}`}>
@@ -65,14 +65,14 @@ export function SeedsXpShopHeader({ trailing = false }: SeedsXpShopHeaderProps) 
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open kindness shop"
+        accessibilityLabel="Open rewards"
         accessibilityHint="Spend seeds on themes, reactions, and boosts"
         hitSlop={6}
-        onPress={openShop}
+        onPress={openRewards}
         className="flex-row items-center rounded-full border border-acts-green/50 bg-acts-green-soft px-3 py-1.5 active:opacity-85">
-        <Ionicons name="storefront" size={18} color="#2F855A" />
+        <Ionicons name="gift-outline" size={18} color="#2F855A" />
         <AppText variant="subtitle" className="ml-1.5 font-semibold text-acts-green">
-          Shop
+          Rewards
         </AppText>
       </Pressable>
       <View

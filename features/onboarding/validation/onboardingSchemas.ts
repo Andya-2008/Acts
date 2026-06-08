@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { optionalActsPhoneSchema } from '@/features/auth/validation/authSchemas';
+import { requiredActsPhoneSchema } from '@/features/auth/validation/authSchemas';
 import {
   choiceIds,
   favoriteActivityChoices,
@@ -31,7 +31,7 @@ const namePart = (which: 'first' | 'last') => {
 export const onboardingStep0Schema = z.object({
   first: namePart('first'),
   last: namePart('last'),
-  phone: optionalActsPhoneSchema,
+  phone: requiredActsPhoneSchema,
   hobbies: multiPick(choiceIds(hobbyChoices), 6, 'hobbies'),
   interests: multiPick(choiceIds(interestChoices), 6, 'interests'),
   favoriteActivities: multiPick(choiceIds(favoriteActivityChoices), 6, 'favorite activities'),

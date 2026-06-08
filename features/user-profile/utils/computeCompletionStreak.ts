@@ -22,7 +22,22 @@ function addDaysToKey(key: string, deltaDays: number): string {
   return localDateKey(dt);
 }
 
-export type StreakGraceSlice = Pick<ActsAppSettings, 'streakGraceForgivenDayKey' | 'streakGraceAppliedInMonth'>;
+export type StreakGraceSlice = Pick<
+  ActsAppSettings,
+  | 'streakGraceForgivenDayKey'
+  | 'streakGraceAppliedInMonth'
+  | 'streakGraceAdForgivenDayKey'
+  | 'streakGraceAdAppliedInMonth'
+>;
+
+function applyGraceDays(days: Set<string>, grace: StreakGraceSlice | null | undefined, monthKey: string): void {
+  if (grace?.streakGraceForgivenDayKey && grace.streakGraceAppliedInMonth === monthKey) {
+    days.add(grace.streakGraceForgivenDayKey);
+  }
+  if (grace?.streakGraceAdForgivenDayKey && grace.streakGraceAdAppliedInMonth === monthKey) {
+    days.add(grace.streakGraceAdForgivenDayKey);
+  }
+}
 
 function completionDaySet(tasks: ActTask[]): Set<string> {
   const set = new Set<string>();
@@ -55,9 +70,7 @@ export function computeCompletionStreak(tasks: ActTask[], grace?: StreakGraceSli
   const days = completionDaySet(tasks);
   const now = new Date();
   const monthKey = calendarMonthKey(now);
-  if (grace?.streakGraceForgivenDayKey && grace.streakGraceAppliedInMonth === monthKey) {
-    days.add(grace.streakGraceForgivenDayKey);
-  }
+  applyGraceDays(days, grace, monthKey);
   if (days.size === 0) {
     return 0;
   }

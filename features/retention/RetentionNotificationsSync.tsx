@@ -21,8 +21,15 @@ export function RetentionNotificationsSync() {
     () => ({
       streakGraceForgivenDayKey: acts.streakGraceForgivenDayKey,
       streakGraceAppliedInMonth: acts.streakGraceAppliedInMonth,
+      streakGraceAdForgivenDayKey: acts.streakGraceAdForgivenDayKey,
+      streakGraceAdAppliedInMonth: acts.streakGraceAdAppliedInMonth,
     }),
-    [acts.streakGraceForgivenDayKey, acts.streakGraceAppliedInMonth],
+    [
+      acts.streakGraceForgivenDayKey,
+      acts.streakGraceAppliedInMonth,
+      acts.streakGraceAdForgivenDayKey,
+      acts.streakGraceAdAppliedInMonth,
+    ],
   );
 
   useEffect(() => {

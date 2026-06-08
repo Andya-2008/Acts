@@ -27,8 +27,27 @@ export function fridayYmdOfWeekendContaining(d = new Date()): string | null {
   return localYmd(x);
 }
 
-export function isWeekendDoubleActive(now = new Date()): boolean {
-  return fridayYmdOfWeekendContaining(now) != null;
+export type WeekendDoubleOptions = {
+  /** ISO timestamp from rewarded-ad Monday extension. */
+  extendedUntilIso?: string | null;
+};
+
+export function isWeekendDoubleActive(now = new Date(), options?: WeekendDoubleOptions): boolean {
+  if (fridayYmdOfWeekendContaining(now) != null) {
+    return true;
+  }
+  const raw = options?.extendedUntilIso?.trim();
+  if (!raw) {
+    return false;
+  }
+  const until = Date.parse(raw);
+  return !Number.isNaN(until) && now.getTime() <= until;
+}
+
+export function weekendDoubleOptionsFromSettings(
+  settings?: { weekendDoubleExtendedUntil?: string | null } | null,
+): WeekendDoubleOptions {
+  return { extendedUntilIso: settings?.weekendDoubleExtendedUntil ?? null };
 }
 
 /** Storage key for “already showed promo this weekend”. */
@@ -38,19 +57,45 @@ export function weekendDoublePromoStorageKey(now = new Date()): string | null {
 }
 
 /** Positive earn amounts (seeds, XP grants) are doubled on weekend. */
-export function weekendDoubleEarnedAmount(base: number, now = new Date()): number {
+export function weekendDoubleEarnedAmount(
+  base: number,
+  now = new Date(),
+  options?: WeekendDoubleOptions,
+): number {
   const b = Math.floor(Number(base));
-  if (!isWeekendDoubleActive(now) || b <= 0) {
+  if (!isWeekendDoubleActive(now, options) || b <= 0) {
     return b;
   }
   return b * 2;
 }
 
 /** XP delta: only positive gains are doubled; penalties unchanged. */
-export function weekendDoubleXpDelta(delta: number, now = new Date()): number {
+export function weekendDoubleXpDelta(
+  delta: number,
+  now = new Date(),
+  options?: WeekendDoubleOptions,
+): number {
   const d = Math.trunc(Number(delta));
   if (d <= 0) {
     return d;
   }
-  return isWeekendDoubleActive(now) ? d * 2 : d;
+  return isWeekendDoubleActive(now, options) ? d * 2 : d;
+}
+
+/** End of Monday (local) for the Fri–Sun window containing `now`. */
+export function endOfMondayAfterWeekendIso(now = new Date()): string | null {
+  const day = now.getDay();
+  if (day !== 0 && day !== 5 && day !== 6) {
+    return null;
+  }
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (day === 5) {
+    monday.setDate(monday.getDate() + 3);
+  } else if (day === 6) {
+    monday.setDate(monday.getDate() + 2);
+  } else {
+    monday.setDate(monday.getDate() + 1);
+  }
+  monday.setHours(23, 59, 59, 999);
+  return monday.toISOString();
 }

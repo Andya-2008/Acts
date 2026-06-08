@@ -35,7 +35,7 @@ export default function SettingsAppearanceScreen() {
         <TitleWithInfo
           title="Appearance"
           showTitle={false}
-          infoText="Syncs to your profile. Extra backdrops unlock in the Kindness Arcade."
+          infoText="Syncs to your profile. Extra backdrops unlock in Rewards."
         />
 
         <AppText variant="label" className="mb-2 text-acts-muted">
@@ -74,7 +74,7 @@ export default function SettingsAppearanceScreen() {
                   }}
                   maxFontSizeMultiplier={act.maxFontSizeMultiplier}>
                   {ACT_APPEARANCE_PRESET_LABELS[id]}
-                  {shopOnly ? ' · shop' : ''}
+                  {shopOnly ? ' · rewards' : ''}
                 </Text>
               </Pressable>
             );

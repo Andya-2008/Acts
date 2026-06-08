@@ -41,6 +41,10 @@ In [expo.dev](https://expo.dev) → **Acts** → **Environment variables**, set 
 
 - `EXPO_PUBLIC_SENTRY_DSN` — from [sentry.io](https://sentry.io) → project → Client Keys (DSN)
 
+**Ads (1.0.7 — leave OFF)**
+
+- `EXPO_PUBLIC_REWARDED_ADS_ENABLED` = `false` or **omit** — no AdMob plugin, no ATT prompt, App Store “Contains Ads” = No
+
 After changing variables, run a **new** build (existing IPAs do not pick up changes).
 
 ---
@@ -63,7 +67,13 @@ Open the **Acts** app (not Expo Go).
 
 ---
 
-## 3. Firebase backend (before 1.0.5 store build)
+## 3. Firebase (before 1.0.7 store build)
+
+### Phone authentication
+
+Firebase Console → **Authentication** → **Sign-in method** → enable **Phone** (required for SMS verification in 1.0.7).
+
+## 4. Firebase backend deploy
 
 From project root (logged in: `firebase login`):
 
@@ -84,7 +94,7 @@ npm run firebase:deploy:hosting
 
 ---
 
-## 4. Before App Store submit
+## 5. Before App Store submit
 
 - [ ] Legal URLs load in Safari  
 - [ ] `eas build --profile production --platform ios` succeeds  
@@ -96,7 +106,7 @@ npm run firebase:deploy:hosting
 
 ---
 
-## 5. Quick commands
+## 6. Quick commands
 
 ```bash
 # List env (CLI)

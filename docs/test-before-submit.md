@@ -6,11 +6,22 @@ Run on a **preview** or **production** build on a real device (not Expo Go).
 
 - [ ] Sign in with **username** (not email) on returning account
 - [ ] Sign in with **phone** (if saved on profile) on returning account
-- [ ] Sign up with new email/password
+- [ ] **Sign up** with new email/password → **mobile number required** → receive SMS → enter 6-digit code → profile created
+- [ ] **Google or Apple sign-in** (if enabled) with **no profile phone** → verify-phone screen → SMS → enter app
+- [ ] **Returning account** that already had a phone on profile before 1.0.7 → **no** verify-phone gate
 - [ ] Sign out and sign back in
 - [ ] Forgot password email arrives and works
 - [ ] **Delete account** (Settings → Account → type username → delete) — confirm you cannot sign in again and profile is gone
 - [ ] Google Sign-In (if enabled in this build): sign in and sign out once
+
+## 1.0.7 features
+
+- [ ] **What's new** overlay appears once after upgrading to 1.0.7 (dismiss → does not repeat)
+- [ ] **Home screen widgets** — add streak and/or tasks widget; open app, complete an act; widget reflects change
+- [ ] **Rewards** tab (nav title and header pill); seed purchases work (no real money)
+- [ ] **Profile photo crop** — Settings → Account → pick photo → square crop → saves
+- [ ] **Verified phone** — Account settings shows number as verified (read-only after SMS)
+- [ ] **No ads** — Rewards screen has no “watch ad” section; no App Tracking prompt on launch
 
 ## 1.0.5 features
 
@@ -35,7 +46,7 @@ Run on a **preview** or **production** build on a real device (not Expo Go).
 - [ ] Deed feed: view posts, react (if applicable)
 - [ ] Post to deed feed after completing act (if used)
 - [ ] Profile: stats, edit bio, profile photo
-- [ ] Shop: purchase with seeds (no real money)
+- [ ] Rewards: purchase with seeds (no real money)
 - [ ] Settings → Privacy: block user filters feed
 - [ ] Report post (submits without crash)
 

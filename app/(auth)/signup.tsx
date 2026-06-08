@@ -5,8 +5,17 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Alert, Image, Platform, Pressable, View } from 'react-native';
+import type { User } from 'firebase/auth';
 
-import { registerNewUser } from '@/features/auth/services/authService';
+import { deleteUser } from 'firebase/auth';
+
+import {
+  completeEmailPasswordRegistration,
+  createEmailPasswordAuthUser,
+  signOutCurrentUser,
+} from '@/features/auth/services/authService';
+import { getFirebaseAuth } from '@/shared/services/firebase/client';
+import { PhoneSmsVerificationForm } from '@/features/auth/components/PhoneSmsVerificationForm';
 import { markPostSignupFriendsGatePending } from '@/features/friends/friendsGetStartedStorage';
 import { AuthBrandingHeader } from '@/features/auth/components/AuthBrandingHeader';
 import { AlternateSignInMethods } from '@/features/auth/components/AlternateSignInMethods';
@@ -20,6 +29,9 @@ import { actsTheme } from '@/shared/theme/actsTheme';
 
 export default function SignupScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [signupStep, setSignupStep] = useState<'form' | 'verify'>('form');
+  const [pendingUser, setPendingUser] = useState<User | null>(null);
+  const [pendingValues, setPendingValues] = useState<SignupFormValues | null>(null);
 
   const {
     control,
@@ -94,22 +106,92 @@ export default function SignupScreen() {
     }
   };
 
+  const cancelPendingSignup = async () => {
+    setSubmitError(null);
+    const auth = getFirebaseAuth();
+    const user = pendingUser ?? auth.currentUser;
+    try {
+      if (user) {
+        await deleteUser(user);
+      }
+    } catch {
+      /* best-effort */
+    }
+    try {
+      await signOutCurrentUser();
+    } catch {
+      /* best-effort */
+    }
+    setPendingUser(null);
+    setPendingValues(null);
+    setSignupStep('form');
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      const user = await registerNewUser(values);
-      await markPostSignupFriendsGatePending(user.uid);
-      router.replace('/(app)');
+      const user = await createEmailPasswordAuthUser(values.email, values.password);
+      setPendingUser(user);
+      setPendingValues(values);
+      setSignupStep('verify');
     } catch (error) {
       setSubmitError(mapAuthError(error));
     }
   });
 
+  const finishSignupAfterVerification = async () => {
+    if (!pendingUser || !pendingValues) {
+      return;
+    }
+    setSubmitError(null);
+    try {
+      const user = await completeEmailPasswordRegistration(pendingUser, pendingValues);
+      await markPostSignupFriendsGatePending(user.uid);
+      setPendingUser(null);
+      setPendingValues(null);
+      router.replace('/(app)');
+    } catch (error) {
+      setSubmitError(mapAuthError(error));
+    }
+  };
+
+  if (signupStep === 'verify' && pendingUser && pendingValues) {
+    return (
+      <Screen scroll>
+        <FadeInView>
+          <View className="py-8">
+            <AuthBrandingHeader
+              headline="Verify your number"
+              subtitle="We sent a text to confirm your mobile number before creating your profile."
+            />
+            <AppCard>
+              <PhoneSmsVerificationForm
+                user={pendingUser}
+                phoneDisplay={pendingValues.phone}
+                syncProfile={false}
+                onVerified={finishSignupAfterVerification}
+                onCancel={() => void cancelPendingSignup()}
+              />
+            </AppCard>
+            {submitError ? (
+              <AppText
+                variant="body"
+                className="mt-4 text-center leading-6"
+                style={{ color: actsTheme.colors.danger }}>
+                {submitError}
+              </AppText>
+            ) : null}
+          </View>
+        </FadeInView>
+      </Screen>
+    );
+  }
+
   return (
     <Screen scroll>
       <FadeInView>
         <View className="py-8">
-        <AuthBrandingHeader headline="Create your account" subtitle="Email and password are enough to start." />
+        <AuthBrandingHeader headline="Create your account" subtitle="Email, password, and a verified mobile number." />
 
         <AppCard>
           <Pressable
@@ -159,6 +241,24 @@ export default function SignupScreen() {
           />
           <Controller
             control={control}
+            name="phone"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <AppTextField
+                label="Mobile number"
+                placeholder="e.g. (555) 123-4567"
+                keyboardType="phone-pad"
+                textContentType="telephoneNumber"
+                autoComplete="tel"
+                onBlur={onBlur}
+                onChangeText={(t) => onChange(formatPhoneInput(t))}
+                value={value}
+                maxLength={14}
+                errorMessage={errors.phone?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
             name="username"
             render={({ field: { onChange, onBlur, value } }) => (
               <AppTextField
@@ -170,24 +270,6 @@ export default function SignupScreen() {
                 onChangeText={onChange}
                 value={value}
                 errorMessage={errors.username?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <AppTextField
-                label="Mobile number (optional)"
-                placeholder="Leave blank or e.g. (555) 123-4567"
-                keyboardType="phone-pad"
-                textContentType="telephoneNumber"
-                autoComplete="tel"
-                onBlur={onBlur}
-                onChangeText={(t) => onChange(formatPhoneInput(t))}
-                value={value}
-                maxLength={14}
-                errorMessage={errors.phone?.message}
               />
             )}
           />
@@ -275,7 +357,7 @@ export default function SignupScreen() {
             </AppText>
           ) : null}
 
-          <AppButton title="Create account" loading={isSubmitting} onPress={onSubmit} />
+          <AppButton title="Continue" loading={isSubmitting} onPress={onSubmit} />
 
           {shouldShowGoogleAuthOnAuthScreens() || shouldShowAppleAuthOnAuthScreens() ? (
             <AlternateSignInMethods intent="sign-up" />

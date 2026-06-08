@@ -10,6 +10,7 @@ import {
 } from '@/shared/theme/appearancePalettes';
 import { buildActsThemeVars } from '@/shared/theme/actsThemeVars';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
+import { resolveActiveAppearancePreset } from '@/shared/utils/appearanceTrial';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { getActsMaxFontSizeMultiplier } from '@/shared/utils/accessibilityText';
 
@@ -52,7 +53,7 @@ export function ActAppearanceProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ActAppearanceContextValue>(() => {
     const merged = mergeActsDefaults(userInfo?.ActsSettings);
-    const preset = merged.appearanceColorPreset;
+    const preset = resolveActiveAppearancePreset(merged);
     const palette = resolveActAppearancePalette(preset);
     return {
       palette,

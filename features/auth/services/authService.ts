@@ -134,20 +134,32 @@ export async function deleteAccount(): Promise<void> {
   await signOut(auth);
 }
 
-export async function registerNewUser(input: SignupFormValues): Promise<User> {
+export async function createEmailPasswordAuthUser(email: string, password: string): Promise<User> {
+  const auth = getFirebaseAuth();
+  const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  return credential.user;
+}
+
+/**
+ * Creates the Firestore profile after Firebase Auth phone verification.
+ * Call only after `user.phoneNumber` is set on the Auth user.
+ */
+export async function completeEmailPasswordRegistration(user: User, input: SignupFormValues): Promise<User> {
   const auth = getFirebaseAuth();
   const db = getFirebaseFirestore();
 
+  if (!user.phoneNumber) {
+    throw new Error('PHONE_VERIFY_REQUIRED');
+  }
+
   const trimmedUser = input.username.trim();
-
-  const credential = await createUserWithEmailAndPassword(auth, input.email, input.password);
-  const { user } = credential;
-
   const resolvedUsername =
     trimmedUser.length >= 3 ? trimmedUser : `user_${user.uid.replace(/-/g, '').slice(0, 15)}`;
 
   const emailLocal =
     (input.email.trim().split('@')[0] ?? 'friend').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 24) || 'friend';
+
+  const verifiedPhoneDisplay = input.phone.trim();
 
   /** If true, Firestore already has `userInfo` + `usernames`; never delete Auth on rollback or we orphan those docs. */
   let firestoreProfileCommitted = false;
@@ -156,10 +168,7 @@ export async function registerNewUser(input: SignupFormValues): Promise<User> {
     if (trimmedUser.length > 0) {
       await assertUsernameAvailableForRegistration(trimmedUser);
     }
-    const trimmedPhone = input.phone.trim();
-    if (trimmedPhone.length > 0) {
-      await assertPhoneAvailableForUid(trimmedPhone, user.uid);
-    }
+    await assertPhoneAvailableForUid(verifiedPhoneDisplay, user.uid);
 
     await createUserInfoForEmailPasswordSignup({
       uid: user.uid,
@@ -168,7 +177,7 @@ export async function registerNewUser(input: SignupFormValues): Promise<User> {
       dobFormatted: input.birthdate ? formatDobForUserInfo(input.birthdate) : '',
       first: '',
       last: '',
-      phone: input.phone.trim(),
+      phone: verifiedPhoneDisplay,
       traits: [],
       userConfig: false,
       profilePicUrl: null,
@@ -187,7 +196,7 @@ export async function registerNewUser(input: SignupFormValues): Promise<User> {
       photoURL: profilePicUrl ?? undefined,
     });
 
-    return user;
+    return auth.currentUser ?? user;
   } catch (error) {
     if (!firestoreProfileCommitted) {
       try {
@@ -198,4 +207,10 @@ export async function registerNewUser(input: SignupFormValues): Promise<User> {
     }
     throw error;
   }
+}
+
+/** @deprecated Use createEmailPasswordAuthUser + SMS verify + completeEmailPasswordRegistration. */
+export async function registerNewUser(input: SignupFormValues): Promise<User> {
+  const user = await createEmailPasswordAuthUser(input.email, input.password);
+  return completeEmailPasswordRegistration(user, input);
 }

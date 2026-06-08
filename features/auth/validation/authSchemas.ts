@@ -37,11 +37,30 @@ export const optionalActsPhoneSchema = z
     message: 'If you enter a number, use at least 10 digits (for contact matching on Acts).',
   });
 
+/** Required US-style mobile number (10 digits) for SMS verification. */
+export const requiredActsPhoneSchema = z
+  .string()
+  .trim()
+  .min(1, 'Enter your mobile number.')
+  .max(32, 'That number looks too long.')
+  .refine((s) => s.replace(/\D/g, '').length >= 10, {
+    message: 'Enter a valid mobile number with at least 10 digits.',
+  });
+
+export const phoneVerificationCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(6, 'Enter the 6-digit code from your text message.')
+    .max(6, 'Enter the 6-digit code from your text message.')
+    .regex(/^\d{6}$/, 'Enter the 6-digit code from your text message.'),
+});
+
 export const signupSchema = z
   .object({
     username: optionalUsernameSchema,
     email: z.string().trim().email('Enter a valid email address.'),
-    phone: optionalActsPhoneSchema,
+    phone: requiredActsPhoneSchema,
     password: z.string().min(8, 'Use at least 8 characters.'),
     birthdate: z.date().optional(),
     profilePhotoUri: z.string().optional(),
@@ -54,3 +73,4 @@ export const signupSchema = z
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type SignupFormValues = z.infer<typeof signupSchema>;
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+export type PhoneVerificationCodeFormValues = z.infer<typeof phoneVerificationCodeSchema>;

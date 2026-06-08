@@ -16,6 +16,10 @@ import { DeleteAccountConfirmModal } from '@/features/settings/components/Delete
 import { ChangeEmailModal } from '@/features/settings/components/ChangeEmailModal';
 import { ChangePasswordModal } from '@/features/settings/components/ChangePasswordModal';
 import { ChangeUsernameModal } from '@/features/settings/components/ChangeUsernameModal';
+import {
+  profileHasSavedPhone,
+  verifiedPhoneDisplay,
+} from '@/features/auth/services/phoneVerificationService';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import {
   useMergeActsSettingsMutation,
@@ -27,6 +31,7 @@ import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
 import { PROFILE_BIO_MAX_LENGTH, normalizeProfileBio } from '@/shared/constants/profileBio';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import { AppButton, AppText, AppTextField, Screen, TitleWithInfo } from '@/shared/components/ui';
+import { formatPhoneInput } from '@/shared/utils/formatPhoneInput';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
@@ -65,6 +70,9 @@ export default function SettingsAccountScreen() {
   const username = userInfo?.Username?.trim() ?? '';
   const email = user?.email?.trim() ?? '';
   const hasPasswordProvider = userHasPasswordProvider(user);
+  const phoneSmsVerified = Boolean(user?.phoneNumber?.trim());
+  const verifiedPhone = phoneSmsVerified ? verifiedPhoneDisplay(user!) : '';
+  const phoneOnProfile = profileHasSavedPhone(userInfo?.Phone);
 
   useEffect(() => {
     if (!userInfo) {
@@ -72,13 +80,13 @@ export default function SettingsAccountScreen() {
     }
     setFirst(userInfo.First ?? '');
     setLast(userInfo.Last ?? '');
-    setPhone(userInfo.Phone ?? '');
+    setPhone(verifiedPhone || formatPhoneInput(String(userInfo.Phone ?? '').trim()));
     setDob(userInfo.DOB ?? '');
     const merged = mergeActsDefaults(userInfo.ActsSettings);
     setTitle(merged.profileTitle ?? '');
     setCityState(merged.cityState ?? '');
     setBio(merged.bio ?? '');
-  }, [userInfo]);
+  }, [userInfo, verifiedPhone]);
 
   const uploadPicked = useCallback(
     (uri: string | undefined) => {
@@ -106,6 +114,8 @@ export default function SettingsAccountScreen() {
     }
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
       quality: 0.88,
     });
     if (picked.canceled) {
@@ -125,7 +135,11 @@ export default function SettingsAccountScreen() {
       setPhotoError('Camera access was denied. You can enable it in system settings.');
       return;
     }
-    const picked = await ImagePicker.launchCameraAsync({ quality: 0.88 });
+    const picked = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.88,
+    });
     if (picked.canceled) {
       return;
     }
@@ -141,7 +155,7 @@ export default function SettingsAccountScreen() {
       await updateBasics.mutateAsync({
         First: first.trim(),
         Last: last.trim(),
-        Phone: phone.trim(),
+        ...(phoneSmsVerified ? {} : { Phone: phone.trim() }),
         DOB: dob.trim(),
       });
       await mergeSettings.mutateAsync({
@@ -352,7 +366,23 @@ export default function SettingsAccountScreen() {
             Google and Apple accounts use the email from that sign-in provider.
           </AppText>
         ) : null}
-        <AppTextField label="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <AppTextField
+          label="Mobile number"
+          value={phone}
+          onChangeText={(t) => setPhone(formatPhoneInput(t))}
+          keyboardType="phone-pad"
+          editable={!phoneSmsVerified}
+          maxLength={14}
+        />
+        {phoneSmsVerified ? (
+          <AppText variant="caption" className="-mt-2 mb-4 text-acts-muted">
+            Verified via text message.
+          </AppText>
+        ) : phoneOnProfile ? null : (
+          <AppText variant="caption" className="-mt-2 mb-4 text-acts-muted">
+            You will verify this number by text message before using Acts.
+          </AppText>
+        )}
         <AppTextField label="First Name" value={first} onChangeText={setFirst} />
         <AppTextField label="Last Name" value={last} onChangeText={setLast} />
         <AppTextField label="Birthday" value={dob} onChangeText={setDob} placeholder="MM/DD/YYYY" />

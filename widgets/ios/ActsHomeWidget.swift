@@ -1,0 +1,142 @@
+import SwiftUI
+import WidgetKit
+
+private let brand = Color(red: 0.98, green: 0.35, blue: 0.53)
+private let ink = Color(red: 0.10, green: 0.10, blue: 0.10)
+private let muted = Color(red: 0.42, green: 0.45, blue: 0.50)
+private let green = Color(red: 0.12, green: 0.48, blue: 0.33)
+
+struct ActsHomeWidgetEntry: TimelineEntry {
+    let date: Date
+    let snapshot: WidgetSnapshot
+}
+
+struct ActsHomeWidgetProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ActsHomeWidgetEntry {
+        ActsHomeWidgetEntry(date: Date(), snapshot: WidgetDataStore.placeholder())
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (ActsHomeWidgetEntry) -> Void) {
+        let snapshot = WidgetDataStore.load() ?? WidgetDataStore.placeholder()
+        completion(ActsHomeWidgetEntry(date: Date(), snapshot: snapshot))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ActsHomeWidgetEntry>) -> Void) {
+        let snapshot = WidgetDataStore.load() ?? WidgetDataStore.placeholder()
+        let entry = ActsHomeWidgetEntry(date: Date(), snapshot: snapshot)
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+    }
+}
+
+struct ActsHomeWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
+    var entry: ActsHomeWidgetProvider.Entry
+
+    var body: some View {
+        switch family {
+        case .systemMedium:
+            mediumView
+        default:
+            smallView
+        }
+    }
+
+    private var smallView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Acts")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(brand)
+
+            Spacer(minLength: 0)
+
+            Text("\(entry.snapshot.streak)")
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(green)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+
+            Text(entry.snapshot.streak == 1 ? "day streak" : "day streak")
+                .font(.caption2)
+                .foregroundStyle(muted)
+
+            Spacer(minLength: 0)
+
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(muted)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(12)
+        .widgetURL(URL(string: "acts:///(app)/(tabs)/tasks"))
+    }
+
+    private var mediumView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Acts")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(brand)
+                Spacer()
+                Text("\(entry.snapshot.streak)d streak")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(green)
+            }
+
+            if entry.snapshot.tasks.isEmpty {
+                Spacer(minLength: 0)
+                Text(entry.snapshot.completedToday ? "All done today!" : "Open Acts to see your list")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(ink)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(entry.snapshot.tasks.prefix(3), id: \.id) { task in
+                        Text("• \(task.title)")
+                            .font(.subheadline)
+                            .foregroundStyle(ink)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(12)
+        .widgetURL(URL(string: "acts:///(app)/(tabs)/tasks"))
+    }
+
+    private var subtitle: String {
+        if entry.snapshot.completedToday {
+            return "Done for today"
+        }
+        if entry.snapshot.openTaskCount == 0 {
+            return "Add an act in Acts"
+        }
+        if entry.snapshot.openTaskCount == 1 {
+            return "1 act waiting"
+        }
+        return "\(entry.snapshot.openTaskCount) acts waiting"
+    }
+}
+
+struct ActsHomeWidget: Widget {
+    let kind: String = "ActsHomeWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: ActsHomeWidgetProvider()) { entry in
+            if #available(iOS 17.0, *) {
+                ActsHomeWidgetEntryView(entry: entry)
+                    .containerBackground(.fill.tertiary, for: .widget)
+            } else {
+                ActsHomeWidgetEntryView(entry: entry)
+                    .background(Color(.systemBackground))
+            }
+        }
+        .configurationDisplayName("Acts")
+        .description("Your streak and suggested acts.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}

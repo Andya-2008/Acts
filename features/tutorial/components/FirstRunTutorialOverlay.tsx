@@ -40,12 +40,12 @@ const SLIDES: Slide[] = [
   {
     icon: 'person-circle-outline',
     title: 'Profile & settings',
-    body: 'See your service rank, streak, and totals. Open Settings for notifications and appearance, Achievements for badges, and tap Shop on the Tasks header to open the Kindness Arcade.',
+    body: 'See your service rank, streak, and totals. Open Settings for notifications and appearance, Achievements for badges, and tap Rewards on the Tasks header.',
   },
   {
     icon: 'storefront-outline',
-    title: 'Seeds & Kindness Arcade',
-    body: 'Seeds are the hearts you earn from acts. Tap Shop on the Tasks header to spend them on themes, feed extras, and more.',
+    title: 'Seeds & Rewards',
+    body: 'Seeds are the hearts you earn from acts. Tap Rewards on the Tasks header to spend them on themes, feed extras, and more.',
   },
 ];
 

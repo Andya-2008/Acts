@@ -54,6 +54,8 @@ import {
   shouldShowFriendsCirclePrompt,
 } from '@/features/friends/components/FriendsCirclePromptCard';
 import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
+import { canUseBonusStreakGrace } from '@/features/rewarded-ads/bonusStreakGrace';
+import { applyBonusStreakGraceReward, mapRewardedAdError } from '@/features/rewarded-ads/rewardedAdApi';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { ServiceRankUpOverlay, type ServiceRankUpPayload } from '@/features/user-profile/components/ServiceRankUpOverlay';
 import { computeLifetimeRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
@@ -80,7 +82,7 @@ import type { ActTask } from '@/shared/types/task';
 import { HEARTS_FOR_DEED_FEED_SHARE } from '@/shared/utils/deedFeedReward';
 import { rewardForCadence } from '@/shared/utils/taskReward';
 import { XP_FOR_DEED_FEED_SHARE, xpForCadence } from '@/shared/utils/xpRewards';
-import { isWeekendDoubleActive, weekendDoubleEarnedAmount, weekendDoubleXpDelta } from '@/shared/utils/weekendDouble';
+import { isWeekendDoubleActive, weekendDoubleEarnedAmount, weekendDoubleOptionsFromSettings, weekendDoubleXpDelta } from '@/shared/utils/weekendDouble';
 
 export default function TasksListScreen() {
   const reduceMotion = useReduceMotion();
@@ -120,10 +122,26 @@ export default function TasksListScreen() {
   }, [uid, hasCompletedAnyAct, firstActPromptDone]);
 
   const actsSettingsForGrace = useMemo(() => mergeActsDefaults(userInfo?.ActsSettings), [userInfo?.ActsSettings]);
+  const weekendDoubleOpts = useMemo(
+    () => weekendDoubleOptionsFromSettings(actsSettingsForGrace),
+    [actsSettingsForGrace.weekendDoubleExtendedUntil],
+  );
   const streakGraceOffer = useMemo(
     () => canOfferStreakGraceSave(tasks ?? [], actsSettingsForGrace),
     [tasks, actsSettingsForGrace.streakGraceForgivenDayKey, actsSettingsForGrace.streakGraceAppliedInMonth],
   );
+  const bonusStreakGraceOffer = useMemo(
+    () => canUseBonusStreakGrace(tasks ?? [], actsSettingsForGrace),
+    [
+      tasks,
+      actsSettingsForGrace.streakGraceBonusCredits,
+      actsSettingsForGrace.streakGraceAdForgivenDayKey,
+      actsSettingsForGrace.streakGraceAdAppliedInMonth,
+      actsSettingsForGrace.streakGraceForgivenDayKey,
+      actsSettingsForGrace.streakGraceAppliedInMonth,
+    ],
+  );
+  const [bonusGraceBusy, setBonusGraceBusy] = useState(false);
   const mergeActsSettingsMutation = useMergeActsSettingsMutation(uid);
   const equippedTaskCheckTheme = useMemo(() => {
     const acts = mergeActsDefaults(userInfo?.ActsSettings);
@@ -457,8 +475,8 @@ export default function TasksListScreen() {
           completed: next,
           completionLedger: next
             ? {
-                seeds: weekendDoubleEarnedAmount(reward),
-                xp: weekendDoubleXpDelta(xpForCadence(task.cadence)),
+                seeds: weekendDoubleEarnedAmount(reward, new Date(), weekendDoubleOpts),
+                xp: weekendDoubleXpDelta(xpForCadence(task.cadence), new Date(), weekendDoubleOpts),
               }
             : null,
         },
@@ -477,14 +495,14 @@ export default function TasksListScreen() {
               return;
             }
             celebrateTaskComplete();
-            const xpGain = weekendDoubleXpDelta(xpForCadence(task.cadence));
+            const xpGain = weekendDoubleXpDelta(xpForCadence(task.cadence), new Date(), weekendDoubleOpts);
             const transition = xpGain > 0 ? computeLifetimeRankPromotionTransition(prevXp, xpGain) : null;
             if (xpGain > 0 && uid) {
               void grantLifetimeXp(uid, xpGain).then(() =>
                 queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) }),
               );
             }
-            const grantSeeds = weekendDoubleEarnedAmount(reward);
+            const grantSeeds = weekendDoubleEarnedAmount(reward, new Date(), weekendDoubleOpts);
             if (grantSeeds <= 0) {
               if (transition) {
                 setRankUpPayload(transition);
@@ -516,7 +534,7 @@ export default function TasksListScreen() {
         },
       );
     },
-    [toggleMutation, uid, queryClient, userInfo?.LifetimeXP],
+    [toggleMutation, uid, queryClient, userInfo?.LifetimeXP, weekendDoubleOpts],
   );
 
   const onAddCustom = useCallback(() => {
@@ -571,8 +589,8 @@ export default function TasksListScreen() {
         },
         {
           onSuccess: () => {
-            const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE);
-            const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE);
+            const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
+            const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
             useCurrencyStore.getState().adjustBalance(hearts);
             if (uid) {
               const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
@@ -589,7 +607,7 @@ export default function TasksListScreen() {
         },
       );
     },
-    [uid, user, userInfo, createDeedPostMutation, queryClient],
+    [uid, user, userInfo, createDeedPostMutation, queryClient, weekendDoubleOpts],
   );
 
   const photoActionTaskId = saveTaskPhotoMutation.isPending
@@ -681,11 +699,33 @@ export default function TasksListScreen() {
             onDismiss={dismissFirstActSpotlight}
           />
         ) : null}
-        {isWeekendDoubleActive() ? (
+        {isWeekendDoubleActive(new Date(), weekendDoubleOpts) ? (
           <AppCard className="mb-3 border-acts-green/35 bg-acts-green-soft/80 p-3">
             <TitleWithInfo
               title="Double seeds & XP weekend"
-              infoText="Friday-Sunday: task rewards, deed-feed bonuses, and shop XP boosts pay out twice."
+              infoText="Friday-Sunday (plus optional Monday extension): task rewards, deed-feed bonuses, and Rewards XP boosts pay out twice."
+            />
+          </AppCard>
+        ) : null}
+        {bonusStreakGraceOffer.show ? (
+          <AppCard className="mb-3 border-acts-green/45 bg-acts-green-soft p-3">
+            <TitleWithInfo
+              title="Use bonus streak save"
+              className="mb-3"
+              infoText="You banked this from an optional ad reward in Rewards."
+            />
+            <AppButton
+              title="Use bonus streak save"
+              loading={bonusGraceBusy}
+              disabled={bonusGraceBusy}
+              onPress={() => {
+                setBonusGraceBusy(true);
+                setLocalError(null);
+                void applyBonusStreakGraceReward()
+                  .then(() => queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid!) }))
+                  .catch((e) => setLocalError(mapRewardedAdError(e)))
+                  .finally(() => setBonusGraceBusy(false));
+              }}
             />
           </AppCard>
         ) : null}
@@ -758,6 +798,10 @@ export default function TasksListScreen() {
     listFilters,
     streakGraceOffer.show,
     streakGraceOffer.forgivenDayKey,
+    bonusStreakGraceOffer.show,
+    bonusGraceBusy,
+    uid,
+    queryClient,
     mergeActsSettingsMutation.isPending,
     newTitle,
     addMutation.isPending,
@@ -768,6 +812,7 @@ export default function TasksListScreen() {
     firstActCandidate,
     scrollToFirstAct,
     dismissFirstActSpotlight,
+    weekendDoubleOpts,
   ]);
 
   const listEmpty = useMemo(() => {

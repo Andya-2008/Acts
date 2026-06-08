@@ -79,7 +79,7 @@ export function DeedPostReactionRow({
         <View className="flex-row flex-wrap gap-2">
           {kinds.length === 0 ? (
             <AppText variant="caption" className="text-acts-muted">
-              No reactions unlocked yet - visit the Kindness Arcade to add more.
+              No reactions unlocked yet - visit Rewards to add more.
             </AppText>
           ) : null}
           {kinds.map((kind) => {

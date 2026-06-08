@@ -1,10 +1,12 @@
 import { Redirect, Stack } from 'expo-router';
 
+import { PhoneVerificationGate } from '@/features/auth/components/PhoneVerificationGate';
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
 import { InviteJoinAlertModal } from '@/features/friends/components/InviteJoinAlertModal';
 import { ActivityNotificationsSync } from '@/features/notifications/ActivityNotificationsSync';
 import { NotificationNavigationSync } from '@/features/notifications/NotificationNavigationSync';
 import { RetentionNotificationsSync } from '@/features/retention/RetentionNotificationsSync';
+import { WidgetSync } from '@/features/widgets/WidgetSync';
 import { HeaderBackLabel } from '@/shared/components/HeaderBackLabel';
 import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
@@ -17,6 +19,10 @@ function AppStackScreens() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Stack.Screen name="index" />
+      <Stack.Screen
+        name="verify-phone"
+        options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
+      />
       <Stack.Screen
         name="friends-get-started"
         options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
@@ -34,7 +40,7 @@ function AppStackScreens() {
         options={{
           ...lightHeader,
           headerShown: true,
-          title: 'Kindness Arcade',
+          title: 'Rewards',
           headerBackVisible: false,
           headerLeft: () => <HeaderBackLabel />,
           animation: 'slide_from_right',
@@ -87,12 +93,15 @@ export default function AppGroupLayout() {
   return (
     <>
       <RetentionNotificationsSync />
+      <WidgetSync />
       <ActivityNotificationsSync />
       <NotificationNavigationSync />
       <InviteJoinAlertModal />
-      <FriendsGateGuard>
-        <AppStackScreens />
-      </FriendsGateGuard>
+      <PhoneVerificationGate>
+        <FriendsGateGuard>
+          <AppStackScreens />
+        </FriendsGateGuard>
+      </PhoneVerificationGate>
     </>
   );
 }

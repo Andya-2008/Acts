@@ -89,14 +89,119 @@ module.exports = ({ config }) => {
     );
   }
 
+  plugins.push([
+    '@bittingz/expo-widgets',
+    {
+      ios: {
+        src: './widgets/ios',
+        devTeamId: '78GYVTC5UQ',
+        mode: 'production',
+        deploymentTarget: '16.2',
+      },
+    },
+  ]);
+  plugins.push([
+    'react-native-android-widget',
+    {
+      widgets: [
+        {
+          name: 'ActsStreakWidget',
+          label: 'Acts streak',
+          description: 'Your daily kindness streak',
+          minWidth: '110dp',
+          minHeight: '110dp',
+          targetCellWidth: 2,
+          targetCellHeight: 2,
+          updatePeriodMillis: 1_800_000,
+        },
+        {
+          name: 'ActsTasksWidget',
+          label: 'Acts to do',
+          description: 'Suggested acts from your list',
+          minWidth: '250dp',
+          minHeight: '110dp',
+          targetCellWidth: 4,
+          targetCellHeight: 2,
+          updatePeriodMillis: 1_800_000,
+        },
+      ],
+    },
+  ]);
+
+  const rewardedAdsEnabled =
+    stripEnvValue(process.env.EXPO_PUBLIC_REWARDED_ADS_ENABLED).toLowerCase() === 'true';
+
+  const admobAndroidAppId =
+    stripEnvValue(process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID) || 'ca-app-pub-3940256099942544~3347511713';
+  const admobIosAppId =
+    stripEnvValue(process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID) || 'ca-app-pub-2894172165945340~8547768533';
+  const admobRewardedIos =
+    stripEnvValue(process.env.EXPO_PUBLIC_ADMOB_REWARDED_IOS) || 'ca-app-pub-2894172165945340/7726171684';
+
+  if (rewardedAdsEnabled) {
+    plugins.push([
+      'react-native-google-mobile-ads',
+      {
+        androidAppId: admobAndroidAppId,
+        iosAppId: admobIosAppId,
+        userTrackingUsageDescription:
+          'Acts uses this identifier to serve optional rewarded ads that help support the app.',
+      },
+    ]);
+  }
+
+  const iosInfoPlist = {
+    ...config.ios?.infoPlist,
+    NSUserNotificationUsageDescription:
+      'Acts can send optional reminders about your daily acts, streak, and friends.',
+    CFBundleURLTypes: [
+      ...(config.ios?.infoPlist?.CFBundleURLTypes ?? []),
+      {
+        CFBundleURLName: 'Acts deep link',
+        CFBundleURLSchemes: ['acts'],
+      },
+      {
+        CFBundleURLName: 'OAuth redirect',
+        CFBundleURLSchemes: ['com.FrogCOO.Acts'],
+      },
+      ...(iosGoogleScheme
+        ? [
+            {
+              CFBundleURLName: 'Google OAuth iOS',
+              CFBundleURLSchemes: [iosGoogleScheme],
+            },
+          ]
+        : []),
+    ],
+  };
+
+  if (rewardedAdsEnabled) {
+    iosInfoPlist.NSUserTrackingUsageDescription =
+      'Acts uses this identifier to serve optional rewarded ads that help support the app.';
+  }
+
   return {
     ...config,
     plugins,
+    ...(!rewardedAdsEnabled
+      ? {
+          autolinking: {
+            ...(config.autolinking ?? {}),
+            exclude: [
+              ...((config.autolinking?.exclude ?? []) ),
+              'react-native-google-mobile-ads',
+            ],
+          },
+        }
+      : {}),
     extra: {
       ...(config.extra ?? {}),
       ...googleExtra,
       ...firebaseExtra,
       ...legalExtra,
+      rewardedAdsEnabled,
+      admobRewardedAndroid: stripEnvValue(process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID),
+      admobRewardedIos,
       eas: {
         ...(config.extra?.eas ?? {}),
         ...(easProjectId ? { projectId: easProjectId } : {}),
@@ -105,30 +210,7 @@ module.exports = ({ config }) => {
     ios: {
       ...config.ios,
       bundleIdentifier: 'com.FrogCOO.Acts',
-      infoPlist: {
-        ...config.ios?.infoPlist,
-        NSUserNotificationUsageDescription:
-          'Acts can send optional reminders about your daily acts, streak, and friends.',
-        CFBundleURLTypes: [
-          ...(config.ios?.infoPlist?.CFBundleURLTypes ?? []),
-          {
-            CFBundleURLName: 'Acts deep link',
-            CFBundleURLSchemes: ['acts'],
-          },
-          {
-            CFBundleURLName: 'OAuth redirect',
-            CFBundleURLSchemes: ['com.FrogCOO.Acts'],
-          },
-          ...(iosGoogleScheme
-            ? [
-                {
-                  CFBundleURLName: 'Google OAuth iOS',
-                  CFBundleURLSchemes: [iosGoogleScheme],
-                },
-              ]
-            : []),
-        ],
-      },
+      infoPlist: iosInfoPlist,
     },
     android: {
       ...config.android,

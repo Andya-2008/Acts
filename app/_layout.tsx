@@ -1,5 +1,6 @@
 import '../global.css';
 import 'react-native-reanimated';
+import '@/widgets/android/registerWidgetHandler';
 
 import { GreatVibes_400Regular, useFonts } from '@expo-google-fonts/great-vibes';
 import { Roboto_500Medium } from '@expo-google-fonts/roboto';
@@ -11,6 +12,7 @@ import { useColorScheme } from 'react-native';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppStoreUpdatePrompt } from '@/features/app-update/AppStoreUpdatePrompt';
 import { AppFirebaseMissingScreen } from '@/shared/components/AppFirebaseMissingScreen';
 import { isFirebaseWebConfigConfigured } from '@/shared/config/env';
 import { ActAppearanceProvider } from '@/shared/providers/ActAppearanceProvider';
@@ -59,6 +61,7 @@ function RootLayout() {
         <AuthStateListener>
           <ActAppearanceProvider>
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <AppStoreUpdatePrompt />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />

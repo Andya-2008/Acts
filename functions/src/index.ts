@@ -11,6 +11,7 @@ const db = getFirestore();
 export { onInviteSignup } from './onInviteSignup';
 export { resolveLoginIdentifier } from './resolveLoginIdentifier';
 export { suggestFriends } from './suggestFriends';
+export { applyBonusStreakGrace, grantRewardedAdReward } from './grantRewardedAdReward';
 
 // Cap concurrency so a burst of activity can't run up a surprise bill.
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });

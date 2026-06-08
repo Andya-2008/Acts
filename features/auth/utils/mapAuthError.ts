@@ -20,6 +20,12 @@ const authCodeMap: Record<string, string> = {
   'auth/too-many-requests': 'Too many attempts. Try again shortly.',
   'auth/network-request-failed': 'Network error. Check your connection.',
   'auth/requires-recent-login': 'For your security, sign out, sign in again, then retry.',
+  'auth/invalid-verification-code': 'That verification code is incorrect. Check the text message and try again.',
+  'auth/code-expired': 'That code expired. Send a new verification code and try again.',
+  'auth/missing-verification-code': 'Enter the 6-digit code from your text message.',
+  'auth/invalid-phone-number': 'That phone number looks invalid. Check the number and try again.',
+  'auth/quota-exceeded': 'SMS verification is temporarily unavailable. Try again later.',
+  'auth/captcha-check-failed': 'Verification check failed. Try sending the code again.',
 };
 
 const otherCodeMap: Record<string, string> = {
@@ -93,6 +99,10 @@ export function mapAuthError(error: unknown, options?: MapAuthErrorOptions): str
       USERNAME_INVALID: 'Usernames use 3–20 letters, numbers, or underscores.',
       PHONE_TAKEN:
         'That phone number is already linked to another Acts account. Sign in with that account or use a different number.',
+      PHONE_INVALID: 'Enter a valid mobile number with at least 10 digits.',
+      PHONE_VERIFY_REQUIRED: 'Verify your mobile number before continuing.',
+      PHONE_VERIFY_FAILED: 'We could not confirm your number. Try sending a new code.',
+      PHONE_RECAPTCHA_NOT_READY: 'Verification is still starting up. Wait a moment and try again.',
       PROFILE_NOT_FOUND: 'We could not load your profile. Pull to refresh and try again.',
       GOOGLE_EMAIL_REQUIRED:
         'This Google account has no email on file. Use a different Google account or email sign-up.',

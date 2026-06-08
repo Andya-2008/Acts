@@ -202,7 +202,7 @@ export default function DeedFeedScreen() {
       const cur = reactionByPostId?.[postId]?.mine ?? null;
       const next = cur === kind ? null : kind;
       if (next != null && !viewerReactionKindSet.has(next)) {
-        Alert.alert('Reaction locked', 'Unlock more reactions in the Kindness Arcade.');
+        Alert.alert('Reaction locked', 'Unlock more reactions in Rewards.');
         return;
       }
       setReactionMutation.mutate(

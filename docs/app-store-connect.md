@@ -78,9 +78,11 @@ Privacy Policy URL must match what you declare here.
 
 ## 5. Version metadata
 
-### What's New (1.0.5)
+### What's New (1.0.7)
 
-Copy-paste from **`docs/app-store-whats-new-1.0.5.md`**.
+Copy-paste from **`docs/app-store-whats-new-1.0.7.md`**.
+
+**Contains Ads:** No (1.0.7 ships with `EXPO_PUBLIC_REWARDED_ADS_ENABLED` off).
 
 ---
 

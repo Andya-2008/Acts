@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { FirstRunTutorialOverlay } from '@/features/tutorial/components/FirstRunTutorialOverlay';
 import { getFirstRunTutorialDone, setFirstRunTutorialDone } from '@/features/tutorial/firstRunTutorialStorage';
+import { setLastRecordedAppVersion } from '@/features/release-highlights/releaseHighlightsStorage';
 import { useTutorialGateStore } from '@/shared/stores/tutorialGateStore';
 import { useAuthStore } from '@/shared/stores/authStore';
+import Constants from 'expo-constants';
 
 /**
  * One-time guided tour after sign-in (per user). Keeps other promo modals from stacking via `tutorialGateStore`.
@@ -38,6 +40,8 @@ export function FirstRunTutorialHost() {
   const onComplete = useCallback(async () => {
     if (uid) {
       await setFirstRunTutorialDone(uid);
+      const version = Constants.expoConfig?.version?.trim() || '0.0.0';
+      await setLastRecordedAppVersion(uid, version);
     }
     useTutorialGateStore.getState().setFirstRunTutorialOpen(false);
     setShow(false);

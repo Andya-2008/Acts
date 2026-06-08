@@ -95,7 +95,23 @@ let exitCode = 0;
 
 console.log('\nActs — App Store preflight\n');
 
+let appVersion = '?';
+try {
+  const appJson = JSON.parse(readFileSync(resolve(ROOT, 'app.json'), 'utf8'));
+  appVersion = appJson?.expo?.version ?? '?';
+  pass(`app.json version: ${appVersion}`);
+} catch {
+  warn('Could not read app.json version');
+}
+
 const env = { ...loadDotEnv(), ...process.env };
+
+const adsEnabled = (env.EXPO_PUBLIC_REWARDED_ADS_ENABLED ?? '').trim().toLowerCase() === 'true';
+if (adsEnabled) {
+  warn('EXPO_PUBLIC_REWARDED_ADS_ENABLED=true — 1.0.7 ships without ads; set false in Production');
+} else {
+  pass('Rewarded ads disabled (EXPO_PUBLIC_REWARDED_ADS_ENABLED not true)');
+}
 
 for (const key of REQUIRED_ENV) {
   const v = env[key]?.trim();
@@ -150,6 +166,7 @@ console.log('\nManual (cannot automate):\n');
 console.log('  • EAS Production env vars match .env — docs/eas-production-checklist.md');
 console.log('  • npm run eas:build:production -- --platform ios');
 console.log('  • Demo account — docs/app-review-demo-account.md');
+console.log(`  • Release checklist — docs/release-${appVersion}.md`);
 console.log('  • QA — docs/test-before-submit.md');
 console.log('  • Screenshots — docs/screenshots.md');
 console.log('  • Submit — docs/submit-ios.md\n');

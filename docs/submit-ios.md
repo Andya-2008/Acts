@@ -12,8 +12,16 @@ Fix any ✗ failures before building. This checks `.env`, legal URLs, and prints
 
 ## 1. Production build
 
+**First 1.0.7 build (widgets):** run **interactively** in your own terminal so EAS can sign in to Apple and create the widget extension provisioning profile:
+
 ```bash
-npm run eas:build:production -- --platform ios
+npx eas-cli build --profile production --platform ios
+```
+
+When prompted, log in to your Apple Developer account. Later builds can use `--non-interactive`.
+
+```bash
+npm run eas:build:production
 ```
 
 Wait for the build on [expo.dev](https://expo.dev). Fix any build failures (usually missing EAS env vars — see `docs/eas-production-checklist.md`).
@@ -42,11 +50,11 @@ Download the `.ipa` from Expo and upload with **Transporter** (Mac App Store).
 
 ## 3. App Store Connect metadata
 
-Open [App Store Connect](https://appstoreconnect.apple.com) → **Acts** → version **1.0.5** (create the version if it does not exist yet).
+Open [App Store Connect](https://appstoreconnect.apple.com) → **Acts** → version **1.0.7** (create the version if it does not exist yet).
 
 | Area | Doc |
 |------|-----|
-| What's New | `docs/app-store-whats-new-1.0.5.md` |
+| What's New | `docs/app-store-whats-new-1.0.7.md` |
 | Description, keywords, subtitle | `docs/app-store-connect.md` §5 |
 | Screenshots | `docs/screenshots.md` |
 | App Privacy | `docs/app-privacy-questionnaire.md` |

@@ -15,7 +15,9 @@ import { useAuthStore } from '@/shared/stores/authStore';
  */
 export function WeekendDoublePromoHost() {
   const uid = useAuthStore((s) => s.user?.uid);
-  const tutorialBlocking = useTutorialGateStore((s) => s.firstRunTutorialOpen);
+  const tutorialBlocking = useTutorialGateStore(
+    (s) => s.firstRunTutorialOpen || s.releaseHighlightsOpen,
+  );
   const [show, setShow] = useState(false);
   const busyRef = useRef(false);
 
@@ -24,6 +26,9 @@ export function WeekendDoublePromoHost() {
       return;
     }
     if (useTutorialGateStore.getState().firstRunTutorialOpen) {
+      return;
+    }
+    if (useTutorialGateStore.getState().releaseHighlightsOpen) {
       return;
     }
     const key = weekendDoublePromoStorageKey();

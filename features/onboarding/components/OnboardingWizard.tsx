@@ -293,15 +293,15 @@ export function OnboardingWizard({
               )}
             />
             <AppText variant="subtitle" className="mb-2 mt-2">
-              Your phone number (optional)
+              Your phone number
             </AppText>
             <Controller
               control={control}
               name="phone"
               render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
                 <AppTextField
-                  label="Mobile number (optional)"
-                  placeholder="Leave blank or e.g. (555) 123-4567"
+                  label="Mobile number"
+                  placeholder="e.g. (555) 123-4567"
                   keyboardType="phone-pad"
                   textContentType="telephoneNumber"
                   autoComplete="tel"

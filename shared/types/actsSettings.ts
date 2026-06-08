@@ -64,6 +64,24 @@ export type ActsAppSettings = {
   streakGraceForgivenDayKey?: string;
   /** Calendar month (YYYY-MM) when streak grace was last applied. */
   streakGraceAppliedInMonth?: string;
+  /** Bonus streak save banked from a rewarded ad (0 or 1). */
+  streakGraceBonusCredits?: number;
+  /** Forgiven day from spending a bonus streak save (YYYY-MM-DD). */
+  streakGraceAdForgivenDayKey?: string;
+  /** Calendar month when bonus streak save was last applied. */
+  streakGraceAdAppliedInMonth?: string;
+  /** Shop appearance preset on 24h ad trial. */
+  appearanceTrialPresetId?: ActAppearanceColorPresetId;
+  /** ISO timestamp when the appearance trial ends. */
+  appearanceTrialExpiresAt?: string;
+  /** ISO timestamp — weekend double stays active through this instant (Monday night). */
+  weekendDoubleExtendedUntil?: string;
+  /** YYYY-MM — last calendar month a streak-grace ad reward was granted. */
+  rewardedAdStreakGraceMonth?: string;
+  /** YYYY-MM-DD — last local day a theme-trial ad reward was granted. */
+  rewardedAdThemeTrialDay?: string;
+  /** `weekend_double_YYYY-MM-DD` — last Fri anchor when weekend extension ad was granted. */
+  rewardedAdWeekendDoubleKey?: string;
   autosavePhotos: boolean;
   profileTitle: string;
   cityState: string;
