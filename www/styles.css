@@ -418,6 +418,10 @@ a {
   line-height: 1.05;
 }
 
+.metrics-grid strong.is-loading {
+  color: var(--muted);
+}
+
 .metrics-grid span {
   color: var(--ink-soft);
   font-size: 0.95rem;

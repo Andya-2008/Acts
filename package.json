@@ -37,7 +37,8 @@
     "catalog:list-batch2": "node scripts/list-catalog-review-batches.mjs 2",
     "catalog:list-batch3": "node scripts/list-catalog-review-batches.mjs 3",
     "catalog:list-batch4": "node scripts/list-catalog-review-batches.mjs 4",
-    "catalog:deactivate": "node scripts/deactivate-task-ids.mjs"
+    "catalog:deactivate": "node scripts/deactivate-task-ids.mjs",
+    "stats:refresh-public": "node scripts/refresh-public-site-stats.mjs"
   },
   "dependencies": {
     "@bittingz/expo-widgets": "^3.0.2",

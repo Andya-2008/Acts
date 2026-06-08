@@ -8,7 +8,7 @@
       name="description"
       content="Fill your life with moments that matter. Acts turns good intentions into simple acts of kindness, service, and connection." />
     <link rel="icon" href="/acts-icon.png" />
-    <link rel="stylesheet" href="/styles.css?v=2" />
+    <link rel="stylesheet" href="/styles.css?v=3" />
   </head>
   <body class="home-page">
     <header class="site-header">
@@ -38,7 +38,7 @@
               <span class="hero-lead-script">Acts turns good intentions into simple acts of kindness, service, and connection.</span>
             </p>
             <div class="hero-actions" aria-label="App availability">
-              <a class="app-store-button" href="/support">Available on iPhone</a>
+              <a class="app-store-button" href="https://apps.apple.com/us/app/acts-be-kind/id6770841231">Available on iPhone</a>
               <span>Android coming soon</span>
             </div>
           </div>
@@ -87,16 +87,16 @@
       <section class="metrics-band" aria-label="Acts deed catalog snapshot">
         <div class="wrap metrics-grid">
           <div>
-            <strong>58</strong>
+            <strong data-live-stat="activePromptCount" data-fallback="58">58</strong>
             <span>active deed prompts</span>
           </div>
           <div>
-            <strong>7</strong>
-            <span>kindness categories</span>
+            <strong data-live-stat="userCount" data-fallback="--">--</strong>
+            <span>users creating meaningful moments</span>
           </div>
           <div>
-            <strong>Daily</strong>
-            <span>weekly and monthly rhythms</span>
+            <strong data-live-stat="deedPostCount" data-fallback="--">--</strong>
+            <span>acts of kindness logged</span>
           </div>
         </div>
       </section>
@@ -199,7 +199,7 @@
           <p class="eyebrow">Kindness gets easier with a simple reminder.</p>
           <h2>Make doing good part of the day.</h2>
         </div>
-        <a class="app-store-button" href="/support">Contact support</a>
+        <a class="app-store-button" href="https://apps.apple.com/us/app/acts-be-kind/id6770841231">Available on iPhone</a>
       </section>
     </main>
 
@@ -212,5 +212,63 @@
       </p>
       <p class="muted">Copyright 2026 Acts | Operated by Andrew Hyun (FrogCOO) | <a href="mailto:info@actsofkindness.app">info@actsofkindness.app</a></p>
     </footer>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+      import { doc, getFirestore, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCMVVNkPzyKukZ4MUx9Xw3HFMI8H26TH8U",
+        authDomain: "acts-d7c7f.firebaseapp.com",
+        projectId: "acts-d7c7f",
+        storageBucket: "acts-d7c7f.firebasestorage.app",
+        messagingSenderId: "982448249723",
+        appId: "1:982448249723:web:7d8fa656a51179e932fbde",
+      };
+
+      const numberFormatter = new Intl.NumberFormat("en-US");
+      const statNodes = Array.from(document.querySelectorAll("[data-live-stat]"));
+
+      function setStat(name, value) {
+        const node = statNodes.find((el) => el.dataset.liveStat === name);
+        if (!node) return;
+        const n = Number(value);
+        node.textContent = Number.isFinite(n) ? numberFormatter.format(Math.max(0, Math.floor(n))) : node.dataset.fallback || "--";
+        node.classList.remove("is-loading");
+      }
+
+      statNodes.forEach((node) => node.classList.add("is-loading"));
+
+      try {
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        onSnapshot(
+          doc(db, "publicStats", "siteMetrics"),
+          (snapshot) => {
+            if (!snapshot.exists()) {
+              statNodes.forEach((node) => {
+                node.textContent = node.dataset.fallback || "--";
+                node.classList.remove("is-loading");
+              });
+              return;
+            }
+            const data = snapshot.data();
+            setStat("activePromptCount", data.activePromptCount);
+            setStat("userCount", data.userCount);
+            setStat("deedPostCount", data.deedPostCount);
+          },
+          () => {
+            statNodes.forEach((node) => {
+              node.textContent = node.dataset.fallback || "--";
+              node.classList.remove("is-loading");
+            });
+          },
+        );
+      } catch {
+        statNodes.forEach((node) => {
+          node.textContent = node.dataset.fallback || "--";
+          node.classList.remove("is-loading");
+        });
+      }
+    </script>
   </body>
 </html>

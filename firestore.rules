@@ -22,6 +22,14 @@ service cloud.firestore {
     function actsModerator() {
       return request.auth != null && request.auth.token.actsModerator == true;
     }
+
+    /** Public aggregate counts for the marketing site. Contains no user PII. */
+    match /publicStats/{document} {
+      allow get: if document == 'siteMetrics';
+      allow list: if false;
+      allow write: if false;
+    }
+
     /** Published act catalog (read-only for clients). */
     match /tasks/{document=**} {
       allow read: if request.auth != null;

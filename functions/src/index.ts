@@ -1,12 +1,13 @@
 import { initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, type DocumentData } from 'firebase-admin/firestore';
 import { logger, setGlobalOptions } from 'firebase-functions/v2';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentDeleted, onDocumentWritten } from 'firebase-functions/v2/firestore';
 
 import { sendExpoPush, type ExpoPushMessage } from './expoPush';
 
 initializeApp();
 const db = getFirestore();
+const publicStatsRef = db.collection('publicStats').doc('siteMetrics');
 
 export { onInviteSignup } from './onInviteSignup';
 export { resolveLoginIdentifier } from './resolveLoginIdentifier';
@@ -25,6 +26,44 @@ type UserInfo = {
   BlockedUids?: string[];
   ActsSettings?: ActsSettings;
 };
+
+async function incrementPublicStat(field: 'activePromptCount' | 'userCount' | 'deedPostCount', delta: number): Promise<void> {
+  if (delta === 0) {
+    return;
+  }
+  await publicStatsRef.set(
+    {
+      [field]: FieldValue.increment(delta),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+function isActiveTaskDoc(data: DocumentData | undefined): boolean {
+  return data?.active !== false;
+}
+
+export const onPublicTaskCatalogWrite = onDocumentWritten(
+  'tasks/{cadenceDoc}/{catalogName}/{taskId}',
+  async (event) => {
+    const beforeActive = event.data?.before.exists ? isActiveTaskDoc(event.data.before.data()) : false;
+    const afterActive = event.data?.after.exists ? isActiveTaskDoc(event.data.after.data()) : false;
+    await incrementPublicStat('activePromptCount', Number(afterActive) - Number(beforeActive));
+  },
+);
+
+export const onPublicUserCreated = onDocumentCreated('userInfo/{userId}', async () => {
+  await incrementPublicStat('userCount', 1);
+});
+
+export const onPublicUserDeleted = onDocumentDeleted('userInfo/{userId}', async () => {
+  await incrementPublicStat('userCount', -1);
+});
+
+export const onPublicDeedPostDeleted = onDocumentDeleted('deedPosts/{postId}', async () => {
+  await incrementPublicStat('deedPostCount', -1);
+});
 
 const REACTION_EMOJI: Record<string, string> = {
   heart: '❤️',
@@ -188,6 +227,8 @@ export const onFriendRequest = onDocumentCreated(
 
 /** A user shared a new deed - notify their friends (respecting each friend's settings). */
 export const onDeedPost = onDocumentCreated('deedPosts/{postId}', async (event) => {
+  await incrementPublicStat('deedPostCount', 1);
+
   const postId = event.params.postId;
   const data = event.data?.data() ?? {};
   const authorUid = String(data.authorUid ?? '');
