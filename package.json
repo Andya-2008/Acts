@@ -96,5 +96,13 @@
     "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "expo-firebase-core",
+        "react-native-google-mobile-ads"
+      ]
+    }
+  }
 }
