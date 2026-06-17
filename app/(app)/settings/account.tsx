@@ -16,10 +16,6 @@ import { DeleteAccountConfirmModal } from '@/features/settings/components/Delete
 import { ChangeEmailModal } from '@/features/settings/components/ChangeEmailModal';
 import { ChangePasswordModal } from '@/features/settings/components/ChangePasswordModal';
 import { ChangeUsernameModal } from '@/features/settings/components/ChangeUsernameModal';
-import {
-  profileHasSavedPhone,
-  verifiedPhoneDisplay,
-} from '@/features/auth/services/phoneVerificationService';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import {
   useMergeActsSettingsMutation,
@@ -70,9 +66,6 @@ export default function SettingsAccountScreen() {
   const username = userInfo?.Username?.trim() ?? '';
   const email = user?.email?.trim() ?? '';
   const hasPasswordProvider = userHasPasswordProvider(user);
-  const phoneSmsVerified = Boolean(user?.phoneNumber?.trim());
-  const verifiedPhone = phoneSmsVerified ? verifiedPhoneDisplay(user!) : '';
-  const phoneOnProfile = profileHasSavedPhone(userInfo?.Phone);
 
   useEffect(() => {
     if (!userInfo) {
@@ -80,13 +73,13 @@ export default function SettingsAccountScreen() {
     }
     setFirst(userInfo.First ?? '');
     setLast(userInfo.Last ?? '');
-    setPhone(verifiedPhone || formatPhoneInput(String(userInfo.Phone ?? '').trim()));
+    setPhone(formatPhoneInput(String(userInfo.Phone ?? '').trim()));
     setDob(userInfo.DOB ?? '');
     const merged = mergeActsDefaults(userInfo.ActsSettings);
     setTitle(merged.profileTitle ?? '');
     setCityState(merged.cityState ?? '');
     setBio(merged.bio ?? '');
-  }, [userInfo, verifiedPhone]);
+  }, [userInfo]);
 
   const uploadPicked = useCallback(
     (uri: string | undefined) => {
@@ -155,7 +148,7 @@ export default function SettingsAccountScreen() {
       await updateBasics.mutateAsync({
         First: first.trim(),
         Last: last.trim(),
-        ...(phoneSmsVerified ? {} : { Phone: phone.trim() }),
+        Phone: phone.trim(),
         DOB: dob.trim(),
       });
       await mergeSettings.mutateAsync({
@@ -367,22 +360,15 @@ export default function SettingsAccountScreen() {
           </AppText>
         ) : null}
         <AppTextField
-          label="Mobile number"
+          label="Mobile number (optional)"
           value={phone}
           onChangeText={(t) => setPhone(formatPhoneInput(t))}
           keyboardType="phone-pad"
-          editable={!phoneSmsVerified}
           maxLength={14}
         />
-        {phoneSmsVerified ? (
-          <AppText variant="caption" className="-mt-2 mb-4 text-acts-muted">
-            Verified via text message.
-          </AppText>
-        ) : phoneOnProfile ? null : (
-          <AppText variant="caption" className="-mt-2 mb-4 text-acts-muted">
-            You will verify this number by text message before using Acts.
-          </AppText>
-        )}
+        <AppText variant="caption" className="-mt-2 mb-4 text-acts-muted">
+          Used for contact matching with friends on Acts.
+        </AppText>
         <AppTextField label="First Name" value={first} onChangeText={setFirst} />
         <AppTextField label="Last Name" value={last} onChangeText={setLast} />
         <AppTextField label="Birthday" value={dob} onChangeText={setDob} placeholder="MM/DD/YYYY" />

@@ -3,8 +3,20 @@ import WidgetKit
 
 private let brand = Color(red: 0.98, green: 0.35, blue: 0.53)
 private let ink = Color(red: 0.10, green: 0.10, blue: 0.10)
-private let muted = Color(red: 0.42, green: 0.45, blue: 0.50)
+private let inkSecondary = Color(red: 0.22, green: 0.25, blue: 0.28)
 private let green = Color(red: 0.12, green: 0.48, blue: 0.33)
+private let surface = Color(red: 1.0, green: 1.0, blue: 1.0)
+private let surfaceDark = Color(red: 0.11, green: 0.11, blue: 0.12)
+private let inkDark = Color(red: 0.95, green: 0.95, blue: 0.97)
+private let inkSecondaryDark = Color(red: 0.78, green: 0.80, blue: 0.84)
+
+private struct WidgetSurfaceBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        colorScheme == .dark ? surfaceDark : surface
+    }
+}
 
 struct ActsHomeWidgetEntry: TimelineEntry {
     let date: Date
@@ -31,7 +43,16 @@ struct ActsHomeWidgetProvider: TimelineProvider {
 
 struct ActsHomeWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
     var entry: ActsHomeWidgetProvider.Entry
+
+    private var primaryText: Color {
+        colorScheme == .dark ? inkDark : ink
+    }
+
+    private var secondaryText: Color {
+        colorScheme == .dark ? inkSecondaryDark : inkSecondary
+    }
 
     var body: some View {
         switch family {
@@ -58,13 +79,13 @@ struct ActsHomeWidgetEntryView: View {
 
             Text(entry.snapshot.streak == 1 ? "day streak" : "day streak")
                 .font(.caption2)
-                .foregroundStyle(muted)
+                .foregroundStyle(secondaryText)
 
             Spacer(minLength: 0)
 
             Text(subtitle)
                 .font(.caption2)
-                .foregroundStyle(muted)
+                .foregroundStyle(secondaryText)
                 .lineLimit(2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -88,7 +109,7 @@ struct ActsHomeWidgetEntryView: View {
                 Spacer(minLength: 0)
                 Text(entry.snapshot.completedToday ? "All done today!" : "Open Acts to see your list")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(ink)
+                    .foregroundStyle(primaryText)
                     .lineLimit(2)
                 Spacer(minLength: 0)
             } else {
@@ -96,7 +117,7 @@ struct ActsHomeWidgetEntryView: View {
                     ForEach(entry.snapshot.tasks.prefix(3), id: \.id) { task in
                         Text("• \(task.title)")
                             .font(.subheadline)
-                            .foregroundStyle(ink)
+                            .foregroundStyle(primaryText)
                             .lineLimit(1)
                     }
                 }
@@ -129,10 +150,12 @@ struct ActsHomeWidget: Widget {
         StaticConfiguration(kind: kind, provider: ActsHomeWidgetProvider()) { entry in
             if #available(iOS 17.0, *) {
                 ActsHomeWidgetEntryView(entry: entry)
-                    .containerBackground(.fill.tertiary, for: .widget)
+                    .containerBackground(for: .widget) {
+                        WidgetSurfaceBackground()
+                    }
             } else {
                 ActsHomeWidgetEntryView(entry: entry)
-                    .background(Color(.systemBackground))
+                    .background(WidgetSurfaceBackground())
             }
         }
         .configurationDisplayName("Acts")

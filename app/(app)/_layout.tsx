@@ -1,6 +1,5 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { PhoneVerificationGate } from '@/features/auth/components/PhoneVerificationGate';
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
 import { InviteJoinAlertModal } from '@/features/friends/components/InviteJoinAlertModal';
 import { ActivityNotificationsSync } from '@/features/notifications/ActivityNotificationsSync';
@@ -19,10 +18,6 @@ function AppStackScreens() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Stack.Screen name="index" />
-      <Stack.Screen
-        name="verify-phone"
-        options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
-      />
       <Stack.Screen
         name="friends-get-started"
         options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
@@ -97,11 +92,9 @@ export default function AppGroupLayout() {
       <ActivityNotificationsSync />
       <NotificationNavigationSync />
       <InviteJoinAlertModal />
-      <PhoneVerificationGate>
-        <FriendsGateGuard>
-          <AppStackScreens />
-        </FriendsGateGuard>
-      </PhoneVerificationGate>
+      <FriendsGateGuard>
+        <AppStackScreens />
+      </FriendsGateGuard>
     </>
   );
 }

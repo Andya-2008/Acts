@@ -2,7 +2,7 @@
   "expo": {
     "name": "Acts",
     "slug": "acts",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "acts",
@@ -66,6 +66,17 @@
           "url": "https://sentry.io/",
           "project": "react-native",
           "organization": "frogcoo"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              { "name": "GoogleUtilities", "modular_headers": true },
+              { "name": "FirebaseCoreInternal", "modular_headers": true }
+            ]
+          }
         }
       ]
     ],

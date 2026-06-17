@@ -26,6 +26,39 @@ npm run eas:build:production
 
 Wait for the build on [expo.dev](https://expo.dev). Fix any build failures (usually missing EAS env vars — see `docs/eas-production-checklist.md`).
 
+### Widget build fails: App Group / provisioning profile
+
+If the log shows:
+
+```text
+Provisioning profile "... ActsWidgetExtension AppStore ..." doesn't support the group.com.FrogCOO.Acts.expowidgets App Group.
+```
+
+the widget extension profile was created **without** the App Group entitlement. Your app config is already correct (`ActsWidgetExtension` + `group.com.FrogCOO.Acts.expowidgets`); this is an Apple credentials sync issue.
+
+**Fix (one-time):**
+
+1. Open [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list).
+2. **App Groups** → register `group.com.FrogCOO.Acts.expowidgets` if it is missing.
+3. **App IDs** → `com.FrogCOO.Acts` → enable **App Groups** → check `group.com.FrogCOO.Acts.expowidgets` → Save.
+4. **App IDs** → `com.FrogCOO.Acts.ActsWidgetExtension` → enable **App Groups** → check the same group → Save.
+5. Delete the widget provisioning profile so EAS regenerates it:
+
+   ```bash
+   npx eas-cli credentials -p ios
+   ```
+
+   Choose **ActsWidgetExtension** / `com.FrogCOO.Acts.ActsWidgetExtension` → remove the App Store provisioning profile.
+
+6. Rebuild with a current EAS CLI (≥ 20.x links existing App Groups correctly):
+
+   ```bash
+   npm install
+   npx eas-cli build --profile production --platform ios
+   ```
+
+During credential setup you should see `Synced capability identifiers: Linked: group.com.FrogCOO.Acts.expowidgets` for the widget target.
+
 ## 2. Upload to App Store Connect
 
 **Option A — EAS Submit (recommended)**

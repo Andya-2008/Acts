@@ -141,16 +141,11 @@ export async function createEmailPasswordAuthUser(email: string, password: strin
 }
 
 /**
- * Creates the Firestore profile after Firebase Auth phone verification.
- * Call only after `user.phoneNumber` is set on the Auth user.
+ * Creates the Firestore profile after Firebase Auth account creation.
  */
 export async function completeEmailPasswordRegistration(user: User, input: SignupFormValues): Promise<User> {
   const auth = getFirebaseAuth();
   const db = getFirebaseFirestore();
-
-  if (!user.phoneNumber) {
-    throw new Error('PHONE_VERIFY_REQUIRED');
-  }
 
   const trimmedUser = input.username.trim();
   const resolvedUsername =
@@ -159,7 +154,7 @@ export async function completeEmailPasswordRegistration(user: User, input: Signu
   const emailLocal =
     (input.email.trim().split('@')[0] ?? 'friend').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 24) || 'friend';
 
-  const verifiedPhoneDisplay = input.phone.trim();
+  const phoneDisplay = input.phone.trim();
 
   /** If true, Firestore already has `userInfo` + `usernames`; never delete Auth on rollback or we orphan those docs. */
   let firestoreProfileCommitted = false;
@@ -168,7 +163,9 @@ export async function completeEmailPasswordRegistration(user: User, input: Signu
     if (trimmedUser.length > 0) {
       await assertUsernameAvailableForRegistration(trimmedUser);
     }
-    await assertPhoneAvailableForUid(verifiedPhoneDisplay, user.uid);
+    if (phoneDisplay.length > 0) {
+      await assertPhoneAvailableForUid(phoneDisplay, user.uid);
+    }
 
     await createUserInfoForEmailPasswordSignup({
       uid: user.uid,
@@ -177,7 +174,7 @@ export async function completeEmailPasswordRegistration(user: User, input: Signu
       dobFormatted: input.birthdate ? formatDobForUserInfo(input.birthdate) : '',
       first: '',
       last: '',
-      phone: verifiedPhoneDisplay,
+      phone: phoneDisplay,
       traits: [],
       userConfig: false,
       profilePicUrl: null,
@@ -209,7 +206,7 @@ export async function completeEmailPasswordRegistration(user: User, input: Signu
   }
 }
 
-/** @deprecated Use createEmailPasswordAuthUser + SMS verify + completeEmailPasswordRegistration. */
+/** @deprecated Use createEmailPasswordAuthUser + completeEmailPasswordRegistration. */
 export async function registerNewUser(input: SignupFormValues): Promise<User> {
   const user = await createEmailPasswordAuthUser(input.email, input.password);
   return completeEmailPasswordRegistration(user, input);

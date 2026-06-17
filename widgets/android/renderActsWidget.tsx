@@ -9,7 +9,7 @@ import { WIDGET_TASKS_DEEP_LINK } from '@/shared/types/widgetSnapshot';
 
 const BRAND = '#FA5A88';
 const INK = '#1A1A1A';
-const MUTED = '#6B7280';
+const INK_SECONDARY = '#374151';
 const SURFACE = '#FFFFFF';
 const GREEN = '#1F7A54';
 
@@ -50,10 +50,10 @@ export function renderAndroidStreakWidget(snapshot: WidgetSnapshot): WidgetRepre
         />
         <TextWidget
           text={snapshot.streak === 1 ? 'day streak' : 'day streak'}
-          style={{ fontSize: 12, color: MUTED, marginTop: 2 }}
+          style={{ fontSize: 12, color: INK_SECONDARY, marginTop: 2 }}
         />
       </FlexWidget>
-      <TextWidget text={streakSubtitle(snapshot)} style={{ fontSize: 11, color: MUTED }} maxLines={2} />
+      <TextWidget text={streakSubtitle(snapshot)} style={{ fontSize: 11, color: INK_SECONDARY }} maxLines={2} />
     </FlexWidget>
   );
 }
