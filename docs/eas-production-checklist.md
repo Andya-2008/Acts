@@ -55,7 +55,7 @@ After changing variables, run a **new** build (existing IPAs do not pick up chan
 |---------|---------|---------|
 | **development** | `npm run eas:build:development -- --platform ios` | Dev client + Google OAuth + native modules |
 | **preview** | `npm run eas:build:preview -- --platform ios` | Internal TestFlight-style testing |
-| **production** | `npm run eas:build:production -- --platform ios` | App Store / TestFlight production track |
+| **production** | `npm run eas:build:production:ios` or `npm run eas:build:production:android` | App Store / Play Store |
 
 After installing a **development** or **preview** build:
 
@@ -65,13 +65,21 @@ npm run start:dev-client
 
 Open the **Acts** app (not Expo Go).
 
+### OTA updates (EAS Update)
+
+JS-only fixes can ship without a new store build. See **`docs/eas-update.md`**.
+
+- [ ] Production / preview builds created **after** `expo-updates` was added (one-time)
+- [ ] `npm run eas:update:production -- --message "…"` for store channel fixes
+- [ ] Runtime version matches `app.json` `version` (OTA does not cross versions)
+
 ---
 
 ## 3. Firebase (before 1.0.7 store build)
 
-### Phone authentication
+### Phone authentication (optional)
 
-Firebase Console → **Authentication** → **Sign-in method** → enable **Phone** (required for SMS verification in 1.0.7).
+Firebase Console → **Authentication** → **Sign-in method** → **Phone** can stay enabled for legacy accounts, but **1.0.8+ does not require SMS verification** for new sign-ups.
 
 ## 4. Firebase backend deploy
 
@@ -104,6 +112,17 @@ npm run firebase:deploy:hosting
 - [ ] Submit — `docs/submit-ios.md`  
 - [ ] Firebase App Check: **Off** or **Monitor** unless the app registers App Check  
 
+## 5b. Before Google Play submit
+
+- [ ] `EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID` and `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` in EAS Production  
+- [ ] `npm run eas:build:production:android` succeeds (AAB)  
+- [ ] Release SHA-1 added to Android OAuth client — `docs/google-sign-in.md`  
+- [ ] `google-play-service-account.json` in repo root for `eas submit`  
+- [ ] Play Console listing + Data safety — `docs/play-store-console.md`  
+- [ ] Manual QA — `docs/test-before-submit-android.md`  
+- [ ] Submit — `docs/submit-android.md`  
+- [ ] Deploy hosting if `/join` changed — `npm run firebase:deploy:hosting`
+
 ---
 
 ## 6. Quick commands
@@ -113,6 +132,13 @@ npm run firebase:deploy:hosting
 eas env:list --environment production
 
 # Production iOS build + submit
-npm run eas:build:production -- --platform ios
-npm run eas:submit -- --platform ios
+npm run eas:build:production:ios
+npm run eas:submit:ios:latest
+
+# Production Android build + submit
+npm run eas:build:production:android
+npm run eas:submit:android:latest
+
+# OTA (JS-only, same app version)
+npm run eas:update:production -- --message "Describe the fix"
 ```

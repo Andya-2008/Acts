@@ -32,3 +32,8 @@ export const useNotificationsSeenStore = create<NotificationsSeenSlice>((set, ge
     await setNotificationsLastSeenAt(uid, now);
   },
 }));
+
+/** Imperative mark-seen for push navigation and other non-React callers. */
+export function markNotificationsSeen(uid: string): Promise<void> {
+  return useNotificationsSeenStore.getState().markSeen(uid);
+}

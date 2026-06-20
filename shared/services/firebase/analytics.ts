@@ -153,3 +153,17 @@ export function trackChallengeCompleted(challengeId: string, xpEarned: number) {
     xp_earned: xpEarned,
   });
 }
+
+/** Win-back card shown after prolonged inactivity. */
+export function trackWinBackPromptShown(daysSinceLastAct: number) {
+  trackEvent('win_back_prompt_shown', {
+    days_since_last_act: daysSinceLastAct,
+  });
+}
+
+/** User tapped through on a win-back easy-act suggestion. */
+export function trackWinBackEngaged(daysSinceLastAct: number) {
+  trackEvent('win_back_engaged', {
+    days_since_last_act: daysSinceLastAct,
+  });
+}

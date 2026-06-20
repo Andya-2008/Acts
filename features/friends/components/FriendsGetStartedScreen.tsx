@@ -1,10 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Share, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeaderIconButton } from '@/shared/components/HeaderIconButton';
 
+import { AddPhoneForContactsHint } from '@/features/friends/components/AddPhoneForContactsHint';
+import { profileHasSavedPhone } from '@/features/user-profile/utils/profilePhone';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import {
   clearPostSignupFriendsGatePending,
@@ -20,9 +22,10 @@ import { AppButton, AppCard, AppText, TitleWithInfo } from '@/shared/components/
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useFriendsGateRefreshStore } from '@/shared/stores/friendsGateRefreshStore';
+import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 
 import { inviteRewardSummaryLine } from '@/features/friends/inviteRewardConfig';
-import { getInviteShareMessage } from '@/shared/config/appInvite';
+import { copyInviteLink, shareInviteLink } from '@/features/sharing/inviteShareActions';
 
 function ContactAvatar({ uri }: { uri: string | null | undefined }) {
   const trimmed = typeof uri === 'string' ? uri.trim() : '';
@@ -102,8 +105,10 @@ type FriendsGetStartedScreenProps = {
 export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenProps) {
   const uid = useAuthStore((s) => s.user?.uid);
   const act = useActAppearance();
+  const { data: userInfo } = useUserInfoQuery(uid);
   const friendsQuery = useFriendUidsQuery(uid);
   const [inviteDone, setInviteDone] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [contactDone, setContactDone] = useState(false);
   const [requestedUsernames, setRequestedUsernames] = useState<Set<string>>(() => new Set());
   const [gateChecking, setGateChecking] = useState(true);
@@ -142,24 +147,38 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
     void refreshGateFlags();
   }, [uid, friendsQuery.isFetched, friendsQuery.data?.length, refreshGateFlags]);
 
+  const markInviteShared = useCallback(async () => {
+    if (!uid) {
+      return;
+    }
+    await markFriendsInviteLinkShared(uid);
+    setInviteDone(true);
+  }, [uid]);
+
   const onInviteShare = useCallback(async () => {
     setLocalError(null);
     try {
-      const result = await Share.share({
-        message: getInviteShareMessage(uid ?? undefined),
-        title: 'Acts',
-      });
-      if (result.action === Share.dismissedAction) {
+      const shared = await shareInviteLink(uid ?? undefined, 'Acts');
+      if (!shared) {
         return;
       }
-      if (uid) {
-        await markFriendsInviteLinkShared(uid);
-        setInviteDone(true);
-      }
+      await markInviteShared();
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Could not open share sheet.');
     }
-  }, [uid, setLocalError]);
+  }, [uid, markInviteShared]);
+
+  const onInviteCopy = useCallback(async () => {
+    setLocalError(null);
+    try {
+      await copyInviteLink(uid ?? undefined);
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
+      await markInviteShared();
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : 'Could not copy invite link.');
+    }
+  }, [uid, markInviteShared]);
 
   const onContinue = useCallback(async () => {
     setLocalError(null);
@@ -261,12 +280,15 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
             Invite a friend to finish signing up
           </AppText>
           <AppText variant="body" className="max-w-md text-center leading-6 text-acts-muted">
-            Acts is built for people you know. Share an invite link or add someone from your contacts to
-            get started.
+            Acts is built for people you know. Share an invite link or add someone from your contacts.
+            Your mobile number is optional, but it helps friends find you when they scan contacts.
           </AppText>
           <AppText variant="caption" className="mt-3 max-w-md text-center leading-5 text-acts-muted">
             {inviteRewardSummaryLine()}
           </AppText>
+          {!profileHasSavedPhone(userInfo?.Phone) ? (
+            <AddPhoneForContactsHint className="mt-4 max-w-md" />
+          ) : null}
         </View>
 
         {localError ? (
@@ -282,13 +304,24 @@ export function FriendsGetStartedScreen({ onFinished }: FriendsGetStartedScreenP
           infoText="Send your personal link by text, email, or social apps. When they join and you become friends, you earn bonus seeds and XP."
         />
         <AppCard className="mb-5">
-          <AppButton
-            title={inviteDone ? 'Share again' : 'Share invite link'}
-            variant={inviteDone ? 'secondary' : 'primary'}
-            disabled={busy}
-            accessibilityLabel={inviteDone ? 'Share invite link again' : 'Share Acts invite link'}
-            onPress={() => void onInviteShare()}
-          />
+          <View className="flex-row gap-2">
+            <AppButton
+              title={inviteDone ? 'Share again' : 'Share invite link'}
+              variant={inviteDone ? 'secondary' : 'primary'}
+              className="flex-1"
+              disabled={busy}
+              accessibilityLabel={inviteDone ? 'Share invite link again' : 'Share Acts invite link'}
+              onPress={() => void onInviteShare()}
+            />
+            <AppButton
+              title={inviteCopied ? 'Copied!' : 'Copy link'}
+              variant="secondary"
+              className="flex-1"
+              disabled={busy}
+              accessibilityLabel="Copy Acts invite link"
+              onPress={() => void onInviteCopy()}
+            />
+          </View>
         </AppCard>
 
         <TitleWithInfo

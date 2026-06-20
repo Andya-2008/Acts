@@ -8,6 +8,7 @@ import {
   hrefForNotificationPayload,
   type NotificationNavPayload,
 } from '@/features/notifications/notificationNavigation';
+import { markNotificationsSeen } from '@/features/notifications/notificationsSeenStore';
 import { useAuthStore } from '@/shared/stores/authStore';
 
 /** Session dedupe — `getLastNotificationResponseAsync` replays the same tap on remount. */
@@ -21,6 +22,7 @@ function payloadFromResponse(
     screen: typeof data.screen === 'string' ? data.screen : undefined,
     postId: typeof data.postId === 'string' ? data.postId : undefined,
     type: typeof data.type === 'string' ? data.type : undefined,
+    taskId: typeof data.taskId === 'string' ? data.taskId : undefined,
     newUserUid: typeof data.newUserUid === 'string' ? data.newUserUid : undefined,
   };
 }
@@ -72,6 +74,10 @@ export function useNotificationNavigation(): void {
     }
     handledNotificationKeys.add(key);
 
+    if (uid) {
+      void markNotificationsSeen(uid);
+    }
+
     const href = hrefForNotificationPayload(payloadFromResponse(response));
     deferNotificationNavigation(() => {
       router.push(href);
@@ -105,5 +111,5 @@ export function useNotificationNavigation(): void {
 
     const sub = Notifications.addNotificationResponseReceivedListener(handle);
     return () => sub.remove();
-  }, [navigationReady, router]);
+  }, [navigationReady, router, uid]);
 }

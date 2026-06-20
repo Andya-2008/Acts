@@ -13,6 +13,9 @@ import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { getActiveSeason, seasonDaysRemaining, type SeasonalChallenge } from '@/features/challenges/data/seasons';
+import { SeasonMilestoneModal } from '@/features/challenges/components/SeasonMilestoneModal';
+import type { SeasonMilestone } from '@/features/challenges/seasonMilestones';
+import { shareSeasonProgress } from '@/features/challenges/seasonShare';
 import { seasonalChallengeXp } from '@/features/challenges/seasonalChallengeRepository';
 import {
   useRecordChallengeCompletionMutation,
@@ -29,7 +32,15 @@ export default function ChallengesScreen() {
   const daysLeft = useMemo(() => seasonDaysRemaining(season), [season]);
 
   const { data: progress, isLoading } = useSeasonProgressQuery(userId, season.id);
-  const completeMutation = useRecordChallengeCompletionMutation(userId);
+  const [celebrationMilestone, setCelebrationMilestone] = useState<SeasonMilestone | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const completeMutation = useRecordChallengeCompletionMutation(userId, {
+    onMilestone: (milestone) => {
+      if (milestone) {
+        setCelebrationMilestone(milestone);
+      }
+    },
+  });
   const [error, setError] = useState<string | null>(null);
   const [confirmChallenge, setConfirmChallenge] = useState<SeasonalChallenge | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -123,6 +134,15 @@ export default function ChallengesScreen() {
     );
   };
 
+  const onShareProgress = () => {
+    if (!progress) {
+      return;
+    }
+    setSharing(true);
+    void shareSeasonProgress(season, progress, userId)
+      .finally(() => setSharing(false));
+  };
+
   if (isLoading) {
     return (
       <>
@@ -157,6 +177,16 @@ export default function ChallengesScreen() {
             <Badge label={`${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`} variant="info" size="sm" />
             <Badge label={`${totalXpEarned.toLocaleString()} XP earned`} variant="default" size="sm" />
           </View>
+          {totalXpEarned > 0 || Object.keys(completions).length > 0 ? (
+            <AppButton
+              title="Share my progress"
+              variant="secondary"
+              className="mt-4 w-full"
+              loading={sharing}
+              disabled={sharing}
+              onPress={onShareProgress}
+            />
+          ) : null}
         </AppCard>
 
         {error ? (
@@ -319,6 +349,15 @@ export default function ChallengesScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <SeasonMilestoneModal
+        visible={celebrationMilestone != null}
+        season={season}
+        milestone={celebrationMilestone}
+        sharing={sharing}
+        onShare={onShareProgress}
+        onClose={() => setCelebrationMilestone(null)}
+      />
     </>
   );
 }

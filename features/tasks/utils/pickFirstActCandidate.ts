@@ -1,4 +1,7 @@
 import type { ActTask, TaskCadence } from '@/shared/types/task';
+import type { UserInfoRead } from '@/shared/types/userInfo';
+
+import { scoreTaskOnboardingMatch } from '@/features/tasks/utils/taskOnboardingPreference';
 
 const CADENCE_ORDER: Record<TaskCadence, number> = {
   daily: 0,
@@ -8,7 +11,10 @@ const CADENCE_ORDER: Record<TaskCadence, number> = {
 };
 
 /** Best act to suggest for a brand-new user (easy, soon cadence, not done). */
-export function pickFirstActCandidate(tasks: ActTask[]): ActTask | null {
+export function pickFirstActCandidate(
+  tasks: ActTask[],
+  user?: UserInfoRead | null,
+): ActTask | null {
   const open = tasks.filter((t) => t.completedAt == null && t.active !== false);
   if (open.length === 0) {
     return null;
@@ -19,7 +25,11 @@ export function pickFirstActCandidate(tasks: ActTask[]): ActTask | null {
     if (cadence !== 0) {
       return cadence;
     }
-    return a.difficulty - b.difficulty;
+    const difficulty = a.difficulty - b.difficulty;
+    if (difficulty !== 0) {
+      return difficulty;
+    }
+    return scoreTaskOnboardingMatch(b, user) - scoreTaskOnboardingMatch(a, user);
   });
   return sorted[0] ?? null;
 }

@@ -6,8 +6,10 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
+import { NotificationBadge } from '@/features/notifications/components/NotificationBadge';
+import { useNotificationsUnreadCount } from '@/features/notifications/hooks/useDerivedNotifications';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
-import { AchievementUnlockHost } from '@/features/achievements/components/AchievementUnlockHost';
+import { ProgressionCelebrationHost } from '@/features/progression/components/ProgressionCelebrationHost';
 import { ReleaseHighlightsHost } from '@/features/release-highlights/ReleaseHighlightsHost';
 import { FirstRunTutorialHost } from '@/features/tutorial/components/FirstRunTutorialHost';
 import { WeekendDoublePromoHost } from '@/features/promotions/components/WeekendDoublePromoHost';
@@ -37,6 +39,7 @@ export default function TabsLayout() {
   useHeartPointsFirestoreSync(uid, userInfo);
   const insets = useSafeAreaInsets();
   const mainTab = useMainTabRoute();
+  const unreadActivity = useNotificationsUnreadCount(uid);
 
   const tabActive = act.palette.green;
   const tabInactive = act.palette.muted;
@@ -81,14 +84,20 @@ export default function TabsLayout() {
           <Pressable
             style={styles.tabCell}
             accessibilityRole="tab"
-            accessibilityState={{ selected: mainTab === 'deed-feed' }}>
+            accessibilityState={{ selected: mainTab === 'deed-feed' }}
+            accessibilityLabel={
+              unreadActivity > 0 ? `Deed Feed, ${unreadActivity} new activity` : 'Deed Feed'
+            }>
             <View style={styles.tabInner}>
-              <Ionicons
-                name="images-outline"
-                size={24}
-                color={mainTab === 'deed-feed' ? tabActive : tabInactive}
-                style={Platform.OS === 'android' ? { marginBottom: 2 } : undefined}
-              />
+              <View className="relative">
+                <Ionicons
+                  name="images-outline"
+                  size={24}
+                  color={mainTab === 'deed-feed' ? tabActive : tabInactive}
+                  style={Platform.OS === 'android' ? { marginBottom: 2 } : undefined}
+                />
+                <NotificationBadge count={unreadActivity} variant="tab" />
+              </View>
               <AppText
                 variant="label"
                 className="text-[11px] font-semibold"
@@ -118,7 +127,7 @@ export default function TabsLayout() {
         </TabTrigger>
       </TabList>
     </Tabs>
-    <AchievementUnlockHost />
+    <ProgressionCelebrationHost />
     <WeekendDoublePromoHost />
     <FirstRunTutorialHost />
     <ReleaseHighlightsHost />

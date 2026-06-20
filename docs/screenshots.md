@@ -47,3 +47,40 @@ Use a **production or preview** build with real-looking data (not dev banners).
 ## Promotional text
 
 See `docs/app-store-connect.md` § Promotional text and Description (ready to paste).
+
+---
+
+## Android (Google Play)
+
+Play Console requires **phone** screenshots (no tablet required for phone-only app).
+
+### Recommended sizes
+
+Check **Play Console → Store listing** for current requirements. Typically:
+
+| Type | Size |
+|------|------|
+| Phone screenshots | Min 2 — often 1080×1920 or 1440×2560 (portrait) |
+| Feature graphic | 1024×500 PNG/JPEG |
+| App icon | 512×512 PNG |
+
+### Capture on Android device
+
+1. Install production or preview AAB (internal testing link or `adb install`).
+2. Navigate to the same story screens as iOS (Tasks, deed feed, profile, widgets optional).
+3. **Power + Volume down** screenshot.
+4. Transfer to desktop for upload.
+
+### Capture with Android Emulator
+
+1. Android Studio → Device Manager → Pixel 6 or similar.
+2. Install the EAS build or run `npm run android` on a dev client.
+3. Emulator **⋯** → **Screenshot** or use Studio’s capture tool.
+
+### Upload
+
+1. Play Console → **Acts** → **Store listing** → phone screenshots.
+2. Upload 4–6 PNG/JPEG files in story order.
+3. Add **Feature graphic** (marketing banner) — separate from in-app screenshots.
+
+See also `docs/play-store-console.md` and `docs/test-before-submit-android.md`.

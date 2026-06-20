@@ -50,6 +50,19 @@ function completionDaySet(tasks: ActTask[]): Set<string> {
   return set;
 }
 
+/** True when at least one act was completed on the given local calendar day. */
+export function completedOnLocalDay(tasks: ActTask[], dayKey: string): boolean {
+  for (const t of tasks) {
+    if (t.completedAt == null) {
+      continue;
+    }
+    if (localDateKey(t.completedAt.toDate()) === dayKey) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function streakFromAnchor(days: Set<string>, anchor: string): number {
   let streak = 0;
   for (let cur = anchor; days.has(cur); cur = addDaysToKey(cur, -1)) {

@@ -72,6 +72,9 @@ module.exports = ({ config }) => {
   if (!plugins.includes('expo-dev-client')) {
     plugins.push('expo-dev-client');
   }
+  if (!plugins.includes('expo-updates')) {
+    plugins.push('expo-updates');
+  }
   // Sentry native config (crash reporting). Only add it if app.json hasn't already
   // registered a Sentry plugin (it ships `@sentry/react-native/expo`); otherwise we'd
   // get a duplicate Xcode build phase. Sourcemap upload is gated by SENTRY_DISABLE_AUTO_UPLOAD.
@@ -183,6 +186,18 @@ module.exports = ({ config }) => {
   return {
     ...config,
     plugins,
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
+    ...(easProjectId
+      ? {
+          updates: {
+            url: `https://u.expo.dev/${easProjectId}`,
+            checkAutomatically: 'ON_LOAD',
+            fallbackToCacheTimeout: 0,
+          },
+        }
+      : {}),
     autolinking: {
       ...(config.autolinking ?? {}),
       exclude: [

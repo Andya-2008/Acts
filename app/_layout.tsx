@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppStoreUpdatePrompt } from '@/features/app-update/AppStoreUpdatePrompt';
+import { EasUpdatePrompt } from '@/features/app-update/EasUpdatePrompt';
 import { AppFirebaseMissingScreen } from '@/shared/components/AppFirebaseMissingScreen';
 import { isFirebaseWebConfigConfigured } from '@/shared/config/env';
 import { ActAppearanceProvider } from '@/shared/providers/ActAppearanceProvider';
@@ -62,6 +63,7 @@ function RootLayout() {
           <ActAppearanceProvider>
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
               <AppStoreUpdatePrompt />
+              <EasUpdatePrompt />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />

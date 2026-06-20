@@ -4,11 +4,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { fetchFriendUids } from '@/features/friends/services/friendsRepository';
 import {
   emailKeyDocId,
-  fetchRegisteredUserByKeyDocId,
   normalizeEmailKey,
   normalizePhoneKey,
   phoneKeyDocId,
 } from '@/features/friends/services/registeredContactKeysRepository';
+import { lookupContactKeysByDocIds } from '@/features/friends/services/lookupContactKeysService';
 import { fetchProfilePicUrlsForUids } from '@/features/user-profile/services/userInfoRepository';
 
 export type ContactOnActsMatch = {
@@ -23,7 +23,7 @@ export type ContactOnActsMatch = {
   profilePicUrl?: string | null;
 };
 
-const BATCH = 24;
+const BATCH = 48;
 const CONTACT_PAGE_SIZE = 500;
 /** Safety cap on distinct email/phone keys per scan (very large address books). */
 const MAX_DISTINCT_LOOKUPS = 4000;
@@ -51,14 +51,16 @@ async function fetchAllContactsForMatching(): Promise<Contacts.ExistingContact[]
   return out;
 }
 
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = [];
-  for (let i = 0; i < items.length; i += limit) {
-    const slice = items.slice(i, i + limit);
-    const part = await Promise.all(slice.map(fn));
-    out.push(...part);
+function lookupErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.message === 'CONTACT_LOOKUP_RATE_LIMIT') {
+      return 'Too many contact lookups. Wait a minute and try again.';
+    }
+    if (error.message === 'CONTACT_LOOKUP_AUTH') {
+      return 'Sign in again to scan contacts.';
+    }
   }
-  return out;
+  return 'Could not scan contacts. Try again.';
 }
 
 export function useContactsOnActsMatches(currentUid: string | undefined) {
@@ -127,14 +129,22 @@ export function useContactsOnActsMatches(currentUid: string | undefined) {
       }
       const unique = [...dedupeDocIds.values()].slice(0, MAX_DISTINCT_LOOKUPS);
 
-      const hits = await mapWithConcurrency(unique, BATCH, async (l) => {
-        const reg = await fetchRegisteredUserByKeyDocId(l.docId);
-        if (!reg || reg.uid === currentUid) {
+      const lookupByDocId = new Map(unique.map((l) => [l.docId, l]));
+      const docIds = unique.map((l) => l.docId);
+      const chunks: string[][] = [];
+      for (let i = 0; i < docIds.length; i += BATCH) {
+        chunks.push(docIds.slice(i, i + BATCH));
+      }
+      const registryHits = (await Promise.all(chunks.map((chunk) => lookupContactKeysByDocIds(chunk)))).flat();
+
+      const hits: (ContactOnActsMatch | null)[] = registryHits.map((reg) => {
+        const meta = lookupByDocId.get(reg.keyDocId);
+        if (!meta || reg.uid === currentUid) {
           return null;
         }
         return {
-          contactLabel: l.contactLabel,
-          matchedVia: l.via,
+          contactLabel: meta.contactLabel,
+          matchedVia: meta.via,
           uid: reg.uid,
           username: reg.username,
           first: reg.first,
@@ -160,7 +170,7 @@ export function useContactsOnActsMatches(currentUid: string | undefined) {
       );
     } catch (e) {
       setMatches([]);
-      setLoadError(e instanceof Error ? e.message : 'Could not scan contacts. Try again.');
+      setLoadError(lookupErrorMessage(e));
     } finally {
       setLoading(false);
       setSearched(true);

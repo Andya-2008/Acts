@@ -1,7 +1,18 @@
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 
-import { AppText, Badge, EmptyState, ListItem, Screen } from '@/shared/components/ui';
+import {
+  getLeaderboardLastSeenRank,
+  getLeaderboardPreviousWeekSnapshot,
+  setLeaderboardLastSeenRank,
+} from '@/features/leaderboards/leaderboardLocalState';
+import { shareLeaderboardRank } from '@/features/leaderboards/leaderboardShare';
+import {
+  rankDeltaSinceLastSeen,
+  rankDeltaSinceWeekSnapshot,
+} from '@/features/leaderboards/syncLeaderboardNotifications';
+import { AppButton, AppCard, AppText, Badge, EmptyState, ListItem, Screen } from '@/shared/components/ui';
 import { HeaderBackLabel } from '@/shared/components/HeaderBackLabel';
 import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
@@ -64,9 +75,52 @@ export default function LeaderboardsScreen() {
   const act = useActAppearance();
   const userId = useAuthStore((s) => s.user?.uid);
   const { data, isLoading, isError } = useFriendsLeaderboardQuery(userId);
+  const [lastSeenRank, setLastSeenRank] = useState<number | null>(null);
+  const [weekSnapshot, setWeekSnapshot] = useState<Awaited<ReturnType<typeof getLeaderboardPreviousWeekSnapshot>>>(null);
+  const [sharing, setSharing] = useState(false);
 
   const entries = data?.entries ?? [];
   const userRank = data?.userRank;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) {
+        return;
+      }
+      let active = true;
+      void Promise.all([getLeaderboardLastSeenRank(userId), getLeaderboardPreviousWeekSnapshot(userId)]).then(
+        ([seen, snapshot]) => {
+          if (active) {
+            setLastSeenRank(seen);
+            setWeekSnapshot(snapshot);
+          }
+        },
+      );
+      return () => {
+        active = false;
+        if (userRank) {
+          void setLeaderboardLastSeenRank(userId, userRank.rank);
+        }
+      };
+    }, [userId, userRank?.rank]),
+  );
+
+  useEffect(() => {
+    if (userId && userRank) {
+      void setLeaderboardLastSeenRank(userId, userRank.rank);
+    }
+  }, [userId, userRank?.rank]);
+
+  const visitDelta = userRank ? rankDeltaSinceLastSeen(lastSeenRank, userRank.rank) : null;
+  const weekDelta = userRank ? rankDeltaSinceWeekSnapshot(weekSnapshot, userRank.rank) : null;
+
+  const onShare = () => {
+    if (!userRank) {
+      return;
+    }
+    setSharing(true);
+    void shareLeaderboardRank(userRank, entries.length, userId).finally(() => setSharing(false));
+  };
 
   const headerOptions = {
     ...stackHeaderChrome(act),
@@ -104,7 +158,6 @@ export default function LeaderboardsScreen() {
     );
   }
 
-  // Only the signed-in user (no friends yet, or friends have no XP edge cases still show the user).
   if (entries.length <= 1) {
     return (
       <>
@@ -136,6 +189,31 @@ export default function LeaderboardsScreen() {
                 size="md"
               />
             </View>
+            {visitDelta != null && visitDelta > 0 ? (
+              <AppCard className="mt-3 border-acts-green/40 bg-acts-green-soft/80 p-3">
+                <AppText variant="subtitle" className="text-acts-ink">
+                  You moved up {visitDelta} {visitDelta === 1 ? 'spot' : 'spots'}!
+                </AppText>
+                <AppText variant="caption" className="mt-1 text-acts-muted">
+                  You&apos;re now #{userRank.rank} among friends since your last visit.
+                </AppText>
+              </AppCard>
+            ) : null}
+            {weekDelta != null && weekDelta > 0 && visitDelta !== weekDelta ? (
+              <AppCard className="mt-3 border-acts-green/30 bg-acts-surface p-3">
+                <AppText variant="caption" className="text-acts-muted">
+                  Up {weekDelta} {weekDelta === 1 ? 'spot' : 'spots'} since last week — keep the momentum going.
+                </AppText>
+              </AppCard>
+            ) : null}
+            <AppButton
+              title="Share my rank"
+              variant="secondary"
+              className="mt-3 w-full"
+              loading={sharing}
+              disabled={sharing}
+              onPress={onShare}
+            />
           </View>
         ) : null}
         <FlatList

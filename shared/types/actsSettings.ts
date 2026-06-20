@@ -39,8 +39,12 @@ export type ActsAppSettings = {
   profileXpVisibility: ProfileStatVisibility;
   profileActsCompletedVisibility: ProfileStatVisibility;
   allowFriendRequests: boolean;
+  /** Let friends find you by saved email/phone in their address book. */
+  allowContactDiscovery: boolean;
   feedSharing: boolean;
   reactionsEnabled: boolean;
+  /** Local win-back nudge after ~14 days without completing an act. */
+  notifyWinBack: boolean;
   notifyFriendsPosting: boolean;
   notifyStreakWarning: boolean;
   notifyFriendsReactions: boolean;
@@ -58,6 +62,10 @@ export type ActsAppSettings = {
   notifyWeeklyActReminder: boolean;
   /** First of month: nudge for monthly cadence acts (local). */
   notifyMonthlyActReminder: boolean;
+  /** Season start, ending soon, and milestone local notifications. */
+  notifySeasonChallenges: boolean;
+  /** Friends leaderboard rank-up alerts and Sunday standings summary. */
+  notifyLeaderboardUpdates: boolean;
   /** Local hour (0-23) for daily reminder; incomplete nudge is +3h (capped 9 PM). */
   retentionDailyReminderHour: number;
   /** Forgiving a single missed calendar day for streak counting (YYYY-MM-DD). */
@@ -114,6 +122,7 @@ export const DEFAULT_ACTS_SETTINGS: ActsAppSettings = {
   profileXpVisibility: 'public',
   profileActsCompletedVisibility: 'public',
   allowFriendRequests: true,
+  allowContactDiscovery: true,
   feedSharing: true,
   reactionsEnabled: true,
   notifyFriendsPosting: true,
@@ -128,6 +137,9 @@ export const DEFAULT_ACTS_SETTINGS: ActsAppSettings = {
   notifyWeekendDoublePromo: true,
   notifyWeeklyActReminder: true,
   notifyMonthlyActReminder: true,
+  notifySeasonChallenges: true,
+  notifyLeaderboardUpdates: true,
+  notifyWinBack: true,
   retentionDailyReminderHour: 18,
   autosavePhotos: true,
   profileTitle: '',

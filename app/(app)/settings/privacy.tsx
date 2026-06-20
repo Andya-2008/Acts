@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Alert, View } from 'react-native';
 
 import { FriendsOrMeRow, ThreeChoiceRow, YesNoRow } from '@/features/settings/components/SettingsRows';
+import { syncRegisteredContactKeysFromUserInfo } from '@/features/friends/services/registeredContactKeysRepository';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { useUnblockUserMutation } from '@/features/safety/useSafetyMutations';
@@ -141,6 +142,19 @@ export default function SettingsPrivacyScreen() {
           value={base.allowFriendRequests}
           onPick={(v) => patch({ allowFriendRequests: v })}
           disabled={mutation.isPending}
+        />
+        <YesNoRow
+          label="Contact discovery"
+          value={base.allowContactDiscovery}
+          onPick={(v) => {
+            void mutation.mutateAsync({ allowContactDiscovery: v }).then(() => {
+              if (uid) {
+                void syncRegisteredContactKeysFromUserInfo(uid);
+              }
+            });
+          }}
+          disabled={mutation.isPending}
+          infoText="When on, friends who have your email or phone in their address book can find you on Acts. Your name is never stored in the public lookup table — only a secure hash."
         />
         <YesNoRow
           label="Feed Sharing"

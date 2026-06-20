@@ -2,6 +2,7 @@ import { doc, getDoc, increment, serverTimestamp, setDoc, updateDoc } from 'fire
 
 import { INVITE_FRIEND_REWARD } from '@/features/friends/inviteRewardConfig';
 import { notifySystem } from '@/features/notifications/notificationRepository';
+import { enqueueRankUpIfPromotion } from '@/features/progression/enqueueRankUpIfPromotion';
 import { fetchUserInfo, grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
@@ -37,7 +38,10 @@ async function grantInviteRewardOnce(inviterUid: string, friendUid: string): Pro
   await updateDoc(inviterRef, {
     HeartPoints: increment(INVITE_FRIEND_REWARD.inviterSeeds),
   });
+  const inviterInfo = await fetchUserInfo(inviterUid);
+  const prevInviterXp = Math.max(0, Math.floor(Number(inviterInfo?.LifetimeXP ?? 0)));
   await grantLifetimeXp(inviterUid, INVITE_FRIEND_REWARD.inviterXp);
+  enqueueRankUpIfPromotion(prevInviterXp, INVITE_FRIEND_REWARD.inviterXp);
   await updateDoc(inviteeRef, {
     HeartPoints: increment(INVITE_FRIEND_REWARD.inviteeSeeds),
   });

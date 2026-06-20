@@ -13,10 +13,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AchievementDef } from '@/features/achievements/achievementCatalog';
-import { AppText } from '@/shared/components/ui';
+import { AppButton, AppText } from '@/shared/components/ui';
 import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { overlayMotionDuration } from '@/shared/utils/accessibilityMotion';
+import { router, type Href } from 'expo-router';
 
 const SPARKLE_COUNT = 12;
 
@@ -120,6 +121,39 @@ export function AchievementUnlockedOverlay({ achievement, onClose }: Achievement
 
   const ink = act.palette.ink;
   const accent = achievement.accentHex;
+  const eyebrow =
+    achievement.category === 'streak'
+      ? 'Streak achievement'
+      : achievement.category === 'xp'
+        ? 'XP milestone'
+        : achievement.category === 'acts'
+          ? 'Acts milestone'
+          : 'Achievement unlocked';
+  const heroStat =
+    achievement.metric.kind === 'streak_min'
+      ? achievement.metric.days
+      : achievement.metric.kind === 'acts_min'
+        ? achievement.metric.n
+        : achievement.metric.kind === 'xp_min'
+          ? achievement.metric.xp
+          : achievement.metric.kind === 'deed_posts_min'
+            ? achievement.metric.n
+            : null;
+  const heroLabel =
+    achievement.metric.kind === 'streak_min'
+      ? 'day streak'
+      : achievement.metric.kind === 'acts_min'
+        ? 'acts'
+        : achievement.metric.kind === 'xp_min'
+          ? 'lifetime XP'
+          : achievement.metric.kind === 'deed_posts_min'
+            ? 'deed posts'
+            : null;
+
+  const openAchievements = () => {
+    onClose();
+    router.push('/(app)/achievements' as Href);
+  };
 
   return (
     <Modal
@@ -197,8 +231,22 @@ export function AchievementUnlockedOverlay({ achievement, onClose }: Achievement
             paletteColor={false}
             className="mt-6 text-center font-bold uppercase tracking-[0.2em]"
             style={{ color: 'rgba(255,247,251,0.85)' }}>
-            Achievement unlocked
+            {eyebrow}
           </AppText>
+          {heroStat != null && heroLabel ? (
+            <View className="mt-4 items-center">
+              <AppText
+                variant="title"
+                paletteColor={false}
+                className="text-center text-white"
+                style={{ fontSize: 48, lineHeight: 52 }}>
+                {heroStat.toLocaleString()}
+              </AppText>
+              <AppText variant="caption" paletteColor={false} className="mt-1 text-center" style={{ color: 'rgba(255,247,251,0.8)' }}>
+                {heroLabel}
+              </AppText>
+            </View>
+          ) : null}
           <AppText variant="title" paletteColor={false} className="mt-3 px-8 text-center text-white" numberOfLines={2}>
             {achievement.title}
           </AppText>
@@ -212,6 +260,11 @@ export function AchievementUnlockedOverlay({ achievement, onClose }: Achievement
         </Animated.View>
 
         <View style={[styles.footer, { paddingBottom: Math.max(16, insets.bottom + 12) }]} pointerEvents="box-none">
+          <AppButton
+            title="View trophy case"
+            className="mb-3 w-full max-w-[320px] self-center"
+            onPress={openAchievements}
+          />
           <AppText variant="caption" paletteColor={false} className="text-center" style={{ color: `${act.palette.canvas}99` }}>
             Tap anywhere to continue
           </AppText>

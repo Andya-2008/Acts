@@ -1,5 +1,7 @@
 # Release 1.0.7 — ship checklist
 
+> **Superseded for auth:** 1.0.8 removed required SMS / verify-phone flows. Use `docs/test-before-submit.md` and `docs/app-review-demo-account.md` for current QA.
+
 App version in `app.json`: **1.0.7**. EAS production uses `autoIncrement` for build numbers.
 
 **Monetization:** This release ships **without ads**. Keep `EXPO_PUBLIC_REWARDED_ADS_ENABLED=false` (or unset) in EAS Production. App Store → **Contains Ads** = **No**.

@@ -19,9 +19,11 @@ const REQUIRED_ENV = [
 
 const RECOMMENDED_ENV = [
   'EXPO_PUBLIC_FIREBASE_API_KEY_IOS',
+  'EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID',
   'EXPO_PUBLIC_LEGAL_BASE_URL',
   'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
   'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID',
 ];
 
 function loadDotEnv() {
@@ -93,7 +95,7 @@ function warn(msg) {
 
 let exitCode = 0;
 
-console.log('\nActs — App Store preflight\n');
+console.log('\nActs — App Store / Play Store preflight\n');
 
 let appVersion = '?';
 try {
@@ -164,11 +166,13 @@ if (!anyLegalOk) {
 
 console.log('\nManual (cannot automate):\n');
 console.log('  • EAS Production env vars match .env — docs/eas-production-checklist.md');
-console.log('  • npm run eas:build:production -- --platform ios');
+console.log('  • iOS: npm run eas:build:production:ios — docs/submit-ios.md');
+console.log('  • Android: npm run eas:build:production:android — docs/submit-android.md');
+console.log('  • Android: google-play-service-account.json for eas submit (gitignored)');
+console.log('  • Android: Play signing SHA-1 on Google OAuth client — docs/google-sign-in.md');
 console.log('  • Demo account — docs/app-review-demo-account.md');
-console.log(`  • Release checklist — docs/release-${appVersion}.md`);
-console.log('  • QA — docs/test-before-submit.md');
-console.log('  • Screenshots — docs/screenshots.md');
-console.log('  • Submit — docs/submit-ios.md\n');
+console.log(`  • Release checklist — docs/release-${appVersion}.md / docs/release-${appVersion}-android.md`);
+console.log('  • QA — docs/test-before-submit.md (iOS) / docs/test-before-submit-android.md');
+console.log('  • Screenshots — docs/screenshots.md\n');
 
 process.exit(exitCode);

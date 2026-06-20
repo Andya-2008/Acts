@@ -13,8 +13,8 @@ import {
   interestChoices,
   labelsFromChoiceIds,
   personalityTraitChoices,
-  type PersonalizationChoice,
 } from '@/features/onboarding/config/personalizationChoices';
+import { PersonalizationChipPicker } from '@/features/onboarding/components/PersonalizationChipPicker';
 import { submitOnboarding } from '@/features/onboarding/services/submitOnboarding';
 import {
   onboardingFullSchema,
@@ -63,49 +63,6 @@ const defaultValues: FormValues = {
   hasKids: false,
   becomeCategory: '',
 };
-
-function MultiSelectChips({
-  choices,
-  value,
-  onChange,
-  errorMessage,
-}: {
-  choices: PersonalizationChoice[];
-  value: string[];
-  onChange: (next: string[]) => void;
-  errorMessage?: string;
-}) {
-  const toggle = (id: string) => {
-    if (value.includes(id)) onChange(value.filter((x) => x !== id));
-    else onChange([...value, id]);
-  };
-  return (
-    <View className="mb-2">
-      <View className="flex-row flex-wrap gap-2">
-        {choices.map((c) => {
-          const selected = value.includes(c.id);
-          return (
-            <Pressable
-              key={c.id}
-              onPress={() => toggle(c.id)}
-              className={`rounded-2xl border px-4 py-2.5 ${
-                selected ? 'border-acts-green bg-acts-green-soft' : 'border-acts-border bg-acts-surface'
-              }`}>
-              <AppText variant="caption" className="text-acts-ink">
-                {c.label}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </View>
-      {errorMessage ? (
-        <AppText variant="caption" className="mt-1 text-acts-danger">
-          {errorMessage}
-        </AppText>
-      ) : null}
-    </View>
-  );
-}
 
 type OnboardingWizardProps = {
   userId: string;
@@ -323,7 +280,7 @@ export function OnboardingWizard({
               control={control}
               name="hobbies"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <MultiSelectChips
+                <PersonalizationChipPicker
                   choices={hobbyChoices}
                   value={value}
                   onChange={onChange}
@@ -338,7 +295,7 @@ export function OnboardingWizard({
               control={control}
               name="interests"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <MultiSelectChips
+                <PersonalizationChipPicker
                   choices={interestChoices}
                   value={value}
                   onChange={onChange}
@@ -353,7 +310,7 @@ export function OnboardingWizard({
               control={control}
               name="favoriteActivities"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <MultiSelectChips
+                <PersonalizationChipPicker
                   choices={favoriteActivityChoices}
                   value={value}
                   onChange={onChange}
@@ -376,7 +333,7 @@ export function OnboardingWizard({
               control={control}
               name="goals"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <MultiSelectChips
+                <PersonalizationChipPicker
                   choices={goalChoices}
                   value={value}
                   onChange={onChange}
@@ -391,7 +348,7 @@ export function OnboardingWizard({
               control={control}
               name="growthGoals"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <MultiSelectChips
+                <PersonalizationChipPicker
                   choices={growthGoalChoices}
                   value={value}
                   onChange={onChange}
@@ -406,7 +363,7 @@ export function OnboardingWizard({
               control={control}
               name="personalityTraits"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <MultiSelectChips
+                <PersonalizationChipPicker
                   choices={personalityTraitChoices}
                   value={value}
                   onChange={onChange}

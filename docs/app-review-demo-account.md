@@ -6,13 +6,11 @@ Apple requires sign-in credentials they can use without contacting you. Create a
 
 1. Install a **production** or **preview** iOS build (not Expo Go).
 2. Sign up with a new email you control, e.g. `acts.review+apple@yourdomain.com`.
-3. Enter a **real mobile number** you can receive SMS on → tap **Send verification code** → enter the 6-digit code.
-4. Complete signup (profile is created after phone verification).
-5. On **Invite a friend**: tap **Continue** after sharing or adding someone, or tap **✕** (top left) to skip.
-6. Open **Tasks** and complete at least one act (optional but helps reviewers see the core loop).
-7. Optional: add a profile photo under **Settings → Account** (square crop when picking).
-
-**Phone for review:** Use a number that receives SMS during signup. Document it in App Review notes if Apple must re-verify.
+3. Complete signup (no SMS verification required in 1.0.8).
+4. On **Invite a friend**: tap **Continue** after sharing or adding someone, or tap **✕** (top left) to skip.
+5. Open **Tasks** and complete at least one act (optional but helps reviewers see the core loop).
+6. Optional: add a profile photo under **Settings → Account** (square crop when picking).
+7. Optional: add a mobile number under **Settings → Account** if you want reviewers to test contact matching.
 
 **Do not** enable 2FA on this account unless you document it for Apple.
 
@@ -35,13 +33,12 @@ Acts — App Review test account
 
 Sign-in: Email and password (required). Username or phone also work if set on this account.
 Username: [demo username shown in Settings → Account]
-Mobile: [REVIEW_PHONE — verified on this account]
 
 Email: [REVIEW_EMAIL]
 Password: [REVIEW_PASSWORD]
 
 How to explore:
-1. Sign in with the credentials above (phone is already verified on this account).
+1. Sign in with the credentials above.
 2. If “Invite a friend” appears: tap ✕ (top left) to skip, or complete one option and tap Continue.
 3. Tasks tab — suggested acts; new accounts may see a “first act” highlight; tap to mark complete.
 4. Deed Feed tab — posts from friends (may be empty if no friends; that is OK).

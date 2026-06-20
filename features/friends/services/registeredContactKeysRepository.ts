@@ -1,15 +1,14 @@
-import { doc, getDoc, runTransaction, type Firestore } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, runTransaction, type Firestore } from 'firebase/firestore';
 
-import { normalizeUsernameKey } from '@/shared/utils/usernameKey';
+import { isContactKeyTakenByOtherUser, lookupContactKeysByDocIds } from '@/features/friends/services/lookupContactKeysService';
 import { fetchUserInfo } from '@/features/user-profile/services/userInfoRepository';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
+import { mergeActsDefaults } from '@/shared/types/actsSettings';
 
+/** Minimal contact-key document (PII lives on userInfo; lookups go through Cloud Functions). */
 export type RegisteredContactKeyDoc = {
   uid: string;
-  username: string;
-  first: string;
-  last: string;
 };
 
 function keysRef(db: Firestore, docId: string) {
@@ -42,6 +41,33 @@ export function phoneKeyDocId(digits10: string): string {
   return `p_${digits10}`;
 }
 
+async function deleteKeyIfOwned(db: Firestore, docId: string, uid: string): Promise<void> {
+  const ref = keysRef(db, docId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return;
+  }
+  const owner = String((snap.data() as RegisteredContactKeyDoc).uid ?? '').trim();
+  if (owner === uid) {
+    await deleteDoc(ref);
+  }
+}
+
+async function removePublishedContactKeys(
+  db: Firestore,
+  uid: string,
+  input: { Email: string; Phone: string },
+): Promise<void> {
+  const emailNorm = normalizeEmailKey(input.Email);
+  if (emailNorm) {
+    await deleteKeyIfOwned(db, emailKeyDocId(emailNorm), uid);
+  }
+  const phoneNorm = input.Phone ? normalizePhoneKey(input.Phone) : null;
+  if (phoneNorm) {
+    await deleteKeyIfOwned(db, phoneKeyDocId(phoneNorm), uid);
+  }
+}
+
 /** Ensures no other Acts account has claimed this phone for login or contact lookup. */
 export async function assertPhoneAvailableForUid(phoneRaw: string, uid: string): Promise<void> {
   const phoneNorm = normalizePhoneKey(phoneRaw);
@@ -58,17 +84,15 @@ export async function assertPhoneAvailableForUid(phoneRaw: string, uid: string):
     }
   }
 
-  const contactSnap = await getDoc(keysRef(db, phoneKeyDocId(phoneNorm)));
-  if (contactSnap.exists()) {
-    const owner = String((contactSnap.data() as RegisteredContactKeyDoc).uid ?? '').trim();
-    if (owner && owner !== uid) {
-      throw new Error('PHONE_TAKEN');
-    }
+  const taken = await isContactKeyTakenByOtherUser(phoneKeyDocId(phoneNorm));
+  if (taken) {
+    throw new Error('PHONE_TAKEN');
   }
 }
 
-async function writeContactKeyIfAvailable(db: Firestore, docId: string, payload: RegisteredContactKeyDoc): Promise<void> {
+async function writeContactKeyIfAvailable(db: Firestore, docId: string, uid: string): Promise<void> {
   const ref = keysRef(db, docId);
+  const payload: RegisteredContactKeyDoc = { uid };
   await runTransaction(db, async (trx) => {
     const snap = await trx.get(ref);
     if (!snap.exists()) {
@@ -76,7 +100,7 @@ async function writeContactKeyIfAvailable(db: Firestore, docId: string, payload:
       return;
     }
     const cur = snap.data() as RegisteredContactKeyDoc;
-    if (cur.uid === payload.uid) {
+    if (cur.uid === uid) {
       trx.set(ref, payload, { merge: true });
     } else if (cur.uid) {
       if (docId.startsWith('p_')) {
@@ -113,7 +137,7 @@ async function upsertPhoneLoginLookupForUid(
   });
 }
 
-/** Publishes email/phone → profile keys so contacts can discover this user (first writer wins per key). */
+/** Publishes email/phone keys so contacts can discover this user (first writer wins per key). */
 export async function registerContactKeysForProfile(
   uid: string,
   input: {
@@ -123,24 +147,24 @@ export async function registerContactKeysForProfile(
     First?: string;
     Last?: string;
   },
+  opts?: { contactDiscoveryEnabled?: boolean },
 ): Promise<void> {
   const db = getFirebaseFirestore();
-  const username = normalizeUsernameKey(input.Username);
-  const payload: RegisteredContactKeyDoc = {
-    uid,
-    username,
-    first: String(input.First ?? ''),
-    last: String(input.Last ?? ''),
-  };
+  const discoveryEnabled = opts?.contactDiscoveryEnabled !== false;
+
+  if (!discoveryEnabled) {
+    await removePublishedContactKeys(db, uid, input);
+    return;
+  }
 
   const emailNorm = normalizeEmailKey(input.Email);
   if (emailNorm) {
-    await writeContactKeyIfAvailable(db, emailKeyDocId(emailNorm), payload);
+    await writeContactKeyIfAvailable(db, emailKeyDocId(emailNorm), uid);
   }
 
   const phoneNorm = input.Phone ? normalizePhoneKey(input.Phone) : null;
   if (phoneNorm) {
-    await writeContactKeyIfAvailable(db, phoneKeyDocId(phoneNorm), payload);
+    await writeContactKeyIfAvailable(db, phoneKeyDocId(phoneNorm), uid);
   }
 
   await upsertPhoneLoginLookupForUid(db, uid, input.Email, input.Phone);
@@ -151,20 +175,36 @@ export async function syncRegisteredContactKeysFromUserInfo(uid: string): Promis
   if (!info) {
     return;
   }
-  await registerContactKeysForProfile(uid, {
-    Email: info.Email ?? '',
-    Phone: info.Phone ?? '',
-    Username: info.Username ?? '',
-    First: info.First,
-    Last: info.Last,
-  });
+  const acts = mergeActsDefaults(info.ActsSettings);
+  await registerContactKeysForProfile(
+    uid,
+    {
+      Email: info.Email ?? '',
+      Phone: info.Phone ?? '',
+      Username: info.Username ?? '',
+      First: info.First,
+      Last: info.Last,
+    },
+    { contactDiscoveryEnabled: acts.allowContactDiscovery },
+  );
 }
 
-export async function fetchRegisteredUserByKeyDocId(docId: string): Promise<RegisteredContactKeyDoc | null> {
-  const db = getFirebaseFirestore();
-  const snap = await getDoc(keysRef(db, docId));
-  if (!snap.exists()) {
+/** Single-key lookup via rate-limited callable (friend search by email/phone). */
+export async function fetchRegisteredUserByKeyDocId(docId: string): Promise<{
+  uid: string;
+  username: string;
+  first: string;
+  last: string;
+} | null> {
+  const matches = await lookupContactKeysByDocIds([docId]);
+  const hit = matches.find((m) => m.keyDocId === docId);
+  if (!hit) {
     return null;
   }
-  return snap.data() as RegisteredContactKeyDoc;
+  return {
+    uid: hit.uid,
+    username: hit.username,
+    first: hit.first,
+    last: hit.last,
+  };
 }

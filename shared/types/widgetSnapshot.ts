@@ -17,4 +17,16 @@ export const WIDGET_IOS_DATA_KEY = 'ActsWidgetData';
 export const WIDGET_IOS_APP_GROUP = 'group.com.FrogCOO.Acts.expowidgets';
 export const ANDROID_WIDGET_STREAK = 'ActsStreakWidget';
 export const ANDROID_WIDGET_TASKS = 'ActsTasksWidget';
-export const WIDGET_TASKS_DEEP_LINK = 'acts:///(app)/(tabs)/tasks';
+
+/** Opens the Tasks tab; optional `taskId` scrolls to that act in the list. */
+export function widgetTasksDeepLink(taskId?: string): string {
+  const base = 'acts:///(app)/(tabs)/tasks';
+  const id = taskId?.trim();
+  if (!id) {
+    return base;
+  }
+  return `${base}?taskId=${encodeURIComponent(id)}`;
+}
+
+/** Default widget tap target (Tasks tab, no specific act). */
+export const WIDGET_TASKS_DEEP_LINK = widgetTasksDeepLink();

@@ -22,7 +22,7 @@ const INCOMPLETE_NUDGE_INFO =
   'Incomplete nudges fire three hours after your daily time (by 9 PM).';
 
 const FRIENDS_PUSH_INFO =
-  'Choose what you want to hear about. These show up in your Activity feed, and as alerts on this device while Acts is open.';
+  'Choose what you want to hear about. Alerts appear in your Activity feed, on this device while Acts is open, and as push notifications when Acts is in the background.';
 
 export default function SettingsNotificationsScreen() {
   const uid = useAuthStore((s) => s.user?.uid);
@@ -61,10 +61,17 @@ export default function SettingsNotificationsScreen() {
           infoText={INCOMPLETE_NUDGE_INFO}
         />
         <YesNoRow
-          label="Streak evening nudge (8 PM)"
+          label="Streak evening nudge (5 PM)"
           value={base.notifyStreakWarning}
           onPick={(v) => pick({ notifyStreakWarning: v })}
           disabled={mutation.isPending}
+        />
+        <YesNoRow
+          label="Win-back reminder (14+ days away)"
+          value={base.notifyWinBack}
+          onPick={(v) => pick({ notifyWinBack: v })}
+          disabled={mutation.isPending}
+          infoText="A gentle nudge when you have not completed an act in about two weeks."
           showDivider={!dailySchedulingOn}
         />
         {dailySchedulingOn ? (
@@ -94,6 +101,18 @@ export default function SettingsNotificationsScreen() {
           label="Monthly act (1st of month, 10 AM)"
           value={base.notifyMonthlyActReminder}
           onPick={(v) => pick({ notifyMonthlyActReminder: v })}
+          disabled={mutation.isPending}
+        />
+        <YesNoRow
+          label="Seasonal challenges (start, milestones, ending soon)"
+          value={base.notifySeasonChallenges}
+          onPick={(v) => pick({ notifySeasonChallenges: v })}
+          disabled={mutation.isPending}
+        />
+        <YesNoRow
+          label="Friends leaderboard (rank changes, Sunday summary)"
+          value={base.notifyLeaderboardUpdates}
+          onPick={(v) => pick({ notifyLeaderboardUpdates: v })}
           disabled={mutation.isPending}
         />
         <YesNoRow

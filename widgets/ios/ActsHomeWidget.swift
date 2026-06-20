@@ -18,6 +18,15 @@ private struct WidgetSurfaceBackground: View {
     }
 }
 
+private func tasksDeepLink(taskId: String? = nil) -> URL {
+    var path = "acts:///(app)/(tabs)/tasks"
+    if let id = taskId?.trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+        let encoded = id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? id
+        path += "?taskId=\(encoded)"
+    }
+    return URL(string: path) ?? URL(string: "acts:///(app)/(tabs)/tasks")!
+}
+
 struct ActsHomeWidgetEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot
@@ -90,7 +99,24 @@ struct ActsHomeWidgetEntryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(12)
-        .widgetURL(URL(string: "acts:///(app)/(tabs)/tasks"))
+        .widgetURL(tasksDeepLink())
+    }
+
+    @ViewBuilder
+    private func taskRow(_ task: WidgetSnapshot.TaskItem) -> some View {
+        if #available(iOS 17.0, *) {
+            Link(destination: tasksDeepLink(taskId: task.id)) {
+                Text("• \(task.title)")
+                    .font(.subheadline)
+                    .foregroundStyle(primaryText)
+                    .lineLimit(1)
+            }
+        } else {
+            Text("• \(task.title)")
+                .font(.subheadline)
+                .foregroundStyle(primaryText)
+                .lineLimit(1)
+        }
     }
 
     private var mediumView: some View {
@@ -115,10 +141,7 @@ struct ActsHomeWidgetEntryView: View {
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(entry.snapshot.tasks.prefix(3), id: \.id) { task in
-                        Text("• \(task.title)")
-                            .font(.subheadline)
-                            .foregroundStyle(primaryText)
-                            .lineLimit(1)
+                        taskRow(task)
                     }
                 }
                 Spacer(minLength: 0)
@@ -126,7 +149,7 @@ struct ActsHomeWidgetEntryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(12)
-        .widgetURL(URL(string: "acts:///(app)/(tabs)/tasks"))
+        .widgetURL(tasksDeepLink())
     }
 
     private var subtitle: String {

@@ -1,7 +1,6 @@
-import { View, Share, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Pressable, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, AppButton } from '@/shared/components/ui';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
@@ -13,9 +12,8 @@ import {
   useReferralStatsQuery,
   useReferralHistoryQuery,
 } from '@/features/referrals/hooks/useReferralQueries';
-import {
-  generateReferralLink,
-} from '@/features/referrals/referralRepository';
+import { copyTextToClipboard, shareInviteLink } from '@/features/sharing/inviteShareActions';
+import { getInviteShareMessage } from '@/shared/config/appInvite';
 
 /**
  * Referral invite card
@@ -26,8 +24,8 @@ export function ReferralInviteCard() {
   const user = useAuthStore((s) => s.user);
   const { data: userInfo } = useUserInfoQuery(uid);
   const act = useActAppearance();
-  const insets = useSafeAreaInsets();
   const [sharing, setSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const profileDisplayName = authorDisplayNameForDeed(userInfo, user);
   const { data: referralCode, isLoading: codeLoading } = useReferralCodeQuery(
@@ -38,27 +36,29 @@ export function ReferralInviteCard() {
 
   if (!uid || !userInfo || !referralCode) return null;
 
-  const referralLink = generateReferralLink(referralCode);
-  const shareMessage = `Join Acts with my referral code: ${referralCode}\n\nEarn rewards together as we complete deeds!\n\n${referralLink}`;
+  const shareMessage = `${getInviteShareMessage(uid)}\n\nReferral code: ${referralCode}`;
 
   const handleShare = async () => {
     try {
       setSharing(true);
-      await Share.share({
-        message: shareMessage,
-        title: 'Join Acts with my referral code',
-        url: referralLink, // iOS
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to share referral link');
+      await shareInviteLink(uid, 'Join Acts with my referral code');
+    } catch {
+      // User dismissed share sheet — no alert needed.
     } finally {
       setSharing(false);
     }
   };
 
+  const handleCopyLink = async () => {
+    await copyTextToClipboard(shareMessage);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleCopyCode = async () => {
-    // TODO: Copy to clipboard using react-native-clipboard
-    Alert.alert('Copied', `Referral code ${referralCode} copied to clipboard`);
+    await copyTextToClipboard(referralCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -80,7 +80,10 @@ export function ReferralInviteCard() {
       </View>
 
       {/* Referral Code Box */}
-      <View
+      <Pressable
+        onPress={() => void handleCopyCode()}
+        accessibilityRole="button"
+        accessibilityLabel={`Copy referral code ${referralCode}`}
         style={{
           backgroundColor: act.palette.ink + '05',
           borderRadius: 8,
@@ -89,7 +92,7 @@ export function ReferralInviteCard() {
           alignItems: 'center',
         }}>
         <AppText variant="body" className="text-xs" style={{ color: act.palette.muted }}>
-          Your Referral Code
+          Your referral code · tap to copy
         </AppText>
         <AppText
           variant="subtitle"
@@ -97,14 +100,14 @@ export function ReferralInviteCard() {
           style={{ color: act.palette.green, marginTop: 4 }}>
           {referralCode}
         </AppText>
-      </View>
+      </Pressable>
 
       {/* Description */}
       <AppText
         variant="body"
         className="text-xs"
         style={{ color: act.palette.muted, marginBottom: 12, lineHeight: 18 }}>
-        Share your code with friends. When they sign up and complete 5 tasks, you both get rewards:
+        Share your invite link with friends. When they sign up and complete 5 tasks, you both get rewards:
         {'\n'}✓ You get +100 XP{'\n'}✓ They get +500 XP welcome bonus
       </AppText>
 
@@ -134,15 +137,15 @@ export function ReferralInviteCard() {
       {/* Buttons */}
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <AppButton
-          title="Share Code"
+          title="Share invite"
           onPress={handleShare}
           disabled={sharing || codeLoading}
           loading={sharing}
           style={{ flex: 1 }}
         />
         <AppButton
-          title="Copy"
-          onPress={handleCopyCode}
+          title={copied ? 'Copied!' : 'Copy link'}
+          onPress={handleCopyLink}
           variant="secondary"
           style={{ flex: 1 }}
         />

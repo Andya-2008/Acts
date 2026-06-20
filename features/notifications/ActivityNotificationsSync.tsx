@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { ensureNotificationHandler } from '@/features/notifications/notificationHandler';
 import { syncActivityNotifications } from '@/features/notifications/syncActivityNotifications';
 import { useTasksQuery } from '@/features/tasks/hooks/useTasksQueries';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
@@ -23,6 +24,7 @@ export function ActivityNotificationsSync() {
     if (Platform.OS === 'web' || !uid) {
       return;
     }
+    ensureNotificationHandler();
     const run = () => {
       if (busy.current) {
         return;

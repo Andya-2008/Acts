@@ -1,7 +1,6 @@
 /**
  * Native autolinking overrides.
  * - expo-firebase-core: deprecated; incompatible with Expo SDK 54+ (ExportedModule removed).
- *   Phone SMS reCAPTCHA uses expo-firebase-recaptcha (WebView + JS config only).
  * - react-native-google-mobile-ads: disabled when rewarded ads are off.
  */
 function stripEnv(v) {

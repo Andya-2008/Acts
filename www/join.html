@@ -6,6 +6,7 @@
     <title>Join Acts</title>
     <meta name="description" content="You've been invited to Acts. Download the app and connect with your friend." />
     <meta name="apple-itunes-app" content="app-id=6770841231" />
+    <meta name="google-play-app" content="app-id=com.FrogCOO.Acts" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -36,7 +37,14 @@
             class="btn btn-secondary"
             id="app-store"
             href="https://apps.apple.com/us/app/acts-be-kind/id6770841231"
-            >Get on the App Store</a
+            >Get Acts</a
+          >
+          <a
+            class="btn btn-secondary"
+            id="play-store"
+            href="https://play.google.com/store/apps/details?id=com.FrogCOO.Acts"
+            hidden
+            >Get on Google Play</a
           >
         </div>
 
@@ -60,6 +68,27 @@
         var MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
         var APP_STORE =
           'https://apps.apple.com/us/app/acts-be-kind/id6770841231';
+        var PLAY_STORE =
+          'https://play.google.com/store/apps/details?id=com.FrogCOO.Acts';
+
+        function isAndroid() {
+          return /Android/i.test(navigator.userAgent);
+        }
+
+        function isIOS() {
+          return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+
+        function primaryStoreUrl() {
+          if (isAndroid()) return PLAY_STORE;
+          return APP_STORE;
+        }
+
+        function primaryStoreLabel() {
+          if (isAndroid()) return 'Get on Google Play';
+          if (isIOS()) return 'Get on the App Store';
+          return 'Get Acts';
+        }
 
         function isValidUid(uid) {
           return (
@@ -110,6 +139,16 @@
         var lead = document.getElementById('join-lead');
         var openApp = document.getElementById('open-app');
         var appStore = document.getElementById('app-store');
+        var playStore = document.getElementById('play-store');
+
+        appStore.textContent = primaryStoreLabel();
+        appStore.href = primaryStoreUrl();
+        if (isAndroid()) {
+          appStore.hidden = true;
+          playStore.hidden = false;
+        } else if (!isIOS()) {
+          playStore.hidden = false;
+        }
 
         if (inviter) {
           badge.hidden = false;
@@ -118,7 +157,8 @@
             'Download Acts, create your account, and add your friend. When you connect, you both earn bonus seeds.';
           openApp.href =
             'acts://join?invitedBy=' + encodeURIComponent(inviter);
-          appStore.href = APP_STORE;
+          appStore.href = primaryStoreUrl();
+          playStore.href = PLAY_STORE;
         } else {
           openApp.href = 'acts://join';
           lead.textContent =
@@ -133,7 +173,7 @@
           e.preventDefault();
           setTimeout(function () {
             if (document.visibilityState === 'visible') {
-              window.location.href = APP_STORE;
+              window.location.href = primaryStoreUrl();
             }
           }, 1600);
         });

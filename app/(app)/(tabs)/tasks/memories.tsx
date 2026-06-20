@@ -16,10 +16,12 @@ import { router, type Href } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCreateDeedPostMutation } from '@/features/deed-feed/hooks/useDeedPostsQueries';
+import { DeedShareSheet } from '@/features/deed-feed/components/DeedShareSheet';
 import { authorDisplayNameForDeed } from '@/features/deed-feed/utils/authorDisplayName';
+import { defaultDeedShareCaption } from '@/features/deed-feed/utils/deedShareCaptions';
+import { deedShareRewardSummary } from '@/features/deed-feed/utils/deedShareRewardLabel';
 import { useTasksQuery } from '@/features/tasks/hooks/useTasksQueries';
-import { ServiceRankUpOverlay, type ServiceRankUpPayload } from '@/features/user-profile/components/ServiceRankUpOverlay';
-import { computeLifetimeRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
+import { enqueueRankUpIfPromotion } from '@/features/progression/enqueueRankUpIfPromotion';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { userInfoQueryKeys } from '@/features/user-profile/queryKeys';
 import { grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
@@ -29,9 +31,10 @@ import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
 import { modalAnimationType } from '@/shared/utils/accessibilityMotion';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useCurrencyStore } from '@/shared/stores/currencyStore';
+import { mergeActsDefaults } from '@/shared/types/actsSettings';
 import { HEARTS_FOR_DEED_FEED_SHARE } from '@/shared/utils/deedFeedReward';
 import { XP_FOR_DEED_FEED_SHARE } from '@/shared/utils/xpRewards';
-import { weekendDoubleEarnedAmount, weekendDoubleXpDelta } from '@/shared/utils/weekendDouble';
+import { weekendDoubleEarnedAmount, weekendDoubleOptionsFromSettings, weekendDoubleXpDelta } from '@/shared/utils/weekendDouble';
 import type { ActTask } from '@/shared/types/task';
 
 function formatCompletedAt(task: ActTask): string {
@@ -70,8 +73,14 @@ export default function TaskMemoriesScreen() {
   const { width: winW, height: winH } = useWindowDimensions();
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
-  const [rankUpPayload, setRankUpPayload] = useState<ServiceRankUpPayload | null>(null);
+  const [deedShareSheetTask, setDeedShareSheetTask] = useState<ActTask | null>(null);
   const createDeedPostMutation = useCreateDeedPostMutation();
+  const actsSettings = mergeActsDefaults(userInfo?.ActsSettings);
+  const weekendDoubleOpts = weekendDoubleOptionsFromSettings(actsSettings);
+  const feedSharingEnabled = actsSettings.feedSharing;
+  const deedShareSeedsReward = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
+  const deedShareXpReward = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
+  const deedShareRewardLabel = deedShareRewardSummary(deedShareSeedsReward, deedShareXpReward);
 
   const memories = useMemo(() => {
     const list = (tasks ?? []).filter((t) => t.completedAt != null);
@@ -82,7 +91,7 @@ export default function TaskMemoriesScreen() {
   const photoBlockHeight = Math.round(Math.min(winH * 0.88, winW * 1.6));
 
   const shareToDeedFeed = useCallback(
-    (task: ActTask) => {
+    (task: ActTask, caption?: string) => {
       if (task.deedFeedPostId) {
         return;
       }
@@ -98,29 +107,27 @@ export default function TaskMemoriesScreen() {
           uid,
           authorDisplayName,
           authorProfilePicUrl,
-          caption: task.textShort.trim(),
+          caption: caption?.trim() || defaultDeedShareCaption(task),
           photoSourceUri: url,
           sourceTaskId: task.id,
         },
         { onError: (e) => setShareError(mapAuthError(e)), onSuccess: () => {
           setShareError(null);
-          const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE);
-          const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE);
+          setDeedShareSheetTask(null);
+          const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
+          const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
           useCurrencyStore.getState().adjustBalance(hearts);
           if (uid) {
             const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
-            const transition = computeLifetimeRankPromotionTransition(prevXp, xpGrant);
             void grantLifetimeXp(uid, xpGrant).then(() => {
               void queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) });
-              if (transition) {
-                setRankUpPayload(transition);
-              }
+              enqueueRankUpIfPromotion(prevXp, xpGrant);
             });
           }
         } },
       );
     },
-    [uid, user, userInfo, createDeedPostMutation, queryClient],
+    [uid, user, userInfo, createDeedPostMutation, queryClient, weekendDoubleOpts],
   );
 
   const renderItem: ListRenderItem<ActTask> = useCallback(
@@ -145,9 +152,9 @@ export default function TaskMemoriesScreen() {
           <AppText variant="caption" className="mt-1 text-acts-muted">
             {formatCompletedAt(item)}
           </AppText>
-          {item.photoUrl && Platform.OS !== 'web' && !item.deedFeedPostId ? (
+          {item.photoUrl && Platform.OS !== 'web' && feedSharingEnabled && !item.deedFeedPostId ? (
             <AppButton
-              title="Share to deed feed"
+              title={`Share to deed feed (${deedShareRewardLabel})`}
               variant="secondary"
               className="mt-3"
               disabled={createDeedPostMutation.isPending}
@@ -155,7 +162,7 @@ export default function TaskMemoriesScreen() {
                 createDeedPostMutation.isPending &&
                 createDeedPostMutation.variables?.sourceTaskId === item.id
               }
-              onPress={() => shareToDeedFeed(item)}
+              onPress={() => setDeedShareSheetTask(item)}
             />
           ) : null}
           {item.deedFeedPostId ? (
@@ -166,7 +173,7 @@ export default function TaskMemoriesScreen() {
         </View>
       </View>
     ),
-    [photoBlockHeight, winW, createDeedPostMutation.isPending, createDeedPostMutation.variables, shareToDeedFeed],
+    [photoBlockHeight, winW, createDeedPostMutation.isPending, createDeedPostMutation.variables, feedSharingEnabled, deedShareRewardLabel],
   );
 
   const listEmpty = useMemo(() => {
@@ -264,7 +271,19 @@ export default function TaskMemoriesScreen() {
           </Pressable>
         </SafeAreaView>
       </Modal>
-      <ServiceRankUpOverlay payload={rankUpPayload} onClose={() => setRankUpPayload(null)} />
+      <DeedShareSheet
+        visible={deedShareSheetTask != null}
+        task={deedShareSheetTask}
+        seedsReward={deedShareSeedsReward}
+        xpReward={deedShareXpReward}
+        sharing={createDeedPostMutation.isPending}
+        onShare={(caption) => {
+          if (deedShareSheetTask) {
+            shareToDeedFeed(deedShareSheetTask, caption);
+          }
+        }}
+        onClose={() => setDeedShareSheetTask(null)}
+      />
     </Screen>
   );
 }

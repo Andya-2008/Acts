@@ -1,7 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, router } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  RefreshControl,
+  SectionList,
+  View,
+} from 'react-native';
 
 import { HeaderBackLabel } from '@/shared/components/HeaderBackLabel';
 import { stackHeaderChrome } from '@/shared/navigation/stackHeaderChrome';
@@ -13,6 +20,8 @@ import type {
   DerivedNotification,
   DerivedNotificationType,
 } from '@/features/notifications/derivedNotifications';
+import { groupNotificationsByTime } from '@/features/notifications/utils/notificationInboxSections';
+import { relativeNotificationTime } from '@/features/notifications/utils/relativeNotificationTime';
 import { AppButton, AppText, Screen } from '@/shared/components/ui';
 
 type IonName = keyof typeof Ionicons.glyphMap;
@@ -21,6 +30,8 @@ function iconForType(type: DerivedNotificationType): { icon: IonName; color: str
   switch (type) {
     case 'friend_request':
       return { icon: 'person-add', color: '#6366F1' };
+    case 'friend_request_accepted':
+      return { icon: 'people', color: '#6366F1' };
     case 'deed_reaction':
       return { icon: 'heart', color: '#E11D74' };
     case 'deed_comment':
@@ -32,21 +43,6 @@ function iconForType(type: DerivedNotificationType): { icon: IonName; color: str
     default:
       return { icon: 'notifications', color: '#6B7280' };
   }
-}
-
-function relativeTime(ms: number): string {
-  if (!ms) {
-    return '';
-  }
-  const seconds = Math.floor((Date.now() - ms) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function NotificationRow({
@@ -82,7 +78,7 @@ function NotificationRow({
           {item.message}
         </AppText>
         <AppText variant="caption" className="mt-0.5 text-acts-muted">
-          {relativeTime(item.timestampMs)}
+          {relativeNotificationTime(item.timestampMs)}
         </AppText>
       </View>
       {unread ? <View className="h-2.5 w-2.5 rounded-full bg-acts-green" /> : null}
@@ -96,21 +92,49 @@ export default function NotificationsScreen() {
   const { items, isLoading, isError, refetch, isRefetching, lastSeenAt, unreadCount, markAllSeen } =
     useDerivedNotifications(uid);
 
-  // Capture the unread baseline once, then clear the badge by marking everything seen.
   const baselineRef = useRef<number | null>(null);
+  const [newBannerCount, setNewBannerCount] = useState(0);
+  const [readBaselineMs, setReadBaselineMs] = useState<number | null>(null);
+
   useEffect(() => {
     if (!isLoading && baselineRef.current === null) {
       baselineRef.current = lastSeenAt;
+      setNewBannerCount(unreadCount);
+      setReadBaselineMs(lastSeenAt);
       void markAllSeen();
     }
-  }, [isLoading, lastSeenAt, markAllSeen]);
-  const baseline = baselineRef.current ?? lastSeenAt;
+  }, [isLoading, lastSeenAt, markAllSeen, unreadCount]);
+
+  const unreadBaseline = readBaselineMs ?? baselineRef.current ?? lastSeenAt;
+  const showNewBanner = newBannerCount > 0;
+
+  const sections = useMemo(() => groupNotificationsByTime(items), [items]);
+
+  const onMarkAllRead = () => {
+    const now = Date.now();
+    baselineRef.current = now;
+    setReadBaselineMs(now);
+    setNewBannerCount(0);
+    void markAllSeen();
+  };
 
   const headerOptions = {
     ...stackHeaderChrome(act),
     headerShown: true as const,
     title: 'Activity',
     headerLeft: () => <HeaderBackLabel />,
+    headerRight: () =>
+      showNewBanner ? (
+        <Pressable
+          onPress={onMarkAllRead}
+          accessibilityRole="button"
+          accessibilityLabel="Mark all activity as read"
+          className="px-3 py-1 active:opacity-70">
+          <AppText variant="caption" className="font-semibold text-acts-green">
+            Mark all read
+          </AppText>
+        </Pressable>
+      ) : null,
   };
 
   if (isLoading) {
@@ -170,30 +194,44 @@ export default function NotificationsScreen() {
     <>
       <Stack.Screen options={headerOptions} />
       <View className="flex-1 bg-acts-canvas">
-        {unreadCount > 0 ? (
+        {showNewBanner ? (
           <View className="flex-row items-center justify-between px-5 pb-1 pt-2">
             <AppText variant="caption" className="font-semibold text-acts-green">
-              {unreadCount} new
+              {newBannerCount} new
             </AppText>
           </View>
         ) : null}
-        <FlatList
-          data={items}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
+          renderSectionHeader={({ section }) => (
+            <View className="bg-acts-canvas px-5 pb-1 pt-3">
+              <AppText variant="label" className="text-acts-muted">
+                {section.title}
+              </AppText>
+            </View>
+          )}
           renderItem={({ item }) => (
             <NotificationRow
               item={item}
-              unread={item.timestampMs > baseline}
+              unread={item.timestampMs > unreadBaseline}
               onPress={() => {
                 void markAllSeen();
+                setReadBaselineMs(Date.now());
                 router.push(hrefForDerivedNotification(item));
               }}
             />
           )}
           ItemSeparatorComponent={() => <View className="ml-[72px] h-px bg-acts-border/50" />}
+          SectionSeparatorComponent={() => <View className="h-1" />}
           contentContainerStyle={{ paddingBottom: 32 }}
+          stickySectionHeadersEnabled={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={act.palette.green} />
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => void refetch()}
+              tintColor={act.palette.green}
+            />
           }
           showsVerticalScrollIndicator={false}
         />

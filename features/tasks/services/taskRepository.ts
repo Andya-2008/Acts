@@ -24,7 +24,7 @@ import { getFirebaseFirestore } from '@/shared/services/firebase/client';
 import type { ActTask, TaskCadence, TaskCatalogEntry, TaskDifficultyLevel } from '@/shared/types/task';
 import type { UserInfoRead } from '@/shared/types/userInfo';
 import { mergeActsDefaults, type TaskRosterPeriodKeys } from '@/shared/types/actsSettings';
-import { preferredDifficultyLevelFromActs } from '@/shared/utils/preferredTaskDifficulty';
+import { preferredDifficultyLevelForUser } from '@/features/tasks/utils/taskOnboardingPreference';
 
 const CADENCES: TaskCadence[] = ['daily', 'weekly', 'monthly', 'anytime'];
 
@@ -352,7 +352,8 @@ export async function reconcilePeriodRosters(
   const perCadence = autoAssignPerCadenceFromPurchases(purchased);
   const sliceOptions = {
     uid,
-    preferredDifficultyLevel: preferredDifficultyLevelFromActs(acts.preferredDifficulty),
+    user: userData,
+    preferredDifficultyLevel: preferredDifficultyLevelForUser(userData),
   };
   const catalogFiltered = cat.filter((e) => catalogEntryMatchesUser(e, userData ?? undefined));
 

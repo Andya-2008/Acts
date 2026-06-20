@@ -2,7 +2,8 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
-import { grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
+import { fetchUserInfo, grantLifetimeXp } from '@/features/user-profile/services/userInfoRepository';
+import { enqueueRankUpIfPromotion } from '@/features/progression/enqueueRankUpIfPromotion';
 import { uploadSeasonChallengePhoto } from '@/shared/services/firebase/storageUploads';
 
 import type { SeasonalChallenge, SeasonalSeason } from './data/seasons';
@@ -159,7 +160,10 @@ export async function recordChallengeCompletion(
   );
 
   if (xpGranted > 0) {
+    const userInfo = await fetchUserInfo(uid);
+    const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
     await grantLifetimeXp(uid, xpGranted);
+    enqueueRankUpIfPromotion(prevXp, xpGranted);
   }
 
   return { xpGranted, newCount, totalXpEarned };

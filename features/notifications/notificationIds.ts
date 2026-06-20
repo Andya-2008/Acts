@@ -7,6 +7,12 @@ export const LOCAL_NOTIFICATION_IDS = {
   weekendDouble: 'acts-retention-weekend',
   weeklyActMonday: 'acts-retention-weekly-act',
   monthlyAct: 'acts-retention-monthly',
+  seasonStart: 'acts-retention-season-start',
+  seasonEndingSoon: 'acts-retention-season-ending',
+  seasonMilestone: 'acts-retention-season-milestone',
+  leaderboardRankUp: 'acts-retention-leaderboard-rank',
+  leaderboardWeekly: 'acts-retention-leaderboard-weekly',
+  winBack: 'acts-retention-win-back',
 } as const;
 
 /** Activity (social + new acts) local notification identifiers. */

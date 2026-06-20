@@ -204,15 +204,16 @@ service cloud.firestore {
     }
 
     match /registeredContactKeys/{key} {
-      allow get: if request.auth != null;
+      /** PII lookup is server-only via `lookupContactKeys` (rate-limited callable). */
+      allow get: if false;
       allow list: if false;
       allow create: if request.auth != null
-        && request.resource.data.keys().hasAll(['uid', 'username', 'first', 'last'])
+        && request.resource.data.keys().hasOnly(['uid'])
         && request.resource.data.uid == request.auth.uid;
       allow update: if request.auth != null
         && resource.data.uid == request.auth.uid
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(['uid', 'username', 'first', 'last']);
+        && request.resource.data.keys().hasOnly(['uid']);
       allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
   }

@@ -14,19 +14,55 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useQueryClient } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useGlobalSearchParams } from 'expo-router';
 
 import { FirstActSpotlightCard } from '@/features/tasks/components/FirstActSpotlightCard';
+import { StreakAtRiskCard } from '@/features/tasks/components/StreakAtRiskCard';
+import { WinBackPromptCard } from '@/features/retention/components/WinBackPromptCard';
+import {
+  daysSinceLastActCompletion,
+  isWinBackInactive,
+  lastActCompletionMs,
+} from '@/features/retention/lastActActivity';
+import {
+  getWinBackPromptDismissed,
+  setWinBackPromptDismissed,
+} from '@/features/retention/winBackPromptStorage';
 import { TaskListFiltersModal } from '@/features/tasks/components/TaskListFiltersModal';
+import { TaskListFocusFooter } from '@/features/tasks/components/TaskListFocusFooter';
+import { TaskListToolbar } from '@/features/tasks/components/TaskListToolbar';
 import { TaskRewardFly } from '@/features/tasks/components/TaskRewardFly';
 import { TaskRow, type TaskToggleOrigin } from '@/features/tasks/components/TaskRow';
 import {
   getFirstActPromptDone,
   setFirstActPromptDone,
 } from '@/features/tasks/firstActPromptStorage';
-import { pickFirstActCandidate } from '@/features/tasks/utils/pickFirstActCandidate';
+import { getStreakNudgeDismissed, setStreakNudgeDismissed } from '@/features/tasks/streakNudgeStorage';
+import { pickTodayFocusTasks } from '@/features/tasks/utils/pickTodayFocusTasks';
+import { taskMatchesSearchQuery } from '@/features/tasks/utils/taskListSearch';
+import {
+  defaultTaskListViewMode,
+  getTaskListViewMode,
+  setTaskListViewMode,
+  type TaskListViewMode,
+} from '@/features/tasks/taskListViewStorage';
 import { addSeenTaskIds, loadSeenTaskIds, taskSeenKey } from '@/features/tasks/taskSeenStorage';
 import { authorDisplayNameForDeed } from '@/features/deed-feed/utils/authorDisplayName';
+import { DeedShareSheet } from '@/features/deed-feed/components/DeedShareSheet';
+import { defaultDeedShareCaption } from '@/features/deed-feed/utils/deedShareCaptions';
+import { deedShareRewardSummary } from '@/features/deed-feed/utils/deedShareRewardLabel';
+import {
+  RewardsDiscoveryPromptCard,
+  openRewardsShop,
+} from '@/features/shop/components/RewardsDiscoveryPromptCard';
+import {
+  getRewardsDiscoveryDismissed,
+  setRewardsDiscoveryDismissed,
+} from '@/features/shop/rewardsDiscoveryPromptStorage';
+import {
+  suggestRewardsHighlightItem,
+  userNeedsTaskThemeDiscovery,
+} from '@/features/shop/suggestRewardsHighlight';
 import { ownedTaskThemeSet } from '@/features/shop/shopCatalog';
 import { autoAssignPerCadenceFromPurchases } from '@/features/shop/shopEntitlements';
 import { useCreateDeedPostMutation } from '@/features/deed-feed/hooks/useDeedPostsQueries';
@@ -47,8 +83,10 @@ import {
   activeFilterCount,
   DEFAULT_TASK_LIST_FILTERS,
   filtersAreActive,
+  filtersBeyondDefault,
   taskMatchesListFilters,
 } from '@/features/tasks/utils/taskListFilters';
+import { pickFirstActCandidate } from '@/features/tasks/utils/pickFirstActCandidate';
 import {
   FriendsCirclePromptCard,
   shouldShowFriendsCirclePrompt,
@@ -56,8 +94,11 @@ import {
 import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
 import { canUseBonusStreakGrace } from '@/features/rewarded-ads/bonusStreakGrace';
 import { applyBonusStreakGraceReward, mapRewardedAdError } from '@/features/rewarded-ads/rewardedAdApi';
+import { profileHasSavedPhone } from '@/features/user-profile/utils/profilePhone';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
-import { ServiceRankUpOverlay, type ServiceRankUpPayload } from '@/features/user-profile/components/ServiceRankUpOverlay';
+import { enqueueRankUpIfPromotion } from '@/features/progression/enqueueRankUpIfPromotion';
+import { useProgressionCelebrationStore } from '@/features/progression/progressionCelebrationStore';
+import type { ServiceRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
 import { computeLifetimeRankPromotionTransition } from '@/features/user-profile/config/xpServiceRanks';
 import { useMergeActsSettingsMutation } from '@/features/user-profile/hooks/useUserInfoMutations';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
@@ -67,9 +108,11 @@ import {
   canOfferStreakGraceSave,
   calendarMonthKey,
 } from '@/features/user-profile/utils/computeCompletionStreak';
+import { getStreakAtRiskState } from '@/features/user-profile/utils/streakAtRisk';
 import { mergeActsDefaults } from '@/shared/types/actsSettings';
+import { trackWinBackEngaged, trackWinBackPromptShown } from '@/shared/services/firebase/analytics';
 import { celebrateTaskComplete, taskUncheckedHaptic } from '@/shared/utils/haptics';
-import { preferredDifficultyLevelFromActs } from '@/shared/utils/preferredTaskDifficulty';
+import { preferredDifficultyLevelForUser } from '@/features/tasks/utils/taskOnboardingPreference';
 import { resolveEquippedTaskCheckTheme } from '@/features/cosmetics/taskCheckThemes';
 import { ActsTextInput, AppButton, AppCard, AppText, FadeInView, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { useReduceMotion } from '@/shared/hooks/useReduceMotion';
@@ -86,6 +129,17 @@ import { isWeekendDoubleActive, weekendDoubleEarnedAmount, weekendDoubleOptionsF
 
 export default function TasksListScreen() {
   const reduceMotion = useReduceMotion();
+  const searchParams = useGlobalSearchParams<{ taskId?: string | string[] }>();
+  const focusTaskId = useMemo(() => {
+    const raw = searchParams.taskId;
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw.trim();
+    }
+    if (Array.isArray(raw) && typeof raw[0] === 'string') {
+      return raw[0].trim();
+    }
+    return undefined;
+  }, [searchParams.taskId]);
   const uid = useAuthStore((s) => s.user?.uid);
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -95,11 +149,20 @@ export default function TasksListScreen() {
   const { data: userInfo } = useUserInfoQuery(uid);
   const friendUidsQuery = useFriendUidsQuery(uid);
   const friendCount = friendUidsQuery.data?.length ?? 0;
-  const showGrowFriendsPrompt =
-    friendUidsQuery.isFetched && shouldShowFriendsCirclePrompt(friendCount);
+  const showPhoneHintForFriends = !profileHasSavedPhone(userInfo?.Phone);
   const tutorialOpen = useTutorialGateStore((s) => s.firstRunTutorialOpen);
   const listRef = useRef<FlatListType<ActTask>>(null);
   const [firstActPromptDone, setFirstActPromptDoneState] = useState<boolean | null>(null);
+  const [widgetHighlightTaskId, setWidgetHighlightTaskId] = useState<string | null>(null);
+  const [streakNudgeDismissed, setStreakNudgeDismissedState] = useState<boolean | null>(null);
+  const [streakRiskCheckNonce, setStreakRiskCheckNonce] = useState(0);
+  const [rewardsDiscoveryDismissed, setRewardsDiscoveryDismissedState] = useState<boolean | null>(null);
+  const [winBackDismissed, setWinBackDismissedState] = useState<boolean | null>(null);
+  const [winBackCheckNonce, setWinBackCheckNonce] = useState(0);
+  const winBackTrackedRef = useRef(false);
+  const [deedShareSheetTask, setDeedShareSheetTask] = useState<ActTask | null>(null);
+  const [deedShareNudgeTaskId, setDeedShareNudgeTaskId] = useState<string | null>(null);
+  const seedsBalance = useCurrencyStore((s) => s.balance);
 
   useEffect(() => {
     if (!uid) {
@@ -107,6 +170,7 @@ export default function TasksListScreen() {
       return;
     }
     void getFirstActPromptDone(uid).then(setFirstActPromptDoneState);
+    void getRewardsDiscoveryDismissed(uid).then(setRewardsDiscoveryDismissedState);
   }, [uid]);
 
   const hasCompletedAnyAct = useMemo(
@@ -125,6 +189,19 @@ export default function TasksListScreen() {
   const weekendDoubleOpts = useMemo(
     () => weekendDoubleOptionsFromSettings(actsSettingsForGrace),
     [actsSettingsForGrace.weekendDoubleExtendedUntil],
+  );
+  const feedSharingEnabled = actsSettingsForGrace.feedSharing;
+  const deedShareSeedsReward = useMemo(
+    () => weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts),
+    [weekendDoubleOpts],
+  );
+  const deedShareXpReward = useMemo(
+    () => weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts),
+    [weekendDoubleOpts],
+  );
+  const deedShareRewardLabel = useMemo(
+    () => deedShareRewardSummary(deedShareSeedsReward, deedShareXpReward),
+    [deedShareSeedsReward, deedShareXpReward],
   );
   const streakGraceOffer = useMemo(
     () => canOfferStreakGraceSave(tasks ?? [], actsSettingsForGrace),
@@ -164,6 +241,8 @@ export default function TasksListScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [listFilters, setListFilters] = useState(DEFAULT_TASK_LIST_FILTERS);
   const [filtersModalOpen, setFiltersModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<TaskListViewMode | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [rewardFly, setRewardFly] = useState<{
     key: number;
@@ -174,11 +253,10 @@ export default function TasksListScreen() {
     heartCount: number;
   } | null>(null);
   const flyAmountRef = useRef(0);
-  const pendingRankUpRef = useRef<ServiceRankUpPayload | null>(null);
+  const pendingRankUpRef = useRef<ServiceRankPromotionTransition | null>(null);
   const autoAssignAttempted = useRef(false);
   const periodSigRef = useRef('');
   const [homeRosterVersion, setHomeRosterVersion] = useState(0);
-  const [rankUpPayload, setRankUpPayload] = useState<ServiceRankUpPayload | null>(null);
 
   const bumpHomeRosterIfPeriodChanged = useCallback(() => {
     const n = new Date();
@@ -224,17 +302,17 @@ export default function TasksListScreen() {
   const rosterPeriodKeys = useMemo(() => currentRosterPeriodKeys(), [homeRosterVersion]);
 
   const assignableFromCatalog = useMemo(() => {
-    const acts = mergeActsDefaults(userInfo?.ActsSettings);
     return sliceAutoAssignableFromCatalog(
       profileFilteredCatalog,
       new Date(),
       autoAssignPerCadenceFromPurchases(userInfo?.ShopPurchasedIds),
       {
         uid,
-        preferredDifficultyLevel: preferredDifficultyLevelFromActs(acts.preferredDifficulty),
+        user: userInfo ?? null,
+        preferredDifficultyLevel: preferredDifficultyLevelForUser(userInfo ?? null),
       },
     );
-  }, [profileFilteredCatalog, homeRosterVersion, userInfo?.ShopPurchasedIds, userInfo?.ActsSettings, uid]);
+  }, [profileFilteredCatalog, homeRosterVersion, userInfo, uid]);
 
   const homeRosterCatalogIds = useMemo(
     () => new Set(assignableFromCatalog.map((c) => c.taskId)),
@@ -284,9 +362,84 @@ export default function TasksListScreen() {
     return [...s];
   }, [tasks]);
 
-  const displayedTasks = useMemo(
-    () => visibleTasks.filter((t) => taskMatchesListFilters(t, listFilters)),
-    [visibleTasks, listFilters],
+  const displayedTasks = useMemo(() => {
+    const filtered = visibleTasks
+      .filter((t) => taskMatchesListFilters(t, listFilters))
+      .filter((t) => taskMatchesSearchQuery(t, searchQuery));
+
+    const forceAll = searchQuery.trim().length > 0 || filtersBeyondDefault(listFilters);
+    const mode = forceAll ? 'all' : (viewMode ?? 'all');
+    if (mode !== 'focus') {
+      return filtered;
+    }
+
+    const focusIds = new Set(
+      pickTodayFocusTasks(
+        filtered.filter((t) => t.completedAt == null),
+        userInfo ?? null,
+        3,
+      ).map((t) => t.id),
+    );
+    return filtered.filter((t) => focusIds.has(t.id));
+  }, [visibleTasks, listFilters, searchQuery, viewMode, userInfo]);
+
+  const effectiveViewMode: TaskListViewMode = useMemo(() => {
+    if (searchQuery.trim().length > 0 || filtersBeyondDefault(listFilters)) {
+      return 'all';
+    }
+    return viewMode ?? 'all';
+  }, [searchQuery, listFilters, viewMode]);
+
+  const hiddenFocusCount = useMemo(() => {
+    if (effectiveViewMode !== 'focus') {
+      return 0;
+    }
+    const filtered = visibleTasks
+      .filter((t) => taskMatchesListFilters(t, listFilters))
+      .filter((t) => taskMatchesSearchQuery(t, searchQuery));
+    return Math.max(0, filtered.length - displayedTasks.length);
+  }, [effectiveViewMode, visibleTasks, listFilters, searchQuery, displayedTasks.length]);
+
+  const showViewModeToggle = useMemo(() => {
+    if (searchQuery.trim().length > 0 || filtersBeyondDefault(listFilters)) {
+      return false;
+    }
+    const incomplete = visibleTasks.filter(
+      (t) => t.completedAt == null && taskMatchesListFilters(t, listFilters),
+    ).length;
+    return incomplete > 3;
+  }, [searchQuery, listFilters, visibleTasks]);
+
+  const viewModeInitializedRef = useRef(false);
+
+  useEffect(() => {
+    if (!uid) {
+      viewModeInitializedRef.current = false;
+      setViewMode(null);
+      return;
+    }
+    if (viewModeInitializedRef.current || tasks === undefined) {
+      return;
+    }
+    viewModeInitializedRef.current = true;
+    void getTaskListViewMode(uid).then((stored) => {
+      if (stored) {
+        setViewMode(stored);
+        return;
+      }
+      const incompleteCount = tasks.filter((t) => t.completedAt == null && t.active).length;
+      setViewMode(defaultTaskListViewMode(incompleteCount));
+    });
+  }, [uid, tasks]);
+
+  const onViewModeChange = useCallback(
+    (mode: TaskListViewMode) => {
+      setViewMode(mode);
+      if (uid) {
+        void setTaskListViewMode(uid, mode);
+      }
+    },
+    [uid],
   );
 
   // "New" markers: acts the user hasn't seen on this tab yet. Seen state is loaded
@@ -331,7 +484,10 @@ export default function TasksListScreen() {
     return out;
   }, [seenTaskIds, displayedTasks]);
 
-  const firstActCandidate = useMemo(() => pickFirstActCandidate(visibleTasks), [visibleTasks]);
+  const firstActCandidate = useMemo(
+    () => pickFirstActCandidate(visibleTasks, userInfo ?? null),
+    [visibleTasks, userInfo],
+  );
 
   const showFirstActSpotlight =
     firstActPromptDone === false &&
@@ -339,6 +495,39 @@ export default function TasksListScreen() {
     !hasCompletedAnyAct &&
     firstActCandidate != null &&
     displayedTasks.some((t) => t.id === firstActCandidate.id);
+
+  const rewardsHighlight = useMemo(
+    () => suggestRewardsHighlightItem(seedsBalance, userInfo?.ShopPurchasedIds),
+    [seedsBalance, userInfo?.ShopPurchasedIds],
+  );
+
+  const showRewardsDiscovery =
+    hasCompletedAnyAct &&
+    rewardsDiscoveryDismissed === false &&
+    userNeedsTaskThemeDiscovery(userInfo?.ShopPurchasedIds) &&
+    seedsBalance > 0 &&
+    rewardsHighlight != null &&
+    !showFirstActSpotlight &&
+    !tutorialOpen;
+
+  const dismissRewardsDiscovery = useCallback(() => {
+    if (!uid) {
+      return;
+    }
+    void setRewardsDiscoveryDismissed(uid).then(() => setRewardsDiscoveryDismissedState(true));
+  }, [uid]);
+
+  const onBrowseRewardsFromDiscovery = useCallback(() => {
+    dismissRewardsDiscovery();
+    openRewardsShop();
+  }, [dismissRewardsDiscovery]);
+
+  const showGrowFriendsPrompt =
+    friendUidsQuery.isFetched &&
+    shouldShowFriendsCirclePrompt(friendCount) &&
+    firstActPromptDone === true &&
+    !showFirstActSpotlight &&
+    !showRewardsDiscovery;
 
   const scrollToFirstAct = useCallback(() => {
     const index = displayedTasks.findIndex((t) => t.id === firstActCandidate?.id);
@@ -348,11 +537,173 @@ export default function TasksListScreen() {
     listRef.current?.scrollToIndex({ index, viewOffset: 140, animated: true });
   }, [displayedTasks, firstActCandidate?.id]);
 
+  useEffect(() => {
+    if (!focusTaskId || isPending || displayedTasks.length === 0) {
+      return;
+    }
+    const index = displayedTasks.findIndex((t) => t.id === focusTaskId);
+    if (index < 0) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToIndex({ index, viewOffset: 140, animated: true });
+      setWidgetHighlightTaskId(focusTaskId);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [focusTaskId, displayedTasks, isPending]);
+
+  useEffect(() => {
+    if (!widgetHighlightTaskId) {
+      return;
+    }
+    const timer = setTimeout(() => setWidgetHighlightTaskId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [widgetHighlightTaskId]);
+
   const dismissFirstActSpotlight = useCallback(() => {
     if (!uid) {
       return;
     }
     void setFirstActPromptDone(uid).then(() => setFirstActPromptDoneState(true));
+  }, [uid]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setStreakRiskCheckNonce((n) => n + 1);
+      setWinBackCheckNonce((n) => n + 1);
+      if (!uid) {
+        setStreakNudgeDismissedState(null);
+        setWinBackDismissedState(null);
+        return;
+      }
+      let active = true;
+      void getStreakNudgeDismissed(uid).then((dismissed) => {
+        if (active) {
+          setStreakNudgeDismissedState(dismissed);
+        }
+      });
+      if (tasks !== undefined) {
+        const lastMs = lastActCompletionMs(tasks);
+        if (lastMs == null) {
+          setWinBackDismissedState(null);
+        } else {
+          void getWinBackPromptDismissed(uid, lastMs).then((dismissed) => {
+            if (active) {
+              setWinBackDismissedState(dismissed);
+            }
+          });
+        }
+      }
+      return () => {
+        active = false;
+      };
+    }, [uid, tasks]),
+  );
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') {
+        setStreakRiskCheckNonce((n) => n + 1);
+        setWinBackCheckNonce((n) => n + 1);
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  const streakAtRisk = useMemo(
+    () =>
+      getStreakAtRiskState(tasks ?? [], {
+        streakGraceForgivenDayKey: actsSettingsForGrace.streakGraceForgivenDayKey,
+        streakGraceAppliedInMonth: actsSettingsForGrace.streakGraceAppliedInMonth,
+        streakGraceAdForgivenDayKey: actsSettingsForGrace.streakGraceAdForgivenDayKey,
+        streakGraceAdAppliedInMonth: actsSettingsForGrace.streakGraceAdAppliedInMonth,
+      }),
+    [
+      tasks,
+      streakRiskCheckNonce,
+      actsSettingsForGrace.streakGraceForgivenDayKey,
+      actsSettingsForGrace.streakGraceAppliedInMonth,
+      actsSettingsForGrace.streakGraceAdForgivenDayKey,
+      actsSettingsForGrace.streakGraceAdAppliedInMonth,
+    ],
+  );
+
+  const streakActCandidate = firstActCandidate;
+
+  const lastActMs = useMemo(() => lastActCompletionMs(tasks ?? []), [tasks, winBackCheckNonce]);
+
+  const winBackActCandidate = useMemo(
+    () => pickFirstActCandidate(visibleTasks.filter((t) => t.active && t.completedAt == null), userInfo ?? null),
+    [visibleTasks, userInfo],
+  );
+
+  const winBackDaysAway = useMemo(
+    () => daysSinceLastActCompletion(lastActMs) ?? 0,
+    [lastActMs, winBackCheckNonce],
+  );
+
+  const showWinBackPrompt =
+    hasCompletedAnyAct &&
+    isWinBackInactive(lastActMs) &&
+    winBackDismissed === false &&
+    !tutorialOpen &&
+    !showFirstActSpotlight;
+
+  useEffect(() => {
+    if (!showWinBackPrompt) {
+      winBackTrackedRef.current = false;
+      return;
+    }
+    if (winBackTrackedRef.current) {
+      return;
+    }
+    winBackTrackedRef.current = true;
+    trackWinBackPromptShown(winBackDaysAway);
+  }, [showWinBackPrompt, winBackDaysAway]);
+
+  const scrollToWinBackAct = useCallback(() => {
+    trackWinBackEngaged(winBackDaysAway);
+    const index = displayedTasks.findIndex((t) => t.id === winBackActCandidate?.id);
+    if (index < 0) {
+      return;
+    }
+    listRef.current?.scrollToIndex({ index, viewOffset: 140, animated: true });
+    if (winBackActCandidate) {
+      setWidgetHighlightTaskId(winBackActCandidate.id);
+    }
+  }, [displayedTasks, winBackActCandidate, winBackDaysAway]);
+
+  const dismissWinBackPrompt = useCallback(() => {
+    if (!uid || lastActMs == null) {
+      return;
+    }
+    void setWinBackPromptDismissed(uid, lastActMs).then(() => setWinBackDismissedState(true));
+  }, [uid, lastActMs]);
+
+  const showStreakAtRiskCard =
+    streakAtRisk.show &&
+    streakNudgeDismissed === false &&
+    !showFirstActSpotlight &&
+    !showWinBackPrompt &&
+    !streakGraceOffer.show &&
+    !bonusStreakGraceOffer.show &&
+    streakActCandidate != null &&
+    displayedTasks.some((t) => t.id === streakActCandidate.id);
+
+  const scrollToStreakAct = useCallback(() => {
+    const index = displayedTasks.findIndex((t) => t.id === streakActCandidate?.id);
+    if (index < 0) {
+      return;
+    }
+    listRef.current?.scrollToIndex({ index, viewOffset: 140, animated: true });
+    setWidgetHighlightTaskId(streakActCandidate!.id);
+  }, [displayedTasks, streakActCandidate]);
+
+  const dismissStreakAtRiskCard = useCallback(() => {
+    if (!uid) {
+      return;
+    }
+    void setStreakNudgeDismissed(uid).then(() => setStreakNudgeDismissedState(true));
   }, [uid]);
 
   const prevVisibleLen = useRef(0);
@@ -398,7 +749,7 @@ export default function TasksListScreen() {
     const pending = pendingRankUpRef.current;
     pendingRankUpRef.current = null;
     if (pending) {
-      setRankUpPayload(pending);
+      useProgressionCelebrationStore.getState().enqueueRankUp(pending);
     }
   }, [reduceMotion]);
 
@@ -410,10 +761,23 @@ export default function TasksListScreen() {
       setLocalError(null);
       saveTaskPhotoMutation.mutate(
         { taskId: task.id, localUri: uri },
-        { onError: (e) => setLocalError(mapAuthError(e)) },
+        {
+          onSuccess: () => {
+            if (
+              feedSharingEnabled &&
+              Platform.OS !== 'web' &&
+              task.completedAt != null &&
+              !task.deedFeedPostId
+            ) {
+              setDeedShareNudgeTaskId(null);
+              setDeedShareSheetTask({ ...task, photoUrl: uri });
+            }
+          },
+          onError: (e) => setLocalError(mapAuthError(e)),
+        },
       );
     },
-    [saveTaskPhotoMutation],
+    [saveTaskPhotoMutation, feedSharingEnabled],
   );
 
   const pickTaskPhotoFromLibrary = useCallback(
@@ -495,6 +859,9 @@ export default function TasksListScreen() {
               return;
             }
             celebrateTaskComplete();
+            if (feedSharingEnabled && Platform.OS !== 'web' && !task.deedFeedPostId) {
+              setDeedShareNudgeTaskId(task.id);
+            }
             const xpGain = weekendDoubleXpDelta(xpForCadence(task.cadence), new Date(), weekendDoubleOpts);
             const transition = xpGain > 0 ? computeLifetimeRankPromotionTransition(prevXp, xpGain) : null;
             if (xpGain > 0 && uid) {
@@ -505,7 +872,7 @@ export default function TasksListScreen() {
             const grantSeeds = weekendDoubleEarnedAmount(reward, new Date(), weekendDoubleOpts);
             if (grantSeeds <= 0) {
               if (transition) {
-                setRankUpPayload(transition);
+                useProgressionCelebrationStore.getState().enqueueRankUp(transition);
               }
               return;
             }
@@ -526,7 +893,7 @@ export default function TasksListScreen() {
             } else {
               useCurrencyStore.getState().adjustBalance(grantSeeds);
               if (transition) {
-                setRankUpPayload(transition);
+                useProgressionCelebrationStore.getState().enqueueRankUp(transition);
               }
             }
           },
@@ -534,7 +901,7 @@ export default function TasksListScreen() {
         },
       );
     },
-    [toggleMutation, uid, queryClient, userInfo?.LifetimeXP, weekendDoubleOpts],
+    [toggleMutation, uid, queryClient, userInfo?.LifetimeXP, weekendDoubleOpts, feedSharingEnabled],
   );
 
   const onAddCustom = useCallback(() => {
@@ -566,8 +933,16 @@ export default function TasksListScreen() {
     [clearTaskPhotoMutation],
   );
 
+  const openDeedShareSheet = useCallback((task: ActTask) => {
+    if (!task.photoUrl?.trim() || task.deedFeedPostId) {
+      return;
+    }
+    setDeedShareNudgeTaskId(null);
+    setDeedShareSheetTask(task);
+  }, []);
+
   const shareToDeedFeed = useCallback(
-    (task: ActTask) => {
+    (task: ActTask, caption?: string) => {
       if (task.deedFeedPostId) {
         return;
       }
@@ -578,28 +953,28 @@ export default function TasksListScreen() {
       setLocalError(null);
       const authorDisplayName = authorDisplayNameForDeed(userInfo ?? undefined, user);
       const authorProfilePicUrl = userInfo?.profilePicUrl?.trim() || user?.photoURL?.trim() || '';
+      const trimmedCaption = caption?.trim() || defaultDeedShareCaption(task);
       createDeedPostMutation.mutate(
         {
           uid,
           authorDisplayName,
           authorProfilePicUrl,
-          caption: task.textShort.trim(),
+          caption: trimmedCaption,
           photoSourceUri: url,
           sourceTaskId: task.id,
         },
         {
           onSuccess: () => {
+            setDeedShareSheetTask(null);
+            setDeedShareNudgeTaskId(null);
             const hearts = weekendDoubleEarnedAmount(HEARTS_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
             const xpGrant = weekendDoubleXpDelta(XP_FOR_DEED_FEED_SHARE, new Date(), weekendDoubleOpts);
             useCurrencyStore.getState().adjustBalance(hearts);
             if (uid) {
               const prevXp = Math.max(0, Math.floor(Number(userInfo?.LifetimeXP ?? 0)));
-              const transition = computeLifetimeRankPromotionTransition(prevXp, xpGrant);
               void grantLifetimeXp(uid, xpGrant).then(() => {
                 void queryClient.invalidateQueries({ queryKey: userInfoQueryKeys.detail(uid) });
-                if (transition) {
-                  setRankUpPayload(transition);
-                }
+                enqueueRankUpIfPromotion(prevXp, xpGrant);
               });
             }
           },
@@ -632,11 +1007,24 @@ export default function TasksListScreen() {
         onPickTaskPhotoFromCamera={Platform.OS === 'web' ? undefined : pickTaskPhotoFromCamera}
         onRemoveTaskPhoto={removeTaskPhoto}
         photoActionTaskId={photoActionTaskId}
-        onShareToDeedFeed={Platform.OS === 'web' ? undefined : shareToDeedFeed}
+        onShareToDeedFeed={
+          feedSharingEnabled && Platform.OS !== 'web' ? openDeedShareSheet : undefined
+        }
         deedFeedShareTaskId={deedFeedShareTaskId}
+        deedShareRewardLabel={feedSharingEnabled ? deedShareRewardLabel : undefined}
+        showDeedShareNudge={
+          feedSharingEnabled &&
+          deedShareNudgeTaskId === item.id &&
+          item.completedAt != null &&
+          !item.deedFeedPostId
+        }
+        onDismissDeedShareNudge={() => setDeedShareNudgeTaskId(null)}
         taskCheckThemeId={equippedTaskCheckTheme}
         isNew={newTaskIds.has(item.id)}
-        spotlight={showFirstActSpotlight && item.id === firstActCandidate?.id}
+        spotlight={
+          (showFirstActSpotlight && item.id === firstActCandidate?.id) ||
+          widgetHighlightTaskId === item.id
+        }
       />
     ),
     [
@@ -647,12 +1035,16 @@ export default function TasksListScreen() {
       pickTaskPhotoFromCamera,
       removeTaskPhoto,
       photoActionTaskId,
-      shareToDeedFeed,
+      openDeedShareSheet,
       deedFeedShareTaskId,
+      feedSharingEnabled,
+      deedShareRewardLabel,
+      deedShareNudgeTaskId,
       equippedTaskCheckTheme,
       newTaskIds,
       showFirstActSpotlight,
       firstActCandidate?.id,
+      widgetHighlightTaskId,
     ],
   );
 
@@ -684,10 +1076,20 @@ export default function TasksListScreen() {
             onPress={onAddCustom}
           />
         </AppCard>
+        {showRewardsDiscovery && rewardsHighlight ? (
+          <RewardsDiscoveryPromptCard
+            seeds={seedsBalance}
+            highlight={rewardsHighlight}
+            className="mb-3"
+            onBrowseRewards={onBrowseRewardsFromDiscovery}
+            onDismiss={dismissRewardsDiscovery}
+          />
+        ) : null}
         {showGrowFriendsPrompt ? (
           <FriendsCirclePromptCard
             variant="tasks_grow"
             friendCount={friendCount}
+            showPhoneHint={showPhoneHintForFriends}
             className="mb-3"
           />
         ) : null}
@@ -697,6 +1099,26 @@ export default function TasksListScreen() {
             className="mb-3"
             onScrollToAct={scrollToFirstAct}
             onDismiss={dismissFirstActSpotlight}
+          />
+        ) : null}
+        {showWinBackPrompt ? (
+          <WinBackPromptCard
+            daysAway={winBackDaysAway}
+            task={winBackActCandidate}
+            className="mb-3"
+            onDoAct={scrollToWinBackAct}
+            onLoadActs={winBackActCandidate ? undefined : onEnsureAssigned}
+            onDismiss={dismissWinBackPrompt}
+          />
+        ) : null}
+        {showStreakAtRiskCard && streakActCandidate ? (
+          <StreakAtRiskCard
+            streakDays={streakAtRisk.streakDays}
+            minutesUntilMidnight={streakAtRisk.minutesUntilMidnight}
+            task={streakActCandidate}
+            className="mb-3"
+            onDoAct={scrollToStreakAct}
+            onDismiss={dismissStreakAtRiskCard}
           />
         ) : null}
         {isWeekendDoubleActive(new Date(), weekendDoubleOpts) ? (
@@ -757,24 +1179,17 @@ export default function TasksListScreen() {
           title="Suggested acts"
           variant="label"
           className="mb-3"
-          infoText="Suggested acts match your age, traits, and difficulty preference, then rotate with the calendar. Change difficulty under Settings → Preferences."
+          infoText="Suggested acts match your age, traits, and difficulty preference, then rotate with the calendar. Use Today's 3 for a short list, or search and filters to browse everything."
         />
-        <Pressable
-          onPress={() => setFiltersModalOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Open task filters"
-          className="mb-2 flex-row items-center self-start rounded-2xl border border-acts-border bg-acts-surface px-4 py-2.5 active:opacity-80">
-          <AppText variant="subtitle" className="text-acts-ink">
-            Filters
-          </AppText>
-          {nActive > 0 ? (
-            <View className="ml-2 min-w-[22px] items-center rounded-full bg-acts-green px-1.5 py-0.5">
-              <AppText variant="caption" className="font-semibold text-white">
-                {nActive}
-              </AppText>
-            </View>
-          ) : null}
-        </Pressable>
+        <TaskListToolbar
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          viewMode={effectiveViewMode}
+          onViewModeChange={onViewModeChange}
+          showViewModeToggle={showViewModeToggle}
+          activeFilterCount={nActive}
+          onOpenFilters={() => setFiltersModalOpen(true)}
+        />
         {catalogIsError ? (
           <AppCard className="mb-3 border-acts-danger/30 bg-acts-surface p-3">
             <AppText variant="caption" className="mb-3 text-acts-danger">
@@ -796,6 +1211,10 @@ export default function TasksListScreen() {
     localError,
     refetchCatalog,
     listFilters,
+    searchQuery,
+    effectiveViewMode,
+    showViewModeToggle,
+    onViewModeChange,
     streakGraceOffer.show,
     streakGraceOffer.forgivenDayKey,
     bonusStreakGraceOffer.show,
@@ -806,12 +1225,30 @@ export default function TasksListScreen() {
     newTitle,
     addMutation.isPending,
     onAddCustom,
+    showRewardsDiscovery,
+    rewardsHighlight,
+    seedsBalance,
+    onBrowseRewardsFromDiscovery,
+    dismissRewardsDiscovery,
     showGrowFriendsPrompt,
     friendCount,
+    showPhoneHintForFriends,
     showFirstActSpotlight,
     firstActCandidate,
     scrollToFirstAct,
     dismissFirstActSpotlight,
+    showWinBackPrompt,
+    winBackDaysAway,
+    winBackActCandidate,
+    scrollToWinBackAct,
+    onEnsureAssigned,
+    dismissWinBackPrompt,
+    showStreakAtRiskCard,
+    streakAtRisk.streakDays,
+    streakAtRisk.minutesUntilMidnight,
+    streakActCandidate,
+    scrollToStreakAct,
+    dismissStreakAtRiskCard,
     weekendDoubleOpts,
   ]);
 
@@ -835,10 +1272,37 @@ export default function TasksListScreen() {
         </View>
       );
     }
+    if (visibleTasks.length > 0 && displayedTasks.length === 0 && searchQuery.trim().length > 0) {
+      return (
+        <View className="mb-4 items-center px-4 py-10">
+          <AppText variant="body" className="mb-3 text-center text-acts-muted">
+            No acts match &ldquo;{searchQuery.trim()}&rdquo;.
+          </AppText>
+          <AppButton title="Clear search" variant="secondary" onPress={() => setSearchQuery('')} />
+        </View>
+      );
+    }
     if (visibleTasks.length > 0 && displayedTasks.length === 0 && filtersAreActive(listFilters)) {
       return (
         <View className="mb-4 items-center px-4 py-10">
           <AppButton title="Clear filters" variant="secondary" onPress={() => setListFilters({ ...DEFAULT_TASK_LIST_FILTERS })} />
+        </View>
+      );
+    }
+    if (visibleTasks.length > 0 && displayedTasks.length === 0 && listFilters.completion === 'todo') {
+      return (
+        <View className="mb-4 items-center px-4 py-10">
+          <AppText variant="body" className="mb-2 text-center text-acts-ink">
+            You&apos;re all caught up on open acts.
+          </AppText>
+          <AppText variant="caption" className="mb-4 text-center text-acts-muted">
+            Nice work today. Browse completed acts or adjust filters to see more.
+          </AppText>
+          <AppButton
+            title="Show completed acts"
+            variant="secondary"
+            onPress={() => setListFilters({ ...listFilters, completion: 'all' })}
+          />
         </View>
       );
     }
@@ -861,6 +1325,7 @@ export default function TasksListScreen() {
     visibleTasks.length,
     displayedTasks.length,
     listFilters,
+    searchQuery,
     onEnsureAssigned,
     catalogFetching,
     catalogEntries,
@@ -868,6 +1333,7 @@ export default function TasksListScreen() {
 
   const listFooter = (
     <View className="mt-2 pb-4">
+      <TaskListFocusFooter hiddenCount={hiddenFocusCount} onShowAll={() => onViewModeChange('all')} />
       {missingCatalogCount > 0 ? (
         <FadeInView>
           <AppCard className="mb-4">
@@ -963,7 +1429,19 @@ export default function TasksListScreen() {
           ) : null}
         </View>
       </Modal>
-      <ServiceRankUpOverlay payload={rankUpPayload} onClose={() => setRankUpPayload(null)} />
+      <DeedShareSheet
+        visible={deedShareSheetTask != null}
+        task={deedShareSheetTask}
+        seedsReward={deedShareSeedsReward}
+        xpReward={deedShareXpReward}
+        sharing={createDeedPostMutation.isPending}
+        onShare={(caption) => {
+          if (deedShareSheetTask) {
+            shareToDeedFeed(deedShareSheetTask, caption);
+          }
+        }}
+        onClose={() => setDeedShareSheetTask(null)}
+      />
     </Screen>
   );
 }

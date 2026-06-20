@@ -5,7 +5,7 @@ import {
 } from 'react-native-android-widget';
 
 import type { WidgetSnapshot } from '@/shared/types/widgetSnapshot';
-import { WIDGET_TASKS_DEEP_LINK } from '@/shared/types/widgetSnapshot';
+import { widgetTasksDeepLink } from '@/shared/types/widgetSnapshot';
 
 const BRAND = '#FA5A88';
 const INK = '#1A1A1A';
@@ -40,7 +40,7 @@ export function renderAndroidStreakWidget(snapshot: WidgetSnapshot): WidgetRepre
     <FlexWidget
       style={widgetRootStyle()}
       clickAction="OPEN_URI"
-      clickActionData={{ uri: WIDGET_TASKS_DEEP_LINK }}
+      clickActionData={{ uri: widgetTasksDeepLink() }}
       accessibilityLabel="Acts streak">
       <TextWidget text="Acts" style={{ fontSize: 12, color: BRAND, fontWeight: '700' }} />
       <FlexWidget style={{ flex: 1, justifyContent: 'center' }}>
@@ -65,7 +65,7 @@ export function renderAndroidTasksWidget(snapshot: WidgetSnapshot): WidgetRepres
     <FlexWidget
       style={widgetRootStyle()}
       clickAction="OPEN_URI"
-      clickActionData={{ uri: WIDGET_TASKS_DEEP_LINK }}
+      clickActionData={{ uri: widgetTasksDeepLink() }}
       accessibilityLabel="Acts to do">
       <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <TextWidget text="Acts" style={{ fontSize: 12, color: BRAND, fontWeight: '700' }} />
@@ -86,12 +86,17 @@ export function renderAndroidTasksWidget(snapshot: WidgetSnapshot): WidgetRepres
       ) : (
         <FlexWidget style={{ flex: 1, marginTop: 8, flexGap: 6 }}>
           {tasks.map((task) => (
-            <TextWidget
+            <FlexWidget
               key={task.id}
-              text={`• ${task.title}`}
-              style={{ fontSize: 13, color: INK }}
-              maxLines={1}
-            />
+              clickAction="OPEN_URI"
+              clickActionData={{ uri: widgetTasksDeepLink(task.id) }}
+              accessibilityLabel={task.title}>
+              <TextWidget
+                text={`• ${task.title}`}
+                style={{ fontSize: 13, color: INK }}
+                maxLines={1}
+              />
+            </FlexWidget>
           ))}
         </FlexWidget>
       )}

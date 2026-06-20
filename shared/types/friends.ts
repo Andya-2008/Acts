@@ -7,6 +7,8 @@ export type FriendEdgeDoc = {
   First: string;
   Last: string;
   since: Timestamp | null;
+  /** Uid of the user who tapped Accept when this edge was created. */
+  acceptedByUid?: string;
 };
 
 /** `userInfo/{toUid}/friendRequestsIncoming/{fromUid}` */

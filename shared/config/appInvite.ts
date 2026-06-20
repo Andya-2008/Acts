@@ -5,7 +5,13 @@ function str(v: string | undefined | null): string {
 }
 
 /** App Store listing for Acts: Be Kind (fallback when join page is not used). */
-export { APP_STORE_URL, getAppStoreUrl } from '@/shared/config/appStore';
+export {
+  APP_STORE_URL,
+  PLAY_STORE_URL,
+  getAppStoreUrl,
+  getPlayStoreUrl,
+  getStoreUrlForPlatform,
+} from '@/shared/config/appStore';
 
 /** Hosted invite landing (`/join`) — stores `invitedBy` and opens the app when installed. */
 export function getDefaultInviteJoinBase(): string {
@@ -29,7 +35,8 @@ export function getInviteUrl(inviterUid?: string): string {
   return `${base}${sep}invitedBy=${encodeURIComponent(uid)}`;
 }
 
-/** Link only (no extra copy), with optional inviter attribution for invite rewards. */
+/** Friendly share copy with the personal invite URL (`invitedBy` when signed in). */
 export function getInviteShareMessage(inviterUid?: string): string {
-  return getInviteUrl(inviterUid);
+  const url = getInviteUrl(inviterUid);
+  return `Join me on Acts — small daily acts of kindness with people you know.\n\n${url}`;
 }

@@ -2,7 +2,7 @@ import { collection, getDocs, limit, orderBy, query, type Timestamp } from 'fire
 
 import { fetchCommentsByPostIds } from '@/features/deed-feed/services/deedCommentRepository';
 import { fetchFriendsDeedPosts, fetchMyDeedPosts } from '@/features/deed-feed/services/deedPostRepository';
-import { fetchFriendUids, fetchIncomingFriendRequests } from '@/features/friends/services/friendsRepository';
+import { fetchFriends, fetchIncomingFriendRequests } from '@/features/friends/services/friendsRepository';
 import { fetchUserInfo } from '@/features/user-profile/services/userInfoRepository';
 import { firestoreCollections } from '@/shared/config/firestore';
 import { getFirebaseFirestore } from '@/shared/services/firebase/client';
@@ -11,6 +11,7 @@ import type { UserInfoRead } from '@/shared/types/userInfo';
 
 export type DerivedNotificationType =
   | 'friend_request'
+  | 'friend_request_accepted'
   | 'deed_reaction'
   | 'deed_comment'
   | 'friend_post'
@@ -124,11 +125,13 @@ export async function fetchDerivedNotifications(uid: string): Promise<DerivedNot
   const now = Date.now();
   const socialFloor = now - SOCIAL_WINDOW_MS;
 
-  const [incomingRequests, myPosts, friendUids] = await Promise.all([
+  const [incomingRequests, myPosts, friends] = await Promise.all([
     fetchIncomingFriendRequests(uid).catch(() => []),
     fetchMyDeedPosts(uid, MY_POSTS_FOR_ACTIVITY).catch(() => []),
-    fetchFriendUids(uid).catch(() => []),
+    fetchFriends(uid).catch(() => []),
   ]);
+
+  const friendUids = friends.map((f) => f.friendUid);
 
   const myPostIds = myPosts.map((p) => p.id);
   const myPostCaption = new Map(myPosts.map((p) => [p.id, p.caption] as const));
@@ -153,6 +156,9 @@ export async function fetchDerivedNotifications(uid: string): Promise<DerivedNot
   // Resolve names for reactors / commenters / requesters.
   const lookupUids = [
     ...incomingRequests.map((r) => r.fromUid),
+    ...friends
+      .filter((f) => f.acceptedByUid && f.acceptedByUid !== uid)
+      .map((f) => f.friendUid),
     ...reactionRows.map((r) => r.reactorUid),
     ...commentRows.map((c) => c.authorUid),
   ];
@@ -170,6 +176,28 @@ export async function fetchDerivedNotifications(uid: string): Promise<DerivedNot
       timestampMs: tsToMs(req.createdAt) || now,
       route: '/(app)/(tabs)/deed-feed/friends',
       actorUid: req.fromUid,
+      actorPicUrl: info?.profilePicUrl?.trim() || undefined,
+    });
+  }
+
+  for (const edge of friends) {
+    const accepterUid = edge.acceptedByUid?.trim();
+    if (!accepterUid || accepterUid === uid) {
+      continue;
+    }
+    const sinceMs = tsToMs(edge.since);
+    if (sinceMs < socialFloor) {
+      continue;
+    }
+    const info = summaries.get(edge.friendUid) ?? null;
+    items.push({
+      id: `accepted:${edge.friendUid}:${sinceMs}`,
+      type: 'friend_request_accepted',
+      title: 'Friend request accepted',
+      message: `${displayNameFromInfo(info)} accepted your friend request`,
+      timestampMs: sinceMs || now,
+      route: '/(app)/(tabs)/deed-feed/friends',
+      actorUid: edge.friendUid,
       actorPicUrl: info?.profilePicUrl?.trim() || undefined,
     });
   }

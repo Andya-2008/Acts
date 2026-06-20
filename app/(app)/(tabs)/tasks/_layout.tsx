@@ -2,6 +2,7 @@ import { Link, Stack, usePathname, useSegments } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { NotificationBellButton } from '@/features/notifications/components/NotificationBellButton';
 import { SeedsXpShopHeader } from '@/shared/components/SeedsXpShopHeader';
 import { ScreenTopSafeArea } from '@/shared/components/ScreenTopSafeArea';
 import { AppText } from '@/shared/components/ui';
@@ -22,7 +23,10 @@ export default function TasksTabLayout() {
           <AppText variant="title" className="flex-1 text-acts-ink" numberOfLines={1}>
             {headerTitle}
           </AppText>
-          <SeedsXpShopHeader />
+          <View className="flex-row items-center gap-1">
+            <NotificationBellButton />
+            <SeedsXpShopHeader />
+          </View>
         </View>
       </ScreenTopSafeArea>
       <View className="flex-row gap-2 border-b border-acts-border bg-acts-canvas px-4 py-2">

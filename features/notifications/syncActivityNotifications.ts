@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { ensureNotificationHandler } from '@/features/notifications/notificationHandler';
 import { fetchDerivedNotifications } from '@/features/notifications/derivedNotifications';
 import {
   ACTIVITY_NOTIFICATION_IDS as AID,
@@ -50,6 +51,8 @@ function socialTypeAllowed(type: string, settings: ActsAppSettings): boolean {
       return settings.notifyFriendsPosting !== false;
     case 'friend_request':
       return settings.notifyFriendRequests !== false;
+    case 'friend_request_accepted':
+      return settings.notifyFriendRequestAccepted !== false;
     default:
       return false;
   }
@@ -83,6 +86,8 @@ export async function syncActivityNotifications(input: ActivitySyncInput): Promi
   if (!(await hasPermission())) {
     return;
   }
+  ensureNotificationHandler();
+  await ensureActivityChannel();
 
   const now = Date.now();
   if (!force) {
@@ -92,7 +97,7 @@ export async function syncActivityNotifications(input: ActivitySyncInput): Promi
     }
   }
   await setLastActivityRunAt(uid, now);
-  await ensureActivityChannel();
+
   const channel = Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ACTIVITY } : {};
 
   // --- New acts added to the list ---------------------------------------------
@@ -120,7 +125,8 @@ export async function syncActivityNotifications(input: ActivitySyncInput): Promi
   const wantsSocial =
     settings.notifyFriendsReactions !== false ||
     settings.notifyFriendsPosting !== false ||
-    settings.notifyFriendRequests !== false;
+    settings.notifyFriendRequests !== false ||
+    settings.notifyFriendRequestAccepted !== false;
   if (!wantsSocial) {
     return;
   }
@@ -150,7 +156,7 @@ export async function syncActivityNotifications(input: ActivitySyncInput): Promi
 
   let screen = 'notifications';
   let postId: string | undefined;
-  if (lead.type === 'friend_request') {
+  if (lead.type === 'friend_request' || lead.type === 'friend_request_accepted') {
     screen = 'friends';
   } else if (lead.postId) {
     screen = 'deed-feed';

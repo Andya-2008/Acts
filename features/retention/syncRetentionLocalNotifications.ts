@@ -6,34 +6,26 @@ import {
   ANDROID_CHANNEL_RETENTION,
   LOCAL_NOTIFICATION_IDS as ID,
 } from '@/features/notifications/notificationIds';
-import { registerExpoPushToken } from '@/features/notifications/registerExpoPushToken';
+import { ensureNotificationHandler } from '@/features/notifications/notificationHandler';
 import {
   computeCompletionStreak,
+  completedOnLocalDay,
   localDateKey,
   type StreakGraceSlice,
 } from '@/features/user-profile/utils/computeCompletionStreak';
+import { pickFirstActCandidate } from '@/features/tasks/utils/pickFirstActCandidate';
+import {
+  daysSinceLastActCompletion,
+  isWinBackInactive,
+  lastActCompletionMs,
+} from '@/features/retention/lastActActivity';
+import { getWinBackPromptDismissed } from '@/features/retention/winBackPromptStorage';
 import type { ActsAppSettings } from '@/shared/types/actsSettings';
 import type { ActTask } from '@/shared/types/task';
 
 export { ID as RETENTION_NOTIFICATION_IDS };
 
-let handlerInstalled = false;
 let androidChannelReady = false;
-
-function ensureNotificationHandler(): void {
-  if (handlerInstalled) {
-    return;
-  }
-  handlerInstalled = true;
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
-}
 
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android' || androidChannelReady) {
@@ -92,19 +84,7 @@ function incompleteNudgeHour(dailyHour: number): number {
   return Math.min(21, Math.max(9, dailyHour + 3));
 }
 
-function completedOnLocalDay(tasks: ActTask[], dayKey: string): boolean {
-  for (const t of tasks) {
-    if (t.completedAt == null) {
-      continue;
-    }
-    if (localDateKey(t.completedAt.toDate()) === dayKey) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function hasIncompleteAssignedAct(tasks: ActTask[], todayKey: string): boolean {
+function hasIncompleteAssignedAct(tasks: ActTask[]): boolean {
   return tasks.some(
     (t) =>
       t.active &&
@@ -157,7 +137,8 @@ export async function syncRetentionLocalNotifications(input: RetentionSyncInput)
     settings.notifyWeeklyRecap ||
     settings.notifyWeekendDoublePromo ||
     settings.notifyWeeklyActReminder ||
-    settings.notifyMonthlyActReminder;
+    settings.notifyMonthlyActReminder ||
+    settings.notifyWinBack;
 
   if (!wantsLocal) {
     return;
@@ -168,12 +149,10 @@ export async function syncRetentionLocalNotifications(input: RetentionSyncInput)
     return;
   }
 
-  void registerExpoPushToken(uid);
-
   const list = tasks ?? [];
   const todayKey = localDateKey(new Date());
   const doneToday = completedOnLocalDay(list, todayKey);
-  const hasOpenActs = hasIncompleteAssignedAct(list, todayKey);
+  const hasOpenActs = hasIncompleteAssignedAct(list);
   const streakDays = computeCompletionStreak(list, grace ?? null);
 
   const channel = Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_RETENTION } : {};
@@ -292,16 +271,55 @@ export async function syncRetentionLocalNotifications(input: RetentionSyncInput)
   }
 
   if (settings.notifyStreakWarning && streakDays >= 1 && !doneToday) {
+    const streakAct = pickFirstActCandidate(
+      list.filter((t) => t.active && t.completedAt == null),
+    );
     await Notifications.scheduleNotificationAsync({
       identifier: ID.streakEvening,
       content: {
         title: `Keep your ${streakDays}-day streak`,
-        body: "You haven't completed an act yet today. A quick one counts.",
-        data: { screen: 'tasks' },
+        body: streakAct
+          ? `One quick act counts: "${streakAct.textShort.slice(0, 72)}${streakAct.textShort.length > 72 ? '…' : ''}"`
+          : "You haven't completed an act yet today. A quick one counts.",
+        data: {
+          screen: 'tasks',
+          type: 'streak_reminder',
+          ...(streakAct ? { taskId: streakAct.id } : {}),
+        },
       },
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
-        date: nextLocalWallClock(20, 0),
+        date: nextLocalWallClock(17, 0),
+        ...channel,
+      },
+    });
+  }
+
+  const lastCompletionMs = lastActCompletionMs(list);
+  if (
+    settings.notifyWinBack &&
+    uid &&
+    isWinBackInactive(lastCompletionMs) &&
+    !(await getWinBackPromptDismissed(uid, lastCompletionMs!))
+  ) {
+    const winBackAct = pickFirstActCandidate(list.filter((t) => t.active && t.completedAt == null));
+    const daysAway = daysSinceLastActCompletion(lastCompletionMs) ?? 14;
+    await Notifications.scheduleNotificationAsync({
+      identifier: ID.winBack,
+      content: {
+        title: 'We miss you on Acts',
+        body: winBackAct
+          ? `It's been ${daysAway} days — try: "${winBackAct.textShort.slice(0, 56)}${winBackAct.textShort.length > 56 ? '…' : ''}"`
+          : `It's been ${daysAway} days. One small act is a great way to come back.`,
+        data: {
+          screen: 'tasks',
+          type: 'win_back',
+          ...(winBackAct ? { taskId: winBackAct.id } : {}),
+        },
+      },
+      trigger: {
+        type: SchedulableTriggerInputTypes.DATE,
+        date: nextLocalWallClock(10, 30),
         ...channel,
       },
     });

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenTopSafeArea } from '@/shared/components/ScreenTopSafeArea';
 
-import { OnboardingWizard } from '@/features/onboarding/components/OnboardingWizard';
+import { QuickPersonalizationWizard } from '@/features/onboarding/components/QuickPersonalizationWizard';
 import { ProfileHeroSection } from '@/features/user-profile/components/ProfileHeroSection';
 import { ProfileMemoriesSection } from '@/features/deed-feed/components/ProfileMemoriesSection';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
@@ -119,15 +119,18 @@ export default function ProfileScreen() {
 
             {needsPersonalization && user?.uid ? (
               <AppCard className="mb-5 border-acts-green/35">
-                <AppText variant="subtitle" className="mb-2">
+                <AppText variant="subtitle" className="mb-1 text-acts-ink">
                   Personalize Acts
                 </AppText>
-                <OnboardingWizard
-                  userId={user.uid}
-                  initialPhone={userInfo?.Phone ?? ''}
-                  initialFirst={userInfo?.First ?? ''}
-                  initialLast={userInfo?.Last ?? ''}
-                  layout="embedded"
+                <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
+                  Two quick steps — we&apos;ll rank acts on your Tasks list to match you.
+                </AppText>
+                <QuickPersonalizationWizard userId={user.uid} />
+                <AppButton
+                  title="Full questionnaire instead"
+                  variant="ghost"
+                  className="mt-4 w-full"
+                  onPress={() => router.push('/(app)/settings/personalization' as Href)}
                 />
               </AppCard>
             ) : null}

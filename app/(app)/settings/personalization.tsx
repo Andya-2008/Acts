@@ -37,7 +37,7 @@ export default function SettingsPersonalizationScreen() {
       <View className="pb-8 pt-1">
         <AppText variant="caption" className="mb-4 leading-5 text-acts-muted">
           {notConfigured
-            ? 'Answer a few quick questions so Acts can suggest acts that fit you.'
+            ? 'The full questionnaire covers hobbies, goals, personality, and your Become path. For a faster start, use Quick setup on the Profile tab.'
             : 'Update your answers anytime - your suggested acts adapt to your choices.'}
         </AppText>
         {notConfigured ? (

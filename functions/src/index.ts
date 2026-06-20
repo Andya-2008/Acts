@@ -11,6 +11,7 @@ const publicStatsRef = db.collection('publicStats').doc('siteMetrics');
 
 export { onInviteSignup } from './onInviteSignup';
 export { resolveLoginIdentifier } from './resolveLoginIdentifier';
+export { lookupContactKeys, checkContactKeyTaken } from './lookupContactKeys';
 export { suggestFriends } from './suggestFriends';
 export { applyBonusStreakGrace, grantRewardedAdReward } from './grantRewardedAdReward';
 
@@ -119,10 +120,11 @@ async function notifyRecipient(opts: {
   title: string;
   body: string;
   screen: string;
+  type?: string;
   postId?: string;
   recipient?: UserInfo | null;
 }): Promise<void> {
-  const { recipientUid, actorUid, settingKey, title, body, screen, postId } = opts;
+  const { recipientUid, actorUid, settingKey, title, body, screen, type, postId } = opts;
   if (recipientUid === actorUid) {
     return;
   }
@@ -140,7 +142,11 @@ async function notifyRecipient(opts: {
     to: recipient.ExpoPushToken,
     title,
     body,
-    data: { screen, ...(postId ? { postId } : {}) },
+    data: {
+      screen,
+      ...(type ? { type } : {}),
+      ...(postId ? { postId } : {}),
+    },
   };
   await sendExpoPush([message]);
 }
@@ -169,6 +175,7 @@ export const onDeedReaction = onDocumentCreated(
       title: 'New reaction',
       body: `${displayName(actor)} reacted ${emoji} to your deed`,
       screen: 'deed-feed',
+      type: 'deed_reaction',
       postId,
     });
   },
@@ -199,6 +206,7 @@ export const onDeedComment = onDocumentCreated(
       title: 'New comment',
       body: snippet ? `${displayName(actor)}: ${snippet}` : `${displayName(actor)} commented on your deed`,
       screen: 'deed-feed',
+      type: 'deed_comment',
       postId,
     });
   },
@@ -221,6 +229,32 @@ export const onFriendRequest = onDocumentCreated(
       title: 'New friend request',
       body: `${displayName(actor)} wants to be friends`,
       screen: 'friends',
+      type: 'friend_request',
+    });
+  },
+);
+
+/** A friend request was accepted — notify the original requester once per friendship. */
+export const onFriendAccepted = onDocumentCreated(
+  'userInfo/{ownerUid}/friends/{friendUid}',
+  async (event) => {
+    const ownerUid = event.params.ownerUid;
+    const friendUid = event.params.friendUid;
+    const data = event.data?.data() ?? {};
+    const acceptedByUid = String(data.acceptedByUid ?? '').trim();
+    if (!acceptedByUid || acceptedByUid !== friendUid) {
+      return;
+    }
+
+    const actor = await getUserInfo(friendUid);
+    await notifyRecipient({
+      recipientUid: ownerUid,
+      actorUid: friendUid,
+      settingKey: 'notifyFriendRequestAccepted',
+      title: 'Friend request accepted',
+      body: `${displayName(actor)} accepted your friend request`,
+      screen: 'friends',
+      type: 'friend_request_accepted',
     });
   },
 );

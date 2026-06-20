@@ -5,11 +5,19 @@ import type { DerivedNotification, DerivedNotificationType } from '@/features/no
 export type NotificationNavPayload = {
   screen?: string;
   postId?: string;
+  taskId?: string;
   type?: string;
   newUserUid?: string;
 };
 
 function normalizePostId(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.trim();
+  }
+  return undefined;
+}
+
+function normalizeTaskId(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim().length > 0) {
     return value.trim();
   }
@@ -33,17 +41,28 @@ export function hrefForNotificationPayload(payload: NotificationNavPayload): Hre
 
   if (
     typeRaw === 'friend_request' ||
+    typeRaw === 'friend_request_accepted' ||
     typeRaw === 'invite_join' ||
     screen === 'friends' ||
     screen === 'friend-requests'
   ) {
     return '/(app)/(tabs)/deed-feed/friends' as Href;
   }
-  if (type === 'new_tasks' || screen === 'tasks') {
+  if (type === 'new_tasks' || screen === 'tasks' || type === 'streak_reminder' || type === 'win_back') {
+    const taskId = normalizeTaskId(payload.taskId);
+    if (taskId) {
+      return `/(app)/(tabs)/tasks?taskId=${encodeURIComponent(taskId)}` as Href;
+    }
     return '/(app)/(tabs)/tasks' as Href;
   }
   if (screen === 'notifications' || screen === 'activity') {
     return '/(app)/notifications' as Href;
+  }
+  if (screen === 'challenges' || typeRaw === 'season_milestone') {
+    return '/(app)/challenges' as Href;
+  }
+  if (screen === 'leaderboards') {
+    return '/(app)/leaderboards' as Href;
   }
   if (screen === 'deed-feed' || postId || type === 'deed_reaction' || type === 'deed_comment' || type === 'friend_post') {
     return deedFeedHref(postId);
@@ -55,6 +74,7 @@ export function hrefForNotificationPayload(payload: NotificationNavPayload): Hre
 export function hrefForDerivedNotification(item: DerivedNotification): Href {
   switch (item.type) {
     case 'friend_request':
+    case 'friend_request_accepted':
       return '/(app)/(tabs)/deed-feed/friends' as Href;
     case 'new_tasks':
       return '/(app)/(tabs)/tasks' as Href;

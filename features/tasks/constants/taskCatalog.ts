@@ -1,5 +1,7 @@
 import type { TaskCatalogEntry } from '@/shared/types/task';
+import type { UserInfoRead } from '@/shared/types/userInfo';
 
+import { scoreTaskOnboardingMatch } from '@/features/tasks/utils/taskOnboardingPreference';
 import { periodKeyForDate } from '@/features/tasks/utils/taskPeriodKeys';
 
 /**
@@ -265,10 +267,20 @@ export type SliceCatalogOptions = {
   preferredDifficultyLevel?: 1 | 2 | 3 | null;
   /** When set, roster picks are shuffled per user + period (different users, different acts). */
   uid?: string;
+  /** When set, onboarding hobbies/interests/goals boost matching catalog acts in the roster. */
+  user?: UserInfoRead | null;
 };
 
-function sortPoolByPreferenceThenSortKey(pool: TaskCatalogEntry[], pref?: 1 | 2 | 3 | null): TaskCatalogEntry[] {
+function sortPoolByPreferenceThenSortKey(
+  pool: TaskCatalogEntry[],
+  pref?: 1 | 2 | 3 | null,
+  user?: UserInfoRead | null,
+): TaskCatalogEntry[] {
   return [...pool].sort((a, b) => {
+    const onboarding = scoreTaskOnboardingMatch(b, user) - scoreTaskOnboardingMatch(a, user);
+    if (onboarding !== 0) {
+      return onboarding;
+    }
     if (pref != null && pref >= 1 && pref <= 3) {
       const ap = a.difficulty === pref ? 1 : 0;
       const bp = b.difficulty === pref ? 1 : 0;
@@ -322,6 +334,7 @@ export function pickCatalogForCadence(
   const pool = sortPoolByPreferenceThenSortKey(
     entries.filter((t) => t.cadence === cadence),
     options?.preferredDifficultyLevel ?? null,
+    options?.user,
   );
   const n = Math.min(Math.max(0, cap), pool.length);
   if (n === 0) {
@@ -378,6 +391,7 @@ export function sliceAutoAssignableFromCatalog(
   const rest = sortPoolByPreferenceThenSortKey(
     [...entries].filter((t) => !seen.has(t.taskId)),
     pref,
+    options?.user,
   );
   const uid = options?.uid?.trim() ?? '';
   const fillSeed = uid ? `${uid}:fill:${periodKeyForDate('daily', now)}` : `fill:${periodKeyForDate('daily', now)}`;

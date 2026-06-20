@@ -34,7 +34,8 @@ import {
   resolveDeedPostCardPresentation,
 } from '@/features/deed-feed/utils/deedPostDisplay';
 import { deedReactionKindsForViewer } from '@/features/shop/shopCatalog';
-import { FriendsCirclePromptCard } from '@/features/friends/components/FriendsCirclePromptCard';
+import { FriendsCirclePromptCard, shouldShowFriendsCirclePrompt } from '@/features/friends/components/FriendsCirclePromptCard';
+import { profileHasSavedPhone } from '@/features/user-profile/utils/profilePhone';
 import { useFriendUidsQuery } from '@/features/friends/hooks/useFriendsQueries';
 import { mapAuthError, mapReactionError } from '@/features/auth/utils/mapAuthError';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
@@ -66,6 +67,7 @@ export default function DeedFeedScreen() {
   const friendUidsQuery = useFriendUidsQuery(uid);
   const friendUids = friendUidsQuery.data ?? [];
   const friendsListReady = friendUidsQuery.isFetched;
+  const showPhoneHintForFriends = !profileHasSavedPhone(viewerUserInfo?.Phone);
   /** Friend uids used for deed queries - excludes blocked users so their posts are not read from Firestore. */
   const friendUidsForFeed = useMemo(
     () => friendUids.filter((id) => !blockedUidSet.has(id)),
@@ -447,6 +449,7 @@ export default function DeedFeedScreen() {
           <FriendsCirclePromptCard
             variant={friendUids.length === 0 ? 'feed_no_friends' : 'feed_no_posts'}
             friendCount={friendUids.length}
+            showPhoneHint={showPhoneHintForFriends}
           />
         </View>
       );
@@ -463,9 +466,8 @@ export default function DeedFeedScreen() {
     visibleFriendPosts,
     allCaughtUp,
     friendUids.length,
+    showPhoneHintForFriends,
   ]);
-
-  const feedListHeader = useMemo(() => {
     if (!friendsListReady || !seenReady || (friendFeedPending && visibleFriendPosts.length === 0)) {
       return (
         <View className="mb-2">
@@ -480,10 +482,11 @@ export default function DeedFeedScreen() {
     }
     return (
       <View className="mb-3 px-1">
-        {friendUids.length <= 1 && visibleFriendPosts.length > 0 ? (
+        {shouldShowFriendsCirclePrompt(friendUids.length) && visibleFriendPosts.length > 0 ? (
           <FriendsCirclePromptCard
             variant="feed_no_friends"
             friendCount={friendUids.length}
+            showPhoneHint={showPhoneHintForFriends}
             className="mb-3"
           />
         ) : null}
@@ -533,6 +536,7 @@ export default function DeedFeedScreen() {
     visibleFriendPosts,
     showAllPosts,
     friendUids.length,
+    showPhoneHintForFriends,
   ]);
 
   if (!uid) {

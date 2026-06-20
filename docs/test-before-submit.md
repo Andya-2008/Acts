@@ -6,27 +6,27 @@ Run on a **preview** or **production** build on a real device (not Expo Go).
 
 - [ ] Sign in with **username** (not email) on returning account
 - [ ] Sign in with **phone** (if saved on profile) on returning account
-- [ ] **Sign up** with new email/password → **mobile number required** → receive SMS → enter 6-digit code → profile created
-- [ ] **Google or Apple sign-in** (if enabled) with **no profile phone** → verify-phone screen → SMS → enter app
-- [ ] **Returning account** that already had a phone on profile before 1.0.7 → **no** verify-phone gate
+- [ ] **Sign up** with new email/password → profile created **without SMS verification**
+- [ ] **Google or Apple sign-in** (if enabled) → enters app **without** a verify-phone gate
 - [ ] Sign out and sign back in
 - [ ] Forgot password email arrives and works
 - [ ] **Delete account** (Settings → Account → type username → delete) — confirm you cannot sign in again and profile is gone
 - [ ] Google Sign-In (if enabled in this build): sign in and sign out once
+- [ ] Optional: add mobile number in **Settings → Account** for contact friend matching
 
-## 1.0.7 features
+## 1.0.8 features
 
-- [ ] **What's new** overlay appears once after upgrading to 1.0.7 (dismiss → does not repeat)
 - [ ] **Home screen widgets** — add streak and/or tasks widget; open app, complete an act; widget reflects change
+- [ ] **Tasks widget** — tap a specific act in the medium widget → Tasks scrolls to that act (highlight ring)
+- [ ] Widget text readable on light and dark backgrounds
 - [ ] **Rewards** tab (nav title and header pill); seed purchases work (no real money)
 - [ ] **Profile photo crop** — Settings → Account → pick photo → square crop → saves
-- [ ] **Verified phone** — Account settings shows number as verified (read-only after SMS)
 - [ ] **No ads** — Rewards screen has no “watch ad” section; no App Tracking prompt on launch
 
-## 1.0.5 features
+## 1.0.5+ features
 
 - [ ] Tasks: first-act spotlight (new account) scrolls to an act; dismiss or complete clears it
-- [ ] Deed feed / Tasks: grow-friends prompt when 0–1 friends; share invite link
+- [ ] Deed feed / Tasks: grow-friends prompt when ≤3 friends (after first act); share invite link
 - [ ] Accept invite from `/join?invitedBy=` — inviter gets seeds/XP (after friendship)
 - [ ] Tap push notification → correct screen; deed opens with post highlighted
 - [ ] Settings → Notifications inbox → same deep links

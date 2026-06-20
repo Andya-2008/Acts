@@ -334,8 +334,16 @@ export async function acceptFriendRequest(recipientUid: string, fromUid: string)
     since: null,
   };
 
-  batch.set(friendEdgeRef(db, fromUid, recipientUid), { ...edgeToRecipient, since: serverTimestamp() });
-  batch.set(friendEdgeRef(db, recipientUid, fromUid), { ...edgeToSender, since: serverTimestamp() });
+  batch.set(friendEdgeRef(db, fromUid, recipientUid), {
+    ...edgeToRecipient,
+    since: serverTimestamp(),
+    acceptedByUid: recipientUid,
+  });
+  batch.set(friendEdgeRef(db, recipientUid, fromUid), {
+    ...edgeToSender,
+    since: serverTimestamp(),
+    acceptedByUid: recipientUid,
+  });
 
   await batch.commit();
 

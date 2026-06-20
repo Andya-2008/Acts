@@ -1,60 +1,83 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, type Href } from 'expo-router';
-import { useCallback } from 'react';
-import { Share, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { View } from 'react-native';
 
 import { INVITE_FRIEND_REWARD } from '@/features/friends/inviteRewardConfig';
+import { shouldShowFriendsCirclePrompt } from '@/features/friends/friendsCircleConfig';
+import { AddPhoneForContactsHint } from '@/features/friends/components/AddPhoneForContactsHint';
+import { copyInviteLink, shareInviteLink } from '@/features/sharing/inviteShareActions';
 import { AppButton, AppCard, AppText } from '@/shared/components/ui';
-import { getInviteShareMessage } from '@/shared/config/appInvite';
 import { useActAppearance } from '@/shared/providers/ActAppearanceProvider';
 import { useAuthStore } from '@/shared/stores/authStore';
 
-export type FriendsCirclePromptVariant = 'feed_no_friends' | 'feed_no_posts' | 'tasks_grow';
+export type FriendsCirclePromptVariant =
+  | 'feed_no_friends'
+  | 'feed_no_posts'
+  | 'tasks_grow'
+  | 'friends_hub';
 
 type FriendsCirclePromptCardProps = {
   variant: FriendsCirclePromptVariant;
   /** Accepted friend count (not including self). */
   friendCount: number;
+  /** When true, nudge adding a profile phone for contact matching. */
+  showPhoneHint?: boolean;
   className?: string;
 };
 
-/** True when we should nudge the user to grow their friend circle (0–1 friends). */
-export function shouldShowFriendsCirclePrompt(friendCount: number): boolean {
-  return friendCount <= 1;
-}
+export { shouldShowFriendsCirclePrompt };
 
 function titleForVariant(variant: FriendsCirclePromptVariant, friendCount: number): string {
   if (variant === 'feed_no_posts') {
     return 'No friend deeds yet';
   }
   if (friendCount === 0) {
-    return variant === 'tasks_grow' ? 'Acts is better with friends' : 'Your feed starts with friends';
+    if (variant === 'tasks_grow') {
+      return 'Nice first act — add a friend';
+    }
+    return variant === 'friends_hub' ? 'Grow your friend circle' : 'Your feed starts with friends';
   }
-  return 'Add one more friend';
+  if (friendCount === 1) {
+    return 'Add one more friend';
+  }
+  return 'Grow your circle';
 }
 
 function bodyForVariant(variant: FriendsCirclePromptVariant, friendCount: number): string {
   if (variant === 'feed_no_posts') {
     return 'When friends complete an act and share a photo, it shows up here. Invite someone or share your own deed to get things moving.';
   }
+  if (variant === 'tasks_grow' && friendCount === 0) {
+    return 'Acts shines when people you trust are here too. Share your invite link or add someone from contacts so your deed feed and streaks feel shared.';
+  }
   if (friendCount === 0) {
     return 'Invite people you know. When they join from your link and you connect, you both earn bonus seeds and your deed feed comes alive.';
   }
-  return 'One friend is a great start. Invite another person you trust so your feed stays active and you can cheer each other on.';
+  if (friendCount === 1) {
+    return 'One friend is a great start. Invite another person you trust so your feed stays active and you can cheer each other on.';
+  }
+  return 'A small circle keeps Acts lively. Invite someone else or add a contact match so you have more deeds to celebrate together.';
 }
 
 export function FriendsCirclePromptCard({
   variant,
   friendCount,
+  showPhoneHint = false,
   className = '',
 }: FriendsCirclePromptCardProps) {
   const act = useActAppearance();
   const uid = useAuthStore((s) => s.user?.uid);
+  const [copied, setCopied] = useState(false);
 
   const onShareInvite = useCallback(() => {
-    void Share.share({
-      message: getInviteShareMessage(uid),
-      title: 'Acts',
+    void shareInviteLink(uid, 'Acts');
+  }, [uid]);
+
+  const onCopyInvite = useCallback(() => {
+    void copyInviteLink(uid).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
   }, [uid]);
 
@@ -100,19 +123,30 @@ export function FriendsCirclePromptCard({
         </AppText>
       </View>
 
-      <AppButton
-        title="Share invite link"
-        className="mb-2 w-full"
-        accessibilityLabel="Share Acts invite link"
-        onPress={onShareInvite}
-      />
-      <AppButton
-        title="Find friends"
-        variant="secondary"
-        className="mb-2 w-full"
-        accessibilityLabel="Open friends screen to add people"
-        onPress={onFindFriends}
-      />
+      <View className="mb-4 flex-row gap-2">
+        <AppButton
+          title="Share invite link"
+          className="flex-1"
+          accessibilityLabel="Share Acts invite link"
+          onPress={onShareInvite}
+        />
+        <AppButton
+          title={copied ? 'Copied!' : 'Copy link'}
+          variant="secondary"
+          className="flex-1"
+          accessibilityLabel="Copy Acts invite link"
+          onPress={onCopyInvite}
+        />
+      </View>
+      {variant !== 'friends_hub' ? (
+        <AppButton
+          title="Find friends"
+          variant="secondary"
+          className="mb-2 w-full"
+          accessibilityLabel="Open friends screen to add people"
+          onPress={onFindFriends}
+        />
+      ) : null}
       {variant === 'feed_no_friends' || variant === 'tasks_grow' ? (
         <AppButton
           title={variant === 'tasks_grow' ? 'Open deed feed' : 'Complete an act first'}
@@ -123,7 +157,7 @@ export function FriendsCirclePromptCard({
           }
           onPress={variant === 'tasks_grow' ? onOpenFeed : onGoToTasks}
         />
-      ) : (
+      ) : variant === 'feed_no_posts' ? (
         <AppButton
           title="Share your own deed"
           variant="secondary"
@@ -131,7 +165,8 @@ export function FriendsCirclePromptCard({
           accessibilityLabel="Go to tasks to share a deed"
           onPress={onGoToTasks}
         />
-      )}
+      ) : null}
+      {showPhoneHint ? <AddPhoneForContactsHint className="mt-3" /> : null}
     </AppCard>
   );
 }

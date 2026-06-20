@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, Share, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, View } from 'react-native';
 
+import { FriendsCirclePromptCard, shouldShowFriendsCirclePrompt } from '@/features/friends/components/FriendsCirclePromptCard';
+import { profileHasSavedPhone } from '@/features/user-profile/utils/profilePhone';
 import { mapAuthError } from '@/features/auth/utils/mapAuthError';
 import { FriendSuggestionsRail } from '@/features/friends/components/FriendSuggestionsRail';
 import {
@@ -24,7 +26,7 @@ import { validateFriendLookupInput } from '@/features/friends/utils/friendLookup
 import { getBlockedUidSet } from '@/features/safety/blockedUids';
 import { useUserInfoQuery } from '@/features/user-profile/hooks/useUserInfoQuery';
 import { inviteRewardSummaryLine } from '@/features/friends/inviteRewardConfig';
-import { getInviteShareMessage } from '@/shared/config/appInvite';
+import { copyInviteLink, shareInviteLink } from '@/features/sharing/inviteShareActions';
 import { DeedFeedFriendsTopBar } from '@/features/deed-feed/components/DeedFeedFriendsTopBar';
 import { ActsTextInput, AppButton, AppCard, AppText, Screen, TitleWithInfo } from '@/shared/components/ui';
 import { getActsTextInputBoxStyle } from '@/shared/components/ui/actsTextInputMetrics';
@@ -229,6 +231,7 @@ export default function FriendsScreen() {
   const uid = useAuthStore((s) => s.user?.uid);
   const [friendLookupInput, setFriendLookupInput] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const incoming = useIncomingFriendRequestsQuery(uid);
   const outgoing = useOutgoingFriendRequestsQuery(uid);
@@ -250,6 +253,8 @@ export default function FriendsScreen() {
     () => friendSuggestions.contactMatches.filter((m) => !blockedUidSet.has(m.uid)),
     [friendSuggestions.contactMatches, blockedUidSet],
   );
+  const smallFriendCircle = shouldShowFriendsCirclePrompt(visibleFriends.length);
+  const showPhoneHintForFriends = !profileHasSavedPhone(myUserInfo?.Phone);
 
   useEffect(() => {
     if (!uid) {
@@ -322,9 +327,13 @@ export default function FriendsScreen() {
   );
 
   const onInviteShare = useCallback(() => {
-    void Share.share({
-      message: getInviteShareMessage(uid),
-      title: 'Acts',
+    void shareInviteLink(uid, 'Acts');
+  }, [uid]);
+
+  const onInviteCopy = useCallback(() => {
+    void copyInviteLink(uid).then(() => {
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
     });
   }, [uid]);
 
@@ -353,6 +362,95 @@ export default function FriendsScreen() {
         <AppText variant="caption" className="mb-4 text-acts-danger">
           {localError}
         </AppText>
+      ) : null}
+
+      {smallFriendCircle ? (
+        <FriendsCirclePromptCard
+          variant="friends_hub"
+          friendCount={visibleFriends.length}
+          showPhoneHint={showPhoneHintForFriends}
+          className="mb-4"
+        />
+      ) : null}
+
+      {smallFriendCircle ? (
+        <>
+          <TitleWithInfo
+            title="Contacts on Acts"
+            variant="label"
+            className="mb-2"
+            infoText="Scan your contacts to find people already on Acts. Matches you blocked are hidden until you unblock them in Settings → Privacy."
+          />
+          <AppCard className="mb-6">
+            <AppButton
+              title={friendSuggestions.contactsLoading ? 'Scanning contacts…' : 'Find friends from contacts'}
+              loading={friendSuggestions.contactsLoading}
+              disabled={friendSuggestions.contactsLoading}
+              accessibilityLabel="Find friends from contacts on this device"
+              onPress={() => void friendSuggestions.refreshContacts()}
+            />
+            {friendSuggestions.contactsPermissionDenied ? (
+              <AppText variant="caption" className="mt-3 text-acts-danger">
+                Contacts access denied.
+              </AppText>
+            ) : null}
+            {friendSuggestions.contactsLoadError ? (
+              <AppText variant="caption" className="mt-3 text-acts-danger">
+                {friendSuggestions.contactsLoadError}
+              </AppText>
+            ) : null}
+            {friendSuggestions.contactMatches.length > 0 ? (
+              <View className="mt-4 gap-3">
+                {visibleContactMatches.map((m) => (
+                  <View
+                    key={`contact:${m.uid}:${m.matchedVia}:${m.contactLabel}`}
+                    className="flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
+                    <RowAvatar uri={m.profilePicUrl} />
+                    <View className="min-w-0 flex-1 pr-2">
+                      <AppText variant="subtitle" className="text-acts-ink">
+                        {[m.first, m.last].filter(Boolean).join(' ') || m.contactLabel}
+                      </AppText>
+                      <AppText variant="caption" className="text-acts-muted">
+                        @{m.username}
+                      </AppText>
+                    </View>
+                    <AppButton
+                      title="Request"
+                      variant="secondary"
+                      className="shrink-0"
+                      disabled={busy}
+                      accessibilityLabel={`Send friend request to ${[m.first, m.last].filter(Boolean).join(' ').trim() || m.contactLabel}`}
+                      onPress={() =>
+                        sendMutation.mutate(m.username, {
+                          onError: (e) => setLocalError(mapAuthError(e)),
+                        })
+                      }
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {friendSuggestions.contactsSearched &&
+            !friendSuggestions.contactsLoading &&
+            friendSuggestions.contactMatches.length === 0 &&
+            !friendSuggestions.contactsPermissionDenied &&
+            !friendSuggestions.contactsLoadError ? (
+              <AppText variant="caption" className="mt-3 text-acts-muted">
+                No contacts matched an Acts account yet.
+              </AppText>
+            ) : null}
+            {friendSuggestions.contactsSearched &&
+            !friendSuggestions.contactsLoading &&
+            friendSuggestions.contactMatches.length > 0 &&
+            visibleContactMatches.length === 0 &&
+            !friendSuggestions.contactsPermissionDenied &&
+            !friendSuggestions.contactsLoadError ? (
+              <AppText variant="caption" className="mt-3 text-acts-muted">
+                Matches hidden (blocked accounts).
+              </AppText>
+            ) : null}
+          </AppCard>
+        </>
       ) : null}
 
       <FriendSuggestionsRail
@@ -403,76 +501,78 @@ export default function FriendsScreen() {
         className="mb-2"
         infoText="Scan your contacts to find people already on Acts. You can also add someone manually with their username, email, or phone above. Matches you blocked are hidden until you unblock them in Settings → Privacy."
       />
-      <AppCard className="mb-6">
-        <AppButton
-          title={friendSuggestions.contactsLoading ? 'Scanning contacts…' : 'Refresh contact scan'}
-          variant="secondary"
-          loading={friendSuggestions.contactsLoading}
-          disabled={friendSuggestions.contactsLoading}
-          accessibilityLabel="Refresh contact scan for friend suggestions"
-          onPress={() => void friendSuggestions.refreshContacts()}
-        />
-        {friendSuggestions.contactsPermissionDenied ? (
-          <AppText variant="caption" className="mt-3 text-acts-danger">
-            Contacts access denied.
-          </AppText>
-        ) : null}
-        {friendSuggestions.contactsLoadError ? (
-          <AppText variant="caption" className="mt-3 text-acts-danger">
-            {friendSuggestions.contactsLoadError}
-          </AppText>
-        ) : null}
-        {friendSuggestions.contactMatches.length > 0 ? (
-          <View className="mt-4 gap-3">
-            {visibleContactMatches.map((m) => (
-              <View
-                key={`contact:${m.uid}:${m.matchedVia}:${m.contactLabel}`}
-                className="flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
-                <RowAvatar uri={m.profilePicUrl} />
-                <View className="min-w-0 flex-1 pr-2">
-                  <AppText variant="subtitle" className="text-acts-ink">
-                    {[m.first, m.last].filter(Boolean).join(' ') || m.contactLabel}
-                  </AppText>
-                  <AppText variant="caption" className="text-acts-muted">
-                    @{m.username}
-                  </AppText>
+      {!smallFriendCircle ? (
+        <AppCard className="mb-6">
+          <AppButton
+            title={friendSuggestions.contactsLoading ? 'Scanning contacts…' : 'Refresh contact scan'}
+            variant="secondary"
+            loading={friendSuggestions.contactsLoading}
+            disabled={friendSuggestions.contactsLoading}
+            accessibilityLabel="Refresh contact scan for friend suggestions"
+            onPress={() => void friendSuggestions.refreshContacts()}
+          />
+          {friendSuggestions.contactsPermissionDenied ? (
+            <AppText variant="caption" className="mt-3 text-acts-danger">
+              Contacts access denied.
+            </AppText>
+          ) : null}
+          {friendSuggestions.contactsLoadError ? (
+            <AppText variant="caption" className="mt-3 text-acts-danger">
+              {friendSuggestions.contactsLoadError}
+            </AppText>
+          ) : null}
+          {friendSuggestions.contactMatches.length > 0 ? (
+            <View className="mt-4 gap-3">
+              {visibleContactMatches.map((m) => (
+                <View
+                  key={`contact:${m.uid}:${m.matchedVia}:${m.contactLabel}`}
+                  className="flex-row items-center justify-between rounded-2xl border border-acts-border/70 bg-acts-surface px-4 py-3">
+                  <RowAvatar uri={m.profilePicUrl} />
+                  <View className="min-w-0 flex-1 pr-2">
+                    <AppText variant="subtitle" className="text-acts-ink">
+                      {[m.first, m.last].filter(Boolean).join(' ') || m.contactLabel}
+                    </AppText>
+                    <AppText variant="caption" className="text-acts-muted">
+                      @{m.username}
+                    </AppText>
+                  </View>
+                  <AppButton
+                    title="Request"
+                    variant="secondary"
+                    className="shrink-0"
+                    disabled={busy}
+                    accessibilityLabel={`Send friend request to ${[m.first, m.last].filter(Boolean).join(' ').trim() || m.contactLabel}`}
+                    onPress={() =>
+                      sendMutation.mutate(m.username, {
+                        onError: (e) => setLocalError(mapAuthError(e)),
+                      })
+                    }
+                  />
                 </View>
-                <AppButton
-                  title="Request"
-                  variant="secondary"
-                  className="shrink-0"
-                  disabled={busy}
-                  accessibilityLabel={`Send friend request to ${[m.first, m.last].filter(Boolean).join(' ').trim() || m.contactLabel}`}
-                  onPress={() =>
-                    sendMutation.mutate(m.username, {
-                      onError: (e) => setLocalError(mapAuthError(e)),
-                    })
-                  }
-                />
-              </View>
-            ))}
-          </View>
-        ) : null}
-        {friendSuggestions.contactsSearched &&
-        !friendSuggestions.contactsLoading &&
-        friendSuggestions.contactMatches.length === 0 &&
-        !friendSuggestions.contactsPermissionDenied &&
-        !friendSuggestions.contactsLoadError ? (
-          <AppText variant="caption" className="mt-3 text-acts-muted">
-            No contacts matched an Acts account yet.
-          </AppText>
-        ) : null}
-        {friendSuggestions.contactsSearched &&
-        !friendSuggestions.contactsLoading &&
-        friendSuggestions.contactMatches.length > 0 &&
-        visibleContactMatches.length === 0 &&
-        !friendSuggestions.contactsPermissionDenied &&
-        !friendSuggestions.contactsLoadError ? (
-          <AppText variant="caption" className="mt-3 text-acts-muted">
-            Matches hidden (blocked accounts).
-          </AppText>
-        ) : null}
-      </AppCard>
+              ))}
+            </View>
+          ) : null}
+          {friendSuggestions.contactsSearched &&
+          !friendSuggestions.contactsLoading &&
+          friendSuggestions.contactMatches.length === 0 &&
+          !friendSuggestions.contactsPermissionDenied &&
+          !friendSuggestions.contactsLoadError ? (
+            <AppText variant="caption" className="mt-3 text-acts-muted">
+              No contacts matched an Acts account yet.
+            </AppText>
+          ) : null}
+          {friendSuggestions.contactsSearched &&
+          !friendSuggestions.contactsLoading &&
+          friendSuggestions.contactMatches.length > 0 &&
+          visibleContactMatches.length === 0 &&
+          !friendSuggestions.contactsPermissionDenied &&
+          !friendSuggestions.contactsLoadError ? (
+            <AppText variant="caption" className="mt-3 text-acts-muted">
+              Matches hidden (blocked accounts).
+            </AppText>
+          ) : null}
+        </AppCard>
+      ) : null}
 
       <AppText variant="label" className="mb-2">
         Invite others
@@ -481,12 +581,22 @@ export default function FriendsScreen() {
         <AppText variant="caption" className="mb-3 leading-5 text-acts-muted">
           {inviteRewardSummaryLine()}
         </AppText>
-        <AppButton
-          title="Share invite"
-          variant="secondary"
-          accessibilityLabel="Share Acts invite link"
-          onPress={onInviteShare}
-        />
+        <View className="flex-row gap-2">
+          <AppButton
+            title="Share invite"
+            variant="secondary"
+            className="flex-1"
+            accessibilityLabel="Share Acts invite link"
+            onPress={onInviteShare}
+          />
+          <AppButton
+            title={inviteCopied ? 'Copied!' : 'Copy link'}
+            variant="secondary"
+            className="flex-1"
+            accessibilityLabel="Copy Acts invite link"
+            onPress={onInviteCopy}
+          />
+        </View>
       </AppCard>
 
       <AppText variant="label" className="mb-2">

@@ -15,10 +15,21 @@ export type TaskListFiltersState = {
 export const DEFAULT_TASK_LIST_FILTERS: TaskListFiltersState = {
   cadences: [],
   difficulties: [],
-  completion: 'all',
+  completion: 'todo',
   photo: 'all',
   categories: [],
 };
+
+export function filtersBeyondDefault(f: TaskListFiltersState): boolean {
+  return (
+    f.cadences.length > 0 ||
+    f.difficulties.length > 0 ||
+    f.categories.length > 0 ||
+    f.photo !== 'all' ||
+    f.completion === 'all' ||
+    f.completion === 'done'
+  );
+}
 
 export function taskMatchesListFilters(task: ActTask, f: TaskListFiltersState): boolean {
   if (f.cadences.length > 0 && !f.cadences.includes(task.cadence)) {
@@ -46,20 +57,14 @@ export function taskMatchesListFilters(task: ActTask, f: TaskListFiltersState): 
 }
 
 export function filtersAreActive(f: TaskListFiltersState): boolean {
-  return (
-    f.cadences.length > 0 ||
-    f.difficulties.length > 0 ||
-    f.completion !== 'all' ||
-    f.photo !== 'all' ||
-    f.categories.length > 0
-  );
+  return filtersBeyondDefault(f);
 }
 
 export function activeFilterCount(f: TaskListFiltersState): number {
   return (
     f.cadences.length +
     f.difficulties.length +
-    (f.completion !== 'all' ? 1 : 0) +
+    (f.completion !== 'todo' ? 1 : 0) +
     (f.photo !== 'all' ? 1 : 0) +
     f.categories.length
   );

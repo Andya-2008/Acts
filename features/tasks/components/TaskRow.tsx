@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { DeedShareNudgeBanner } from '@/features/deed-feed/components/DeedShareNudgeBanner';
 import { AppButton, AppText } from '@/shared/components/ui';
 import { readableChipColors, readableTextColors } from '@/shared/theme/colorUtils';
 import type { ActTask, TaskCadence } from '@/shared/types/task';
@@ -142,6 +143,11 @@ type TaskRowProps = {
   /** Share this act's memory photo to the community deed feed (mobile). */
   onShareToDeedFeed?: (task: ActTask) => void;
   deedFeedShareTaskId?: string | null;
+  /** Reward callout for deed-feed share (+seeds · +XP). */
+  deedShareRewardLabel?: string;
+  /** Nudge to add a photo and share after completing an act. */
+  showDeedShareNudge?: boolean;
+  onDismissDeedShareNudge?: () => void;
   /** Checkbox chrome from shop / ActsSettings (`default` when omitted). */
   taskCheckThemeId?: TaskCheckThemeId;
   /** Show an exciting "New" marker for acts the user hasn't seen on this tab yet. */
@@ -161,6 +167,9 @@ export function TaskRow({
   photoActionTaskId,
   onShareToDeedFeed,
   deedFeedShareTaskId,
+  deedShareRewardLabel,
+  showDeedShareNudge = false,
+  onDismissDeedShareNudge,
   taskCheckThemeId = 'default',
   isNew = false,
   spotlight = false,
@@ -362,6 +371,10 @@ export function TaskRow({
         </View>
       ) : null}
 
+      {done && showDeedShareNudge && deedShareRewardLabel && onDismissDeedShareNudge ? (
+        <DeedShareNudgeBanner rewardLabel={deedShareRewardLabel} onDismiss={onDismissDeedShareNudge} />
+      ) : null}
+
       {task.photoUrl ? (
         <View className={`mb-2 flex-row items-start gap-3 ${done ? 'items-center' : 'items-start'}`}>
           <Pressable
@@ -400,7 +413,7 @@ export function TaskRow({
               {onShareToDeedFeed && !task.deedFeedPostId ? (
                 <IconAction
                   name="paper-plane-outline"
-                  label="Share to deed feed"
+                  label={`Share to deed feed (${deedShareRewardLabel ?? 'bonus rewards'})`}
                   variant="blue"
                   disabled={busy || photoBusyThis}
                   loading={deedFeedBusyThis}
@@ -431,6 +444,11 @@ export function TaskRow({
               </View>
               {onShareToDeedFeed && !task.deedFeedPostId ? (
                 <View>
+                  {deedShareRewardLabel ? (
+                    <AppText variant="caption" className="mt-2 text-acts-green">
+                      Share for {deedShareRewardLabel}
+                    </AppText>
+                  ) : null}
                   <AppButton
                     title="Share to deed feed"
                     variant="secondary"

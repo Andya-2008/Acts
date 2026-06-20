@@ -16,7 +16,7 @@ Use Apple’s exact categories in the wizard. Suggested mapping:
 |-----------|-----------|-------------------|----------|---------|
 | Email address | Yes | Yes | No | App functionality, account |
 | Name | Yes | Yes | No | App functionality |
-| Phone number | Required (SMS verified) | Yes | No | App functionality (account security, sign-in, friend matching) |
+| Phone number | Optional | Yes | No | App functionality (sign-in if saved, friend matching) |
 | User ID | Yes | Yes | No | App functionality |
 | Photos or videos | Yes | Yes | No | App functionality (profile, tasks, deed feed) |
 | Other user content | Yes | Yes | No | App functionality (posts, comments) |

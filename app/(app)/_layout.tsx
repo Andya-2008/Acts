@@ -3,6 +3,10 @@ import { Redirect, Stack } from 'expo-router';
 import { FriendsGateGuard } from '@/features/friends/components/FriendsGateGuard';
 import { InviteJoinAlertModal } from '@/features/friends/components/InviteJoinAlertModal';
 import { ActivityNotificationsSync } from '@/features/notifications/ActivityNotificationsSync';
+import { ExpoPushTokenSync } from '@/features/notifications/ExpoPushTokenSync';
+import { LeaderboardNotificationsSync } from '@/features/leaderboards/LeaderboardNotificationsSync';
+import { SeasonNotificationsSync } from '@/features/challenges/SeasonNotificationsSync';
+import { NotificationBadgeSync } from '@/features/notifications/components/NotificationBadgeSync';
 import { NotificationNavigationSync } from '@/features/notifications/NotificationNavigationSync';
 import { RetentionNotificationsSync } from '@/features/retention/RetentionNotificationsSync';
 import { WidgetSync } from '@/features/widgets/WidgetSync';
@@ -88,8 +92,12 @@ export default function AppGroupLayout() {
   return (
     <>
       <RetentionNotificationsSync />
+      <ExpoPushTokenSync />
       <WidgetSync />
       <ActivityNotificationsSync />
+      <SeasonNotificationsSync />
+      <LeaderboardNotificationsSync />
+      <NotificationBadgeSync />
       <NotificationNavigationSync />
       <InviteJoinAlertModal />
       <FriendsGateGuard>
